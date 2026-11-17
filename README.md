@@ -9,8 +9,17 @@ Built with **Godot 4.7** (Forward+ renderer, Jolt physics).
 ## Getting started
 
 See [CONTRIBUTING.md](CONTRIBUTING.md) for setup (Godot version, Git LFS) and
-who owns which folders. Open `project.godot` in Godot and press F5; the main
-scene is currently Lucas's sandbox test room.
+who owns which folders. Open `project.godot` in Godot and press F5 (Play).
+
+## Shared baseline
+
+The game starts on a temporary title screen that leads into a code-drawn 2D
+lighthouse graybox with basic movement and jumping (`scenes/ui/MainMenu.tscn`,
+`scenes/levels/PrototypeLevel.tscn`). It is a shared bootstrap, not production
+art, lore, animation, or mechanics; the real 2.5D systems replace it over time.
+
+Lucas's 3D test room is `scenes/sandbox/sandbox.tscn`: open it and press F6
+(Run Current Scene).
 
 ## Controls
 
@@ -32,5 +41,7 @@ scene is currently Lucas's sandbox test room.
 - [Mechanics](docs/MECHANICS.md)
 - [Level design](docs/LEVEL_DESIGN.md)
 - [Story](docs/STORY.md)
+- [Audio design](docs/AUDIO_DESIGN.md)
+- [Art & presentation](docs/ART_PRESENTATION.md)
 - [Technical design](docs/TECHNICAL_DESIGN.md)
 - [Tasks](docs/TASKS.md)
