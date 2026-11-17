@@ -25,7 +25,7 @@ else's scene: `.tscn` merge conflicts are painful to fix.
 | --- | --- |
 | Lucas | `scripts/player`, `scripts/shadow`, `scripts/lighting`, `scripts/puzzles`, `scripts/core`, `scenes/player`, `scenes/shadow`, `scenes/lighting`, `scenes/puzzles`, `scenes/sandbox`, `assets/environment`, `assets/effects`, `assets/textures`, `shaders`, `project.godot` |
 | Neel | `scenes/levels` (one scene per chapter), `scenes/enemies`, `assets/characters`, `animations`, `scripts/enemies`, `scripts/level_events` |
-| Axel | `audio`, `scenes/ui`, `scenes/cutscenes`, `scripts/ui`, `scripts/story` (radio), `scripts/audio`, `assets/fonts`, `docs/lore`, `docs/STORY.md` |
+| Axel | `audio`, `scenes/ui`, `scenes/cutscenes`, `scripts/ui`, `scripts/story` (radio), `scripts/audio`, `assets/fonts`, `assets/presentation`, `docs/lore`, `docs/STORY.md`, `docs/AUDIO_DESIGN.md`, `docs/ART_PRESENTATION.md` |
 
 Shared: `docs/` (except lore), `README.md`, `CONTRIBUTING.md`, `tests/`.
 
