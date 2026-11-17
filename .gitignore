@@ -1,0 +1,19 @@
+# Godot
+.godot/
+*.translation
+*.tmp
+export_credentials.cfg
+
+# Builds (shipped from builds/, never committed)
+builds/
+
+# Editor / OS
+.DS_Store
+Thumbs.db
+.vscode/
+.idea/
+*.swp
+
+# Blender autosaves
+*.blend1
+*.blend2
