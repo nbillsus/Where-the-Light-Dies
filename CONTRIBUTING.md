@@ -53,3 +53,13 @@ code, so ask Lucas first.
 - Keep test scenes in your own folder (Lucas uses `scenes/sandbox`).
 - Commit small and often, with a message that says what changed.
 - Pull before you start work; push before you stop.
+
+## Tests
+
+Automated tests live in `tests/` and run headless from the repo root:
+
+```bash
+godot --headless res://tests/test_keeper_movement.tscn
+```
+
+It prints PASS/FAIL per check and exits with code 1 if anything fails.
