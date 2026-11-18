@@ -12,7 +12,7 @@ Each step below ends with one commit.
 - [x] **Step 1 — Engine and repo setup.** Godot 4.7 project, folder structure
       with ownership, Git LFS rules, input map, physics layers, `GameEvents`
       signal bus for cross-team hooks, and a sandbox scene to test in.
-- [ ] **Step 2 — Keeper movement.** 2.5D `CharacterBody3D` locked to the
+- [x] **Step 2 — Keeper movement.** 2.5D `CharacterBody3D` locked to the
       gameplay plane: run, variable jump (coyote time, jump buffer), ledge
       mantle, ladders, push/pull. All tuning values in one resource.
 - [ ] **Step 3 — Shadow detach and Solidify.** Detach/recall state machine,
