@@ -1,5 +1,6 @@
 import Phaser from 'phaser';
 import coastBackdropUrl from '../../assets/environment/coast_backdrop.png?url';
+import { fixedLayerOffset, logicalSize, renderScale, sharpenText } from '../rendering.js';
 
 const WORLD_WIDTH = 3100;
 const SPEED = 320;
@@ -27,7 +28,8 @@ export class PrototypeLevelScene extends Phaser.Scene {
   onResize() { this.scene.restart(); }
 
   buildLevel() {
-    const { width: w, height: h } = this.scale;
+    this.cameras.main.setZoom(renderScale);
+    const { width: w, height: h } = logicalSize(this);
     this.groundY = Math.max(h * 0.77, 450);
     this.physics.world.setBounds(0, 0, WORLD_WIDTH, h);
     this.cameras.main.setBounds(0, 0, WORLD_WIDTH, h);
@@ -41,11 +43,11 @@ export class PrototypeLevelScene extends Phaser.Scene {
     for (const [x, y, width] of [[570, -104, 180], [850, -174, 175], [1130, -113, 175], [1480, -148, 190], [1820, -211, 165], [2130, -135, 195], [2530, -190, 180]])
       this.addPlatform(x, this.groundY + y, width, 22);
 
-    this.player = this.physics.add.sprite(170, this.groundY - 55, 'keeper-art').setDepth(7);
+    this.player = this.physics.add.sprite(170, this.groundY - 55, 'keeper-art').setDisplaySize(64, 88).setDepth(7);
     this.player.body.setSize(33, 70).setOffset(16, 12).setCollideWorldBounds(true).setMaxVelocity(420, 1000);
     this.player.setDragX(1800);
     for (const platform of this.platforms) this.physics.add.collider(this.player, platform);
-    this.shadow = this.add.image(this.player.x - 40, this.player.y + 14, 'shadow-art').setDepth(6).setAlpha(0.35);
+    this.shadow = this.add.image(this.player.x - 40, this.player.y + 14, 'shadow-art').setDisplaySize(64, 88).setDepth(6).setAlpha(0.35);
     this.shadowDetached = false;
     this.shadowVelocity = 0;
     this.tether = this.add.graphics().setDepth(5);
@@ -62,10 +64,12 @@ export class PrototypeLevelScene extends Phaser.Scene {
     this.lastGrounded = 0;
     this.jumpQueued = -1000;
     this.createHud(w, h);
+    sharpenText(this);
   }
 
   drawBackdrop(w, h) {
-    const g = this.add.graphics().setScrollFactor(0).setDepth(-10);
+    const offset = fixedLayerOffset(w, h);
+    const g = this.add.graphics().setPosition(offset.x, offset.y).setScrollFactor(0).setDepth(-10);
     g.fillGradientStyle(0x07111d, 0x101e2d, 0x455361, 0x233746, 1).fillRect(0, 0, w, h);
     g.fillStyle(0xc9d4d3, 0.17).fillCircle(w * 0.74, h * 0.19, h * 0.14);
     g.fillStyle(0xdce2d9, 0.36).fillCircle(w * 0.74, h * 0.19, h * 0.055);
@@ -79,16 +83,17 @@ export class PrototypeLevelScene extends Phaser.Scene {
       const y = h * (0.69 + row * 0.034);
       g.lineBetween(col * w / 12 + row * 17, y, col * w / 12 + row * 17 + w * 0.06, y - 3);
     }
-    this.add.image(w / 2, h / 2, 'coast-backdrop').setDisplaySize(w + 420, h).setScrollFactor(0.06, 0).setDepth(-9);
+    this.add.image(w / 2 + offset.x * 0.94, h / 2 + offset.y, 'coast-backdrop')
+      .setDisplaySize(w + 420, h).setScrollFactor(0.06, 0).setDepth(-9);
     if (this.settings.rain) {
-      this.rain = this.add.graphics().setScrollFactor(0).setDepth(15).lineStyle(1, 0xd5e9e8, 0.16);
+      this.rain = this.add.graphics().setPosition(offset.x, offset.y).setScrollFactor(0).setDepth(15).lineStyle(1, 0xd5e9e8, 0.16);
       for (let i = 0; i < 170; i++) {
         const x = (i * 239.7) % w, y = (i * 127.4) % h;
         this.rain.lineBetween(x, y, x - 15, y + 33);
       }
     }
-    const fog = this.add.rectangle(w / 2, h * 0.69, w * 1.2, h * 0.14, 0xc2d8d7, 0.06).setScrollFactor(0).setDepth(3);
-    this.tweens.add({ targets: fog, alpha: 0.12, x: w * 0.46, duration: 4600, yoyo: true, repeat: -1 });
+    const fog = this.add.rectangle(w / 2 + offset.x, h * 0.69 + offset.y, w * 1.2, h * 0.14, 0xc2d8d7, 0.06).setScrollFactor(0).setDepth(3);
+    this.tweens.add({ targets: fog, alpha: 0.12, x: w * 0.46 + offset.x, duration: 4600, yoyo: true, repeat: -1 });
   }
 
   drawWorld(h) {
@@ -157,7 +162,7 @@ export class PrototypeLevelScene extends Phaser.Scene {
       g.lineStyle(4, 0x202f34, 1).lineBetween(43, 36, 53, 51);
       g.fillStyle(0x543d24, 1).fillRect(48, 46, 12, 15);
       g.fillStyle(0xffc66c, 1).fillCircle(54, 48, 5);
-      g.generateTexture('keeper-art', 64, 88); g.destroy();
+      g.setScale(renderScale).generateTexture('keeper-art', 64 * renderScale, 88 * renderScale).destroy();
     }
     if (!this.textures.exists('shadow-art')) {
       const g = this.make.graphics({ x: 0, y: 0, add: false });
@@ -165,7 +170,7 @@ export class PrototypeLevelScene extends Phaser.Scene {
       g.fillStyle(0x090c19, 0.95).fillPoints([{ x: 21, y: 24 }, { x: 42, y: 24 }, { x: 57, y: 76 }, { x: 7, y: 76 }], true);
       g.fillStyle(0x090b16, 1).fillCircle(32, 19, 15);
       g.fillStyle(0xc3dfe4, 1).fillEllipse(27, 20, 5, 3).fillEllipse(39, 20, 5, 3);
-      g.generateTexture('shadow-art', 64, 88); g.destroy();
+      g.setScale(renderScale).generateTexture('shadow-art', 64 * renderScale, 88 * renderScale).destroy();
     }
   }
 
@@ -177,7 +182,8 @@ export class PrototypeLevelScene extends Phaser.Scene {
   }
 
   createHud(w, h) {
-    const ui = this.add.container(0, 0).setScrollFactor(0).setDepth(30);
+    const offset = fixedLayerOffset(w, h);
+    const ui = this.add.container(offset.x, offset.y).setScrollFactor(0).setDepth(30);
     ui.add(this.add.rectangle(16, 17, Math.min(460, w - 32), 99, 0x061119, 0.66).setOrigin(0));
     ui.add(this.add.text(32, 28, 'PROLOGUE  /  THE COAST', { fontFamily: 'Georgia, serif', fontSize: '19px', color: '#e6c987' }));
     ui.add(this.add.text(33, 57, 'Find a path through the storm.', { fontFamily: 'Arial, sans-serif', fontSize: '13px', color: '#c9d5d0' }));

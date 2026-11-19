@@ -2,13 +2,15 @@ import './styles.css';
 import Phaser from 'phaser';
 import { MainMenuScene } from './scenes/MainMenuScene.js';
 import { PrototypeLevelScene } from './scenes/PrototypeLevelScene.js';
+import { renderScale } from './rendering.js';
 
 const game = new Phaser.Game({
   type: Phaser.AUTO,
   parent: 'app',
   backgroundColor: '#07111e',
-  width: window.innerWidth,
-  height: window.innerHeight,
+  width: Math.round(window.innerWidth * renderScale),
+  height: Math.round(window.innerHeight * renderScale),
+  render: { antialias: true, antialiasGL: true, pixelArt: false, roundPixels: false },
   physics: {
     default: 'arcade',
     arcade: {
@@ -17,10 +19,16 @@ const game = new Phaser.Game({
     },
   },
   scale: {
-    mode: Phaser.Scale.RESIZE,
-    autoCenter: Phaser.Scale.NO_CENTER,
+    mode: Phaser.Scale.FIT,
+    autoCenter: Phaser.Scale.CENTER_BOTH,
   },
   scene: [MainMenuScene, PrototypeLevelScene],
 });
 
 window.addEventListener('beforeunload', () => game.destroy(true));
+window.addEventListener('resize', () => {
+  game.scale.setGameSize(
+    Math.round(window.innerWidth * renderScale),
+    Math.round(window.innerHeight * renderScale),
+  );
+});

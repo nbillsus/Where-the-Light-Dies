@@ -1,4 +1,5 @@
 import Phaser from 'phaser';
+import { logicalSize, renderScale, sharpenText } from '../rendering.js';
 
 const entries = ['New Game', 'Settings', 'Collections', 'Credits'];
 const gold = 0xd8af69;
@@ -30,7 +31,9 @@ export class MainMenuScene extends Phaser.Scene {
     this.children.removeAll();
     this.tweens.killAll();
     this.panel = null;
-    const { width: w, height: h } = this.scale;
+    this.cameras.main.setZoom(renderScale);
+    const { width: w, height: h } = logicalSize(this);
+    this.cameras.main.setScroll((1 - renderScale) * w / 2, (1 - renderScale) * h / 2);
     const s = Phaser.Math.Clamp(Math.min(w / 1280, h / 760), 0.62, 1.25);
     const x = Math.max(28, w * 0.065);
     this.drawBackdrop(w, h);
@@ -55,6 +58,7 @@ export class MainMenuScene extends Phaser.Scene {
     this.select(this.selected);
     this.add.text(x, h - 40, '↑ ↓ SELECT     ENTER CONFIRM', { fontFamily: 'Arial, sans-serif', fontSize: '11px', letterSpacing: 2, color: '#9eadae' });
     this.add.text(w - 28, h - 40, 'PROTOTYPE  •  SOLO', { fontFamily: 'Arial, sans-serif', fontSize: '11px', letterSpacing: 2, color: '#9eadae' }).setOrigin(1, 0);
+    sharpenText(this);
   }
 
   drawBackdrop(w, h) {
@@ -111,7 +115,7 @@ export class MainMenuScene extends Phaser.Scene {
   closePanel() { if (this.panel) { this.panel.destroy(true); this.panel = null; } }
 
   showPanel(name) {
-    const { width: w, height: h } = this.scale;
+    const { width: w, height: h } = logicalSize(this);
     const s = Phaser.Math.Clamp(Math.min(w / 1280, h / 760), 0.65, 1.1);
     const pw = Math.min(w - 32, 560 * s), ph = Math.min(h - 32, 370 * s), x = w / 2 - pw / 2 + 32 * s, y = h / 2 - ph / 2 + 94 * s;
     this.panel = this.add.container(0, 0).setDepth(10);
@@ -132,5 +136,6 @@ export class MainMenuScene extends Phaser.Scene {
     } else if (name === 'Collections') this.panel.add(this.add.text(x, y, 'Nothing discovered yet.\nExplore the island when the story arrives.', style));
     else this.panel.add(this.add.text(x, y, 'WHERE THE LIGHT DIES\n\nA three-person game project\nLucas  ·  Neel  ·  Axel\n\nPrototype in progress.', style));
     this.panel.add(this.add.text(w / 2, h / 2 + ph / 2 - 31 * s, 'ESC TO CLOSE', { fontFamily: 'Arial, sans-serif', fontSize: `${Math.round(11 * s)}px`, color: '#9eafb0', letterSpacing: 2 }).setOrigin(0.5));
+    sharpenText(this);
   }
 }
