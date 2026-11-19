@@ -56,13 +56,14 @@ export const CHAPTER_STAGES = [
       [[0,720,735],[835,1300,700],[1430,1890,665],[2020,2470,710],[2600,3050,665],[3180,3590,630],[3720,4096,680]]],
     ['ossuary-works', 'THE OSSUARY WORKS', 'THE WORKS', 'The machines kept working long after their makers vanished.',
       [[0,720,735],[850,1350,690],[1480,1940,655],[2070,2530,700],[2660,3110,650],[3240,3650,620],[3780,4096,675]]],
-    ['crimson-array', 'THE CRIMSON ARRAY', 'THE ARRAY', 'The red beams are searching for a shape they remember.',
+    ['crimson-array', 'THE COLD ARRAY', 'THE ARRAY', 'The cold beams are searching for a shape they remember.',
       [[0,700,735],[830,1280,695],[1410,1880,650],[2010,2470,700],[2600,3070,650],[3200,3630,625],[3760,4096,675]]],
     ['bloodglass-chamber', 'THE BLOODGLASS CHAMBER', 'THE CHAMBER', 'In every pane, your shadow is a second too late.',
       [[0,720,735],[850,1310,690],[1440,1900,650],[2030,2490,700],[2620,3070,650],[3200,3650,625],[3780,4096,675]]],
     ['heart-of-works', 'THE HEART OF THE WORKS', 'THE HEART', 'The machine calls for two hands. One of them is yours.',
       [[0,720,735],[850,1320,690],[1450,1900,650],[2030,2500,700],[2630,3090,650],[3220,3650,625],[3780,4096,675]]],
-  ].map(([id, title, phase, subtitle, platforms]) => ({
-    id, title, phase, subtitle, platforms, width: 4096, height: 900, shadow: true, grasp: true, chapter: 2,
+  ].map(([id, title, phase, subtitle, platforms], index) => ({
+    id, title, phase, subtitle, platforms, width: 4096, height: 900,
+    shadow: true, grasp: [0, 3, 4].includes(index), chapter: 2,
   })),
 ];

@@ -1,15 +1,15 @@
 # Chapter 2 — The Grasp
 
-Chapter 1's relay signal opens a route beneath the island. Five long scrolling areas explore an abandoned machine complex in black stone, blood red glass, and red scanning beams. The player keeps the movement and shadow abilities learned in Chapter 1.
+The relay opens a route into a complex beneath the island. The five areas have different silhouettes, colors, and puzzle rhythms. They keep the movement and detached shadow abilities from Chapter 1.
 
-| Area | New lesson |
-| --- | --- |
-| Red Descent | Detach with `Q`, approach an iron weight, lift with `G`, carry it to a mass plate, and press `G` again to drop it. |
-| Ossuary Works | Repeat the transfer across two bulkheads and anchor the shadow with `F` at a red receptor to quiet the beam. |
-| Crimson Array | Cross a pulsing beam while coordinating Grasp, shadow anchoring, and movement. |
-| Bloodglass Chamber | Transfer two weights while working around two red beam fields. |
-| Heart of the Works | Combine both weight transfers and two receptor beams before reaching the heart. |
+| Area | Look | Playable beat |
+| --- | --- | --- |
+| Red Descent | Red black stone arches and a sealed doorway | Introduce the pale shadow relic halfway through the area. Detach with `Q`, lift with `G`, drop it on the pale seal. |
+| Ossuary Works | Tarnished brass machinery and amber shafts | Push a heavy wooden crate with the boy onto a gold mass plate, time a beam, then operate a power lever with `E`. No Grasp object. |
+| Cold Array | Cold teal lenses and crossed light paths | Navigate two beam fields. Anchor the shadow with `F` at their receptors to silence them, or time a pulsing beam. No crate puzzle. |
+| Bloodglass Chamber | Violet glass and a watching eye | Cross a pulsing beam, then use Grasp for one shadow relic and seal. |
+| Heart of the Works | Black and red core chamber | Combine one ordinary crate, a beam, and one shadow relic before reaching the machine. |
 
-Weights keep ordinary gravity when released. A lit plate permanently opens its associated bulkhead. Red beams reset the boy to the start of the current area; the level mechanisms keep their state. `R` restarts the area if a player wants to reset the puzzle. Grasp has no distance tether, but the shadow must run and jump to reach each weight. The chapter ends with a signal from the machine, leaving the next ability unresolved.
+The ordinary wooden crate has a brown body and cross brace. The boy can push it, but `G` cannot lift it. Shadow relics have a blue pale glow and star mark; only the detached shadow can grasp them. Both objects fall when released. A lit plate or seal permanently opens its bulkhead. A beam resets the boy to the start of the area, while solved mechanisms retain their state; `R` resets the entire area.
 
-The SVG illustrations are generated from `scripts/generate_chapter_two_art.mjs`. The art shares platform coordinates with `src/levels/chapterData.js` so its visible ledges match collision surfaces. These mechanics and story lines are a playable pass for team review.
+The SVG backgrounds come from `scripts/generate_chapter_two_art.mjs`. Visible ledges and collision coordinates share `src/levels/chapterData.js`. The art and puzzles remain a playable pass for team review.
