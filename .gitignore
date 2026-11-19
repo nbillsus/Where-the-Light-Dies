@@ -1,22 +1,16 @@
-# Godot
-.godot/
-*.translation
-*.tmp
-export_credentials.cfg
-# Note: keep *.import files tracked. In Godot 4 they hold each asset's import
-# settings, so everyone gets the same result.
+# Browser build output and local dependencies
+node_modules/
+dist/
 
-# Builds (never committed)
-builds/
-export/
-
-# Editor / OS
+# Local settings and operating-system files
+.env
+.env.*
+!.env.example
 .DS_Store
 Thumbs.db
 .vscode/
 .idea/
 *.swp
 
-# Blender autosaves
-*.blend1
-*.blend2
+# Legacy engine cache, retained only to keep old files from creating noise
+.godot/

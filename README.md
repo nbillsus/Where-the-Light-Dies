@@ -1,47 +1,30 @@
 # Where the Light Dies
 
-A 2.5D atmospheric horror puzzle-platformer. The Keeper detaches their own
-living Shadow to build platforms, hold paths and refract light across a
-storm-battered lighthouse island.
+A browser-based atmospheric puzzle-platformer prototype. The current playable
+build uses Vite and Phaser, so it runs directly in a web browser and can be
+deployed to Vercel for classroom testing.
 
-Built with **Godot 4.7** (Forward+ renderer, Jolt physics).
+## Run locally
 
-## Getting started
+Install Node.js 20 or later, then run:
 
-See [CONTRIBUTING.md](CONTRIBUTING.md) for setup (Godot version, Git LFS) and
-who owns which folders. Open `project.godot` in Godot and press F5 (Play).
+```bash
+npm install
+npm run dev
+```
 
-## Shared baseline
+Open the local URL Vite prints in the terminal. Press `Begin Prototype` to
+enter the lighthouse graybox. Use `A` / `D` or arrow keys to move, `Space` to
+jump, and `Esc` to return to the menu.
 
-The game starts on a temporary title screen that leads into a code-drawn 2D
-lighthouse graybox with basic movement and jumping (`scenes/ui/MainMenu.tscn`,
-`scenes/levels/PrototypeLevel.tscn`). It is a shared bootstrap, not production
-art, lore, animation, or mechanics; the real 2.5D systems replace it over time.
+## Build and deploy
 
-Lucas's 3D test room is `scenes/sandbox/sandbox.tscn`: open it and press F6
-(Run Current Scene).
+Run `npm run build` to create a production build in `dist/`. Vercel builds this
+project from source automatically when the repository is imported, so `dist/`
+is intentionally not committed.
 
-## Controls
+## Prototype scope
 
-| Action | Keyboard / mouse | Gamepad |
-| --- | --- | --- |
-| Move / climb | A D W S or arrow keys | Left stick, D-pad |
-| Jump | Space | A |
-| Interact (push/pull, levers) | E | X |
-| Detach / recall Shadow | Q | Y |
-| Shadow ability | F | RB |
-| Light Strike | J or left click | RT |
-| Flare Pulse | K or right click | B |
-| Dodge | Shift | LT |
-| Pause | Esc | Start |
-
-## Docs
-
-- [Game design](docs/GAME_DESIGN.md)
-- [Mechanics](docs/MECHANICS.md)
-- [Level design](docs/LEVEL_DESIGN.md)
-- [Story](docs/STORY.md)
-- [Audio design](docs/AUDIO_DESIGN.md)
-- [Art & presentation](docs/ART_PRESENTATION.md)
-- [Technical design](docs/TECHNICAL_DESIGN.md)
-- [Tasks](docs/TASKS.md)
+The current title screen and lighthouse scene are code-drawn placeholders for
+the web prototype. They establish the mood and interaction loop without
+locking the team into final art, lore, animation, or gameplay systems.
