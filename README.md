@@ -11,7 +11,9 @@ npm install
 npm run dev
 ```
 
-Open the local URL Vite prints and choose **New Game**. Chapter 1 runs **Storm Coast → Abandoned Facility → Thornwood → Drowned Cavern → Lantern Vault**. It flows into Chapter 2: **Red Descent → Ossuary Works → Cold Array → Bloodglass Chamber → Heart of the Works**. Chapter 2 varies its color and puzzle language by area, introducing Grasp, ordinary pushable weights, machinery, and beam hazards.
+Open the local URL Vite prints and choose **New Game**, then choose one of three save slots. Chapter 1 runs **Storm Coast → Abandoned Facility → Thornwood → Drowned Cavern → Lantern Vault**. It flows into Chapter 2: **Red Descent → Ossuary Works → Cold Array → Bloodglass Chamber → Heart of the Works**. Chapter 2 varies its color and puzzle language by area, introducing Grasp, ordinary pushable weights, machinery, and beam hazards.
+
+**Continue Game** lists the three slots and resumes the chosen save. Saves include the current area, position, and puzzle state. Progress saves when changing areas, every five seconds during play, on browser page exit, and when choosing **Save & Main Menu** from the pause screen. Saves use this browser's local storage, so they survive reloads on the same browser and site. They are not shared between devices or browser profiles.
 
 ## Controls
 
@@ -24,7 +26,7 @@ Open the local URL Vite prints and choose **New Game**. Chapter 1 runs **Storm C
 | `G` | In Grasp areas, lift or drop a nearby pale relic while controlling the shadow; ordinary wooden weights are pushed by the boy |
 | `E` | Operate a nearby mechanism as the boy |
 | `R` | Restart the current area (`R` after the finale restarts the chapter) |
-| `Esc` | Return to the main menu |
+| `Esc` | Pause or resume; the pause menu has Resume, Save & Main Menu, and Settings |
 
 The detached shadow is a pale version of the boy. It runs, jumps, falls, and lands on the same platforms, with no tether distance. Jump into a seal and press `F` to lock the shadow in place, even while airborne; control then returns to the boy. A fallen shadow respawns directly on the boy. If the boy falls, he returns to the beginning of the current area.
 

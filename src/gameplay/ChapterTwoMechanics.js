@@ -130,6 +130,41 @@ export class ChapterTwoMechanics {
     this.scene.announce('POWER ROUTED. THE SERVICE GATE IS OPEN.', GOLD);
   }
 
+  snapshot() {
+    return {
+      puzzles: this.puzzles.map(p => ({ x: p.block.x / this.scale, y: p.block.y / this.scale, lit: p.lit })),
+      levers: this.levers.map(l => l.active),
+      held: this.held ? this.puzzles.indexOf(this.held) : -1,
+    };
+  }
+
+  restore(data) {
+    if (!data || typeof data !== 'object') return;
+    data.puzzles?.forEach((saved, index) => {
+      const p = this.puzzles[index];
+      if (!p) return;
+      if (Number.isFinite(saved.x) && Number.isFinite(saved.y)) p.block.body.reset(saved.x * this.scale, saved.y * this.scale);
+      if (!saved.lit) return;
+      p.lit = true;
+      p.label.setText(p.kind === 'shadow' ? 'SHADOW SEAL  1/1' : 'MASS PLATE  1/1');
+      p.light.setFillStyle(p.kind === 'shadow' ? GHOST : GOLD, .98);
+      p.wall.body.enable = false;
+      p.wall.setAlpha(.08);
+    });
+    data.levers?.forEach((active, index) => {
+      const lever = this.levers[index];
+      if (!lever || !active) return;
+      lever.active = true;
+      lever.lever.setAngle(34).setFillStyle(GOLD);
+      lever.wall.body.enable = false;
+      lever.wall.setAlpha(.08);
+    });
+    if (Number.isInteger(data.held) && data.held >= 0 && this.puzzles[data.held]?.kind === 'shadow') {
+      this.held = this.puzzles[data.held];
+      this.held.block.body.enable = false;
+    }
+  }
+
   update(time) {
     const actor = this.scene.shadow?.actor;
     if (this.held) {
