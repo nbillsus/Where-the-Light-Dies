@@ -1,0 +1,16 @@
+# Browser build output and local dependencies
+node_modules/
+dist/
+
+# Local settings and operating-system files
+.env
+.env.*
+!.env.example
+.DS_Store
+Thumbs.db
+.vscode/
+.idea/
+*.swp
+
+# Old Godot editor cache (the project moved to Phaser)
+.godot/
