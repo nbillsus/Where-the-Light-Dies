@@ -182,7 +182,7 @@ export class ChapterScene extends Phaser.Scene {
     if (Phaser.Input.Keyboard.JustDown(this.keys.R)) { this.scene.restart({ levelIndex: this.levelIndex }); return; }
     if (this.shadow && Phaser.Input.Keyboard.JustDown(this.keys.Q)) {
       const detached = this.shadow.toggleDetach();
-      this.announce(detached ? 'THE SHADOW IS FREE. MOVE IT WITH W / A / S / D. F ANCHORS IT.' : 'THE SHADOW RETURNS.', detached ? 0xc0e8f0 : 0xf0d6a8);
+      this.announce(detached ? 'THE SHADOW IS FREE. RUN AND JUMP WITH A / D + SPACE. F ANCHORS IT.' : 'THE SHADOW RETURNS.', detached ? 0xc0e8f0 : 0xf0d6a8);
       if (detached && this.stage.id === 'thornwood' && !this.shadowAwakeningShown) {
         this.shadowAwakeningShown = true;
         this.cinematics.pulse('IT MOVED FIRST', 'The light has not changed. Your shadow has.', 0xb7d5ef, 2400);
@@ -196,8 +196,8 @@ export class ChapterScene extends Phaser.Scene {
 
     const left = this.cursors.left.isDown || this.keys.A.isDown;
     const right = this.cursors.right.isDown || this.keys.D.isDown;
-    const up = this.cursors.up.isDown || this.keys.W.isDown;
-    const down = this.cursors.down.isDown || this.keys.S.isDown;
+    const jumpPressed = Phaser.Input.Keyboard.JustDown(this.keys.SPACE) || Phaser.Input.Keyboard.JustDown(this.cursors.space);
+    const jumpHeld = this.keys.SPACE.isDown || this.cursors.space.isDown;
     const controllingShadow = !!this.shadow?.controlling;
     const direction = controllingShadow ? 0 : Number(right) - Number(left);
     this.player.setAccelerationX(direction * 2100).setDragX(direction ? 900 : 2200);
@@ -215,19 +215,19 @@ export class ChapterScene extends Phaser.Scene {
         && this.player.body.center.x <= platform.right && Math.abs(feet - platform.y) < 14);
       if (index >= 0) this.checkpoint = index;
     }
-    if (!controllingShadow && (Phaser.Input.Keyboard.JustDown(this.keys.SPACE) || Phaser.Input.Keyboard.JustDown(this.cursors.space))) this.jumpQueued = time;
+    if (!controllingShadow && jumpPressed) this.jumpQueued = time;
     if (!controllingShadow && time - this.jumpQueued < 130 && time - this.lastGrounded < 120) {
       this.player.setVelocityY(JUMP_SPEED);
       this.jumpQueued = -1000;
       this.lastGrounded = -1000;
     }
-    if (!controllingShadow && !this.keys.SPACE.isDown && !this.cursors.space.isDown && this.player.body.velocity.y < -180)
+    if (!controllingShadow && !jumpHeld && this.player.body.velocity.y < -180)
       this.player.setVelocityY(this.player.body.velocity.y * .86);
 
     this.animator.update(time, delta, grounded);
-    this.shadow?.update(time, delta, { left, right, up, down });
+    this.shadow?.update(time, delta, { left, right, jumpPressed, jumpHeld });
     this.mechanics.update(time);
-    this.hintText.setText(this.shadow?.controlling ? 'SHADOW ACTIVE  ·  W / A / S / D MOVE  ·  F ANCHOR  ·  Q RECALL' : this.mechanics.prompt);
+    this.hintText.setText(this.shadow?.controlling ? 'SHADOW ACTIVE  ·  A / D RUN  ·  SPACE JUMP  ·  F LOCK  ·  Q RECALL' : this.mechanics.prompt);
     if (this.player.y > this.viewportHeight + 110) this.respawn();
     if (grounded && this.player.x > this.worldWidth - this.spriteHeight * .43) this.finishStage();
   }

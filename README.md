@@ -17,16 +17,15 @@ Open the local URL Vite prints and choose **New Game**. The route is **Storm Coa
 
 | Key | Action |
 | --- | --- |
-| `A` / `D` or arrow keys | Run; move the shadow sideways while controlling it |
-| `Space` | Jump as the boy |
+| `A` / `D` or arrow keys | Run as the boy or detached shadow |
+| `Space` | Jump as the boy or detached shadow |
 | `Q` | Detach or recall the shadow, starting in the Thornwood |
-| `W` / `S` or up / down | Move the detached shadow vertically |
-| `F` | Anchor or release the detached shadow; anchoring returns control to the boy |
+| `F` | Lock or release the detached shadow; locking returns control to the boy |
 | `E` | Operate a nearby mechanism as the boy |
 | `R` | Restart the current area (`R` after the finale restarts the chapter) |
 | `Esc` | Return to the main menu |
 
-The detached shadow is a pale version of the boy. It has no tether distance and can cross the entire area. When it is anchored, it stays put while the boy moves. Falling returns the boy to the most recently reached ledge.
+The detached shadow is a pale version of the boy. It runs, jumps, falls, and lands on the same platforms, with no tether distance. Jump into a seal and press `F` to lock the shadow in place, even while airborne; control then returns to the boy. A fallen shadow respawns beside the boy.
 
 ## Build and deploy
 

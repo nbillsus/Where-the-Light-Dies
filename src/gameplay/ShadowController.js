@@ -1,5 +1,8 @@
 import { BoyAnimator } from '../animation/BoyAnimator.js';
 
+const RUN_SPEED = 320;
+const JUMP_SPEED = -490;
+
 // The browser chapter talks to this small interface only. A teammate's later
 // shadow system can replace it without changing level puzzle definitions.
 export class ShadowController {
@@ -9,13 +12,16 @@ export class ShadowController {
     this.actor = scene.physics.add.sprite(player.x, player.y, 'boy-upper')
       .setDisplaySize(displayHeight * 330 / 410, displayHeight);
     this.actor.body.setSize(90, 345, false).setOffset(183, 60)
-      .setAllowGravity(false).setCollideWorldBounds(true).setMaxVelocity(370, 370);
+      .setAllowGravity(true).setCollideWorldBounds(true).setMaxVelocity(RUN_SPEED, 1000);
+    for (const platform of scene.platforms) scene.physics.add.collider(this.actor, platform.zone);
     this.actor.body.enable = false;
     this.animator = new BoyAnimator(scene, this.actor, displayHeight, { ghost: true });
     this.animator.visual.setVisible(false);
     this.detached = false;
     this.anchored = false;
     this.controlling = false;
+    this.lastGrounded = 0;
+    this.jumpQueued = -1000;
   }
 
   toggleDetach() {
@@ -30,12 +36,16 @@ export class ShadowController {
       return false;
     }
     this.actor.body.enable = true;
+    this.actor.body.setAllowGravity(true);
     this.actor.setPosition(this.player.x + 64, this.player.y - 10).setVelocity(0, 0);
+    this.actor.body.updateFromGameObject();
     this.actor.setFlipX(this.player.flipX);
     this.animator.visual.setVisible(true);
     this.detached = true;
     this.anchored = false;
     this.controlling = true;
+    this.lastGrounded = this.scene.time.now;
+    this.jumpQueued = -1000;
     this.scene.followActor(this.actor);
     return true;
   }
@@ -45,6 +55,12 @@ export class ShadowController {
     this.anchored = !this.anchored;
     this.controlling = !this.anchored;
     this.actor.setVelocity(0, 0);
+    this.actor.setAcceleration(0, 0).setDragX(2200);
+    this.actor.body.setAllowGravity(!this.anchored);
+    if (this.controlling) {
+      this.lastGrounded = this.scene.time.now;
+      this.jumpQueued = -1000;
+    }
     this.scene.followActor(this.controlling ? this.actor : this.player);
   }
 
@@ -52,14 +68,35 @@ export class ShadowController {
     if (!this.detached) return;
     if (this.controlling) {
       const dx = Number(keys.right) - Number(keys.left);
-      const dy = Number(keys.down) - Number(keys.up);
-      this.actor.setVelocity(dx * 350, dy * 350);
+      this.actor.setAccelerationX(dx * 2100).setDragX(dx ? 900 : 2200);
       if (dx) {
         this.actor.setFlipX(dx < 0);
         this.actor.body.setOffset(dx < 0 ? 57 : 183, 60);
       }
-    } else this.actor.setVelocity(0, 0);
-    this.animator.update(time, delta, true);
+      const grounded = this.actor.body.blocked.down || this.actor.body.touching.down;
+      if (grounded) this.lastGrounded = time;
+      if (keys.jumpPressed) this.jumpQueued = time;
+      if (time - this.jumpQueued < 130 && time - this.lastGrounded < 120) {
+        this.actor.setVelocityY(JUMP_SPEED);
+        this.jumpQueued = -1000;
+        this.lastGrounded = -1000;
+      }
+      if (!keys.jumpHeld && this.actor.body.velocity.y < -180) this.actor.setVelocityY(this.actor.body.velocity.y * .86);
+      this.animator.update(time, delta, grounded);
+      if (this.actor.y > this.scene.viewportHeight + 110) this.resetAtPlayer();
+    } else {
+      this.actor.setVelocity(0, 0).setAcceleration(0, 0);
+      this.animator.update(time, delta, false);
+    }
+  }
+
+  resetAtPlayer() {
+    this.actor.body.setAllowGravity(true);
+    this.actor.setPosition(this.player.x + 64, this.player.y - 10).setVelocity(0, 0).setAcceleration(0, 0);
+    this.actor.body.updateFromGameObject();
+    this.lastGrounded = this.scene.time.now;
+    this.jumpQueued = -1000;
+    this.scene.followActor(this.actor);
   }
 
   isAnchoredNear(x, y, radius) {
