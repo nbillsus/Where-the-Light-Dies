@@ -226,6 +226,7 @@ export class HorrorPresentation {
         5200,
       );
       this.suspense(3600, 95);
+      this.scene.time.delayedCall(900, () => this.playHelpCry('distant'));
     });
   }
 
@@ -267,6 +268,7 @@ export class HorrorPresentation {
     }
     this.radioPanel(beat.title, beat.message, beat.voice, beat.color);
     this.suspense(1900, 65);
+    if (beat.title === 'THE DROWNED CHOIR' || beat.title === 'KEEPER ARCHIVE') this.playHelpCry('choir');
   }
 
   radioPanel(title, message, voice, color = CYAN, duration = 4300) {
@@ -311,8 +313,11 @@ export class HorrorPresentation {
     this.isScaring = true;
     this.radioPanel(beat.title, beat.message, 'signal pressure rising...', beat.color, 2600);
     this.linkedCrescendo(2400, 82);
+    this.scene.time.delayedCall(520, () => this.playHelpCry(beat.scare === 'pierHand' ? 'near' : 'falseKeeper'));
+    this.scene.time.delayedCall(1350, () => this.playHelpCry('panic'));
     this.scene.time.delayedCall(2150, () => {
       this.playImpact(beat.scare);
+      this.playScream(beat.scare);
       this.flash(beat.color);
       this.drawScareVisual(beat);
       this.scene.cameras.main.shake(360, 0.012);
@@ -494,6 +499,107 @@ export class HorrorPresentation {
     high.start(now);
     low.stop(now + 0.46);
     high.stop(now + 0.32);
+  }
+
+  playHelpCry(type = 'distant') {
+    const ctx = this.ensureAudio();
+    if (!ctx || !this.master) return;
+    const now = ctx.currentTime;
+    const duration = type === 'panic' ? 1.15 : type === 'choir' ? 2.1 : 1.55;
+    const voice = ctx.createOscillator();
+    const wobble = ctx.createOscillator();
+    const tremolo = ctx.createGain();
+    const filter = ctx.createBiquadFilter();
+    const gain = ctx.createGain();
+    const delay = ctx.createDelay();
+    const echo = ctx.createGain();
+
+    voice.type = type === 'panic' ? 'square' : 'sawtooth';
+    const startFreq = type === 'falseKeeper' ? 390 : type === 'near' ? 310 : type === 'panic' ? 520 : 250;
+    voice.frequency.setValueAtTime(startFreq, now);
+    voice.frequency.linearRampToValueAtTime(startFreq * 0.74, now + duration * 0.38);
+    voice.frequency.linearRampToValueAtTime(startFreq * 1.08, now + duration * 0.62);
+    voice.frequency.linearRampToValueAtTime(startFreq * 0.58, now + duration);
+
+    wobble.type = 'sine';
+    wobble.frequency.value = type === 'choir' ? 7.2 : 5.1;
+    tremolo.gain.value = type === 'panic' ? 0.19 : 0.11;
+    wobble.connect(tremolo.gain);
+
+    filter.type = 'bandpass';
+    filter.frequency.value = type === 'distant' ? 760 : type === 'near' ? 930 : 1180;
+    filter.Q.value = type === 'panic' ? 11 : 7;
+
+    gain.gain.setValueAtTime(0.0001, now);
+    gain.gain.linearRampToValueAtTime(type === 'panic' ? 0.19 : 0.115, now + 0.16);
+    gain.gain.linearRampToValueAtTime(type === 'panic' ? 0.08 : 0.045, now + duration * 0.64);
+    gain.gain.exponentialRampToValueAtTime(0.0001, now + duration);
+
+    delay.delayTime.value = type === 'near' ? 0.08 : 0.19;
+    echo.gain.value = type === 'choir' ? 0.18 : 0.1;
+
+    voice.connect(filter).connect(tremolo).connect(gain).connect(this.master);
+    gain.connect(delay).connect(echo).connect(this.master);
+    voice.start(now);
+    wobble.start(now);
+    voice.stop(now + duration + 0.04);
+    wobble.stop(now + duration + 0.04);
+
+    if (type === 'choir') {
+      this.scene.time.delayedCall(260, () => this.playHelpCry('distant'));
+      this.scene.time.delayedCall(540, () => this.playHelpCry('near'));
+    }
+  }
+
+  playScream(type = 'behind') {
+    const ctx = this.ensureAudio();
+    if (!ctx || !this.master) return;
+    const now = ctx.currentTime;
+    const noise = ctx.createBufferSource();
+    const buffer = ctx.createBuffer(1, Math.floor(ctx.sampleRate * 0.48), ctx.sampleRate);
+    const data = buffer.getChannelData(0);
+    for (let i = 0; i < data.length; i++) {
+      const falloff = 1 - i / data.length;
+      data[i] = (Math.random() * 2 - 1) * falloff;
+    }
+    noise.buffer = buffer;
+
+    const shriek = ctx.createOscillator();
+    const shriekGain = ctx.createGain();
+    const noiseGain = ctx.createGain();
+    const filter = ctx.createBiquadFilter();
+    const sub = ctx.createOscillator();
+    const subGain = ctx.createGain();
+
+    shriek.type = type === 'glass' ? 'triangle' : 'sawtooth';
+    shriek.frequency.setValueAtTime(type === 'glass' ? 1500 : 880, now);
+    shriek.frequency.exponentialRampToValueAtTime(type === 'pierHand' ? 540 : 2200, now + 0.2);
+    shriek.frequency.exponentialRampToValueAtTime(240, now + 0.62);
+    shriekGain.gain.setValueAtTime(0.0001, now);
+    shriekGain.gain.exponentialRampToValueAtTime(0.26, now + 0.045);
+    shriekGain.gain.exponentialRampToValueAtTime(0.0001, now + 0.66);
+
+    filter.type = 'highpass';
+    filter.frequency.value = type === 'knock' ? 420 : 900;
+    noiseGain.gain.setValueAtTime(0.0001, now);
+    noiseGain.gain.exponentialRampToValueAtTime(type === 'glass' ? 0.16 : 0.24, now + 0.025);
+    noiseGain.gain.exponentialRampToValueAtTime(0.0001, now + 0.5);
+
+    sub.type = 'sine';
+    sub.frequency.setValueAtTime(56, now);
+    sub.frequency.exponentialRampToValueAtTime(23, now + 0.38);
+    subGain.gain.setValueAtTime(0.34, now);
+    subGain.gain.exponentialRampToValueAtTime(0.0001, now + 0.44);
+
+    shriek.connect(shriekGain).connect(this.master);
+    noise.connect(filter).connect(noiseGain).connect(this.master);
+    sub.connect(subGain).connect(this.master);
+    shriek.start(now);
+    noise.start(now);
+    sub.start(now);
+    shriek.stop(now + 0.72);
+    noise.stop(now + 0.52);
+    sub.stop(now + 0.46);
   }
 
   destroy() {
