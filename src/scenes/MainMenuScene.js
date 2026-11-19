@@ -2,8 +2,9 @@ import Phaser from 'phaser';
 import lighthouseUrl from '../../assets/environment/menu_lighthouse.png?url';
 import { logicalSize, renderScale, sharpenText } from '../rendering.js';
 import { CHAPTER_STAGES } from '../levels/chapterData.js';
+import { getSlots, saveSlot } from '../saveSlots.js';
 
-const entries = ['New Game', 'Settings', 'Collections', 'Credits'];
+const entries = ['New Game', 'Continue Game', 'Settings', 'Credits'];
 const gold = 0xd8af69;
 const ivory = '#f5eddb';
 
@@ -35,6 +36,7 @@ export class MainMenuScene extends Phaser.Scene {
     this.children.removeAll();
     this.tweens.killAll();
     this.panel = null;
+    this.slotMode = null;
     this.cameras.main.setZoom(renderScale);
     const { width: w, height: h } = logicalSize(this);
     this.cameras.main.setScroll((1 - renderScale) * w / 2, (1 - renderScale) * h / 2);
@@ -81,18 +83,83 @@ export class MainMenuScene extends Phaser.Scene {
     this.rows.forEach((row, i) => { row.glyph.setVisible(i === this.selected); row.bg.setFillStyle(0xd6c393, i === this.selected ? 0.16 : 0);
       row.text.setColor(i === this.selected ? ivory : '#b1bfbd'); });
   }
-  up() { if (!this.panel) this.select(this.selected - 1); }
-  down() { if (!this.panel) this.select(this.selected + 1); }
+  up() {
+    if (this.slotMode) this.selectSlotRow((this.slotSelection + 2) % 3);
+    else if (!this.panel) this.select(this.selected - 1);
+  }
+  down() {
+    if (this.slotMode) this.selectSlotRow((this.slotSelection + 1) % 3);
+    else if (!this.panel) this.select(this.selected + 1);
+  }
   activate() {
+    if (this.slotMode) { this.chooseSlot(this.slotSelection); return; }
     if (this.panel) return;
     const name = entries[this.selected];
-    if (name === 'New Game') {
-      const requested = Number(new URLSearchParams(window.location.search).get('stage'));
-      const levelIndex = import.meta.env.DEV && Number.isInteger(requested) && requested >= 1 && requested <= CHAPTER_STAGES.length ? requested - 1 : 0;
-      this.scene.start('Chapter', { levelIndex });
-    } else this.showPanel(name);
+    if (name === 'New Game' || name === 'Continue Game') this.showSlots(name);
+    else this.showPanel(name);
   }
-  closePanel() { if (this.panel) { this.panel.destroy(true); this.panel = null; } }
+  closePanel() {
+    if (this.panel) { this.panel.destroy(true); this.panel = null; }
+    this.slotMode = null;
+  }
+
+  selectSlotRow(index) {
+    this.slotSelection = index;
+    this.slotRects?.forEach((rect, row) => rect.setStrokeStyle(row === index ? 3 : 1.5, row === index ? gold : 0x668189, .8));
+  }
+
+  chooseSlot(index) {
+    const mode = this.slotMode;
+    const save = getSlots()[index];
+    if (mode === 'Continue Game') {
+      if (save) this.scene.start('Chapter', { levelIndex: save.levelIndex, slotIndex: index, restore: save });
+      return;
+    }
+    if (save && this.slotReplace !== index) { this.showSlots(mode, index); return; }
+    const requested = Number(new URLSearchParams(window.location.search).get('stage'));
+    const levelIndex = import.meta.env.DEV && Number.isInteger(requested) && requested >= 1 && requested <= CHAPTER_STAGES.length ? requested - 1 : 0;
+    if (saveSlot(index, { levelIndex, x: 145, y: null, mechanics: null, shadow: null }))
+      this.scene.start('Chapter', { levelIndex, slotIndex: index });
+  }
+
+  showSlots(mode, replace = null) {
+    this.closePanel();
+    this.slotMode = mode;
+    this.slotReplace = replace;
+    this.slotRects = [];
+    const { width: w, height: h } = logicalSize(this);
+    const s = Phaser.Math.Clamp(Math.min(w / 1280, h / 760), .65, 1.1);
+    const pw = Math.min(w - 30, 650 * s), ph = Math.min(h - 30, 450 * s);
+    const top = h / 2 - ph / 2;
+    this.panel = this.add.container(0, 0).setDepth(10);
+    this.panel.add(this.add.rectangle(w / 2, h / 2, w, h, 0x02070b, .82).setInteractive());
+    this.panel.add(this.add.rectangle(w / 2, h / 2, pw, ph, 0x10232d, .99).setStrokeStyle(2, gold, .8));
+    this.panel.add(this.add.text(w / 2, top + 30 * s, mode.toUpperCase(), {
+      fontFamily: 'Georgia, serif', fontSize: `${Math.round(30 * s)}px`, color: ivory,
+    }).setOrigin(.5, 0));
+    const slots = getSlots();
+    slots.forEach((save, index) => {
+      const y = top + (116 + index * 88) * s;
+      const rect = this.add.rectangle(w / 2, y, pw - 60 * s, 69 * s, 0x1c3540, .9)
+        .setStrokeStyle(1.5, save ? gold : 0x668189, .65).setInteractive({ useHandCursor: true });
+      const label = save ? `${CHAPTER_STAGES[save.levelIndex].title}  ·  ${new Date(save.savedAt).toLocaleDateString()}` : 'EMPTY SLOT';
+      const action = replace === index ? 'REPLACE THIS SAVE? CLICK AGAIN' : mode === 'New Game'
+        ? save ? 'START NEW  ·  REPLACES SAVE' : 'START NEW GAME'
+        : save ? 'CONTINUE' : 'NO SAVE YET';
+      const row = this.add.text(w / 2 - pw / 2 + 50 * s, y - 22 * s, `SLOT ${index + 1}   ${label}\n${action}`, {
+        fontFamily: 'Arial, sans-serif', fontSize: `${Math.round(15 * s)}px`, color: save ? '#f2e8d2' : '#adc1bf', lineSpacing: 7 * s,
+      });
+      this.panel.add([rect, row]);
+      this.slotRects.push(rect);
+      rect.on('pointerover', () => this.selectSlotRow(index));
+      rect.on('pointerup', () => this.chooseSlot(index));
+    });
+    this.selectSlotRow(replace ?? 0);
+    this.panel.add(this.add.text(w / 2, top + ph - 27 * s, 'ESC TO CLOSE', {
+      fontFamily: 'Arial, sans-serif', fontSize: `${Math.round(12 * s)}px`, color: '#9eafb0', letterSpacing: 2,
+    }).setOrigin(.5));
+    sharpenText(this);
+  }
 
   showPanel(name) {
     const { width: w, height: h } = logicalSize(this);
@@ -113,8 +180,7 @@ export class MainMenuScene extends Phaser.Scene {
         this.panel.add(line);
       }
       this.panel.add(this.add.text(x, y + 150 * s, 'Settings are saved in this browser.', { ...style, color: '#9eafb0' }));
-    } else if (name === 'Collections') this.panel.add(this.add.text(x, y, 'Nothing discovered yet.\nExplore the island when the story arrives.', style));
-    else this.panel.add(this.add.text(x, y, 'WHERE THE LIGHT DIES\n\nA three-person game project\nLucas  ·  Neel  ·  Axel\n\nPrototype in progress.', style));
+    } else this.panel.add(this.add.text(x, y, 'WHERE THE LIGHT DIES\n\nA three-person game project\nLucas  ·  Neel  ·  Axel\n\nPrototype in progress.', style));
     this.panel.add(this.add.text(w / 2, h / 2 + ph / 2 - 31 * s, 'ESC TO CLOSE', { fontFamily: 'Arial, sans-serif', fontSize: `${Math.round(11 * s)}px`, color: '#9eafb0', letterSpacing: 2 }).setOrigin(0.5));
     sharpenText(this);
   }

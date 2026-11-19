@@ -288,6 +288,47 @@ export class ChapterMechanics {
   boxOn(box, plate) { return Math.abs(box.x - plate.x) < 39 * this.scale && Math.abs(box.body.bottom - plate.y) < 23 * this.scale; }
   shadowAt(marker) { return this.scene.shadow?.isAnchoredNear(marker.x, marker.y, 105 * this.scale) || false; }
 
+  snapshot() {
+    const { timerEnd, ...flags } = this.flags;
+    return {
+      flags: this.id === 'storm-coast' && flags.collapsingStarted ? { ...flags, collapsed: true } : flags,
+      timerRemaining: timerEnd ? Math.max(0, timerEnd - this.scene.time.now) : 0,
+      crates: this.crates.map(box => ({ x: box.x / this.scale, y: box.y / this.scale })),
+      gates: this.gates.map(gate => ({ opened: gate.opened, latched: gate.latched })),
+    };
+  }
+
+  restore(data) {
+    if (!data || typeof data !== 'object') return;
+    this.flags = { ...this.flags, ...data.flags };
+    if ('timerEnd' in this.flags) this.flags.timerEnd = data.timerRemaining > 0 ? this.scene.time.now + data.timerRemaining : 0;
+    data.crates?.forEach((position, index) => {
+      const box = this.crates[index];
+      if (box && Number.isFinite(position.x) && Number.isFinite(position.y)) box.body.reset(position.x * this.scale, position.y * this.scale);
+    });
+    data.gates?.forEach((saved, index) => {
+      const gate = this.gates[index];
+      if (!gate) return;
+      gate.opened = !!saved.opened;
+      gate.latched = !!saved.latched;
+      gate.wall.body.enable = !gate.opened;
+      gate.wall.setAlpha(gate.opened ? .09 : 1);
+    });
+    if (this.id === 'storm-coast' && this.flags.collapsed) {
+      this.collapsing.surface.body.enable = false;
+      this.collapsing.visual.setAlpha(.08);
+    }
+    if (this.id === 'abandoned-facility') {
+      if (this.flags.sequence >= 1) this.activateIgnitor(this.switchA);
+      if (this.flags.sequence >= 2) this.activateIgnitor(this.switchB);
+      if (this.flags.timerEnd) this.activateIgnitor(this.switchC, false);
+    }
+    if (this.id === 'thornwood' && this.flags.bridgeLatched) {
+      this.shadowBridge.surface.body.enable = true;
+      this.shadowBridge.surface.setAlpha(.95);
+    }
+  }
+
   update(time) {
     const player = this.scene.player;
     if (this.id === 'storm-coast') {

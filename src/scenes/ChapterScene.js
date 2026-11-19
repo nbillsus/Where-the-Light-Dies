@@ -18,6 +18,7 @@ import { ChapterTwoMechanics } from '../gameplay/ChapterTwoMechanics.js';
 import { Cinematics } from '../gameplay/Cinematics.js';
 import { HorrorPresentation } from '../gameplay/HorrorPresentation.js';
 import { fixedLayerOffset, logicalSize, renderScale, sharpenText } from '../rendering.js';
+import { saveSlot } from '../saveSlots.js';
 
 const ART_URLS = [coastUrl, facilityUrl, thornwoodUrl, cavernUrl, vaultUrl, descentUrl, worksUrl, arrayUrl, chamberUrl, heartUrl];
 const RUN_SPEED = 320;
@@ -26,7 +27,11 @@ const JUMP_SPEED = -490;
 export class ChapterScene extends Phaser.Scene {
   constructor() { super('Chapter'); }
 
-  init(data) { this.levelIndex = Phaser.Math.Clamp(data?.levelIndex ?? 0, 0, CHAPTER_STAGES.length - 1); }
+  init(data) {
+    this.levelIndex = Phaser.Math.Clamp(data?.levelIndex ?? 0, 0, CHAPTER_STAGES.length - 1);
+    this.slotIndex = data?.slotIndex ?? null;
+    this.restoreData = data?.restore ?? null;
+  }
 
   preload() {
     const stage = CHAPTER_STAGES[this.levelIndex];
@@ -74,6 +79,9 @@ export class ChapterScene extends Phaser.Scene {
     this.lastGrounded = 0;
     this.jumpQueued = -1000;
     this.finished = false;
+    this.paused = false;
+    this.pausePanel = null;
+    this.pauseSelection = 0;
     this.shadowAwakeningShown = false;
     if (import.meta.env.DEV) {
       const requested = Number.parseInt(new URLSearchParams(window.location.search).get('checkpoint'), 10);
@@ -85,10 +93,21 @@ export class ChapterScene extends Phaser.Scene {
 
     this.cursors = this.input.keyboard.createCursorKeys();
     this.keys = this.input.keyboard.addKeys('A,D,W,S,SPACE,Q,F,G,E,R');
-    this.input.keyboard.on('keydown-ESC', this.returnToMenu, this);
+    this.input.keyboard.on('keydown-ESC', this.togglePause, this);
+    this.input.keyboard.on('keydown-UP', this.pauseUp, this);
+    this.input.keyboard.on('keydown-DOWN', this.pauseDown, this);
+    this.input.keyboard.on('keydown-ENTER', this.pauseActivate, this);
+    this.input.on('pointerdown', this.handlePausePointer, this);
+    this.onPageHide = () => this.saveProgress();
+    window.addEventListener('pagehide', this.onPageHide);
     this.scale.on('resize', this.onResize, this);
     this.events.once('shutdown', () => {
-      this.input.keyboard.off('keydown-ESC', this.returnToMenu, this);
+      this.input.keyboard.off('keydown-ESC', this.togglePause, this);
+      this.input.keyboard.off('keydown-UP', this.pauseUp, this);
+      this.input.keyboard.off('keydown-DOWN', this.pauseDown, this);
+      this.input.keyboard.off('keydown-ENTER', this.pauseActivate, this);
+      this.input.off('pointerdown', this.handlePausePointer, this);
+      window.removeEventListener('pagehide', this.onPageHide);
       this.scale.off('resize', this.onResize, this);
       this.horror?.destroy();
     });
@@ -96,14 +115,147 @@ export class ChapterScene extends Phaser.Scene {
     this.cameras.main.setDeadzone(Math.min(w * .3, 360), h * .42);
     this.followActor(this.player);
     this.addHud(w, h);
-    if (this.levelIndex !== 5) this.cinematics.pulse(this.stage.phase, this.stage.subtitle,
+    if (this.restoreData) this.applySave(this.restoreData);
+    else if (this.levelIndex !== 5) this.cinematics.pulse(this.stage.phase, this.stage.subtitle,
       this.stage.chapter === 2 ? 0xe96756 : this.stage.shadow ? 0xb79bdb : 0xa5dde3);
+    if (this.slotIndex !== null) this.time.addEvent({ delay: 5000, loop: true, callback: () => { if (!this.paused) this.saveProgress(); } });
     sharpenText(this);
   }
 
   followActor(actor) { this.cameras.main.startFollow(actor, false, .12, .12); }
-  onResize() { this.scene.restart({ levelIndex: this.levelIndex }); }
-  returnToMenu() { this.scene.start('MainMenu'); }
+  onResize() { this.scene.restart({ levelIndex: this.levelIndex, slotIndex: this.slotIndex, restore: this.captureSave() }); }
+
+  captureSave() {
+    return {
+      levelIndex: this.levelIndex,
+      x: this.player.x / this.artScale,
+      y: this.player.y / this.artScale,
+      facingLeft: this.player.flipX,
+      mechanics: this.mechanics.snapshot(),
+      shadow: this.shadow?.detached ? {
+        x: this.shadow.actor.x / this.artScale, y: this.shadow.actor.y / this.artScale,
+        facingLeft: this.shadow.actor.flipX, anchored: this.shadow.anchored,
+      } : null,
+      completed: this.finished && this.levelIndex === CHAPTER_STAGES.length - 1,
+    };
+  }
+
+  saveProgress() {
+    if (this.slotIndex === null) return false;
+    return saveSlot(this.slotIndex, this.captureSave());
+  }
+
+  applySave(data) {
+    this.mechanics.restore(data.mechanics);
+    if (Number.isFinite(data.x) && Number.isFinite(data.y)) {
+      const x = Phaser.Math.Clamp(data.x * this.artScale, 30, this.worldWidth - 30);
+      const y = Phaser.Math.Clamp(data.y * this.artScale, 20, this.viewportHeight + 50);
+      this.player.body.reset(x, y);
+      this.player.setFlipX(!!data.facingLeft);
+      this.player.body.setOffset(data.facingLeft ? 57 : 183, 60);
+    }
+    if (this.shadow && data.shadow && Number.isFinite(data.shadow.x) && Number.isFinite(data.shadow.y)) {
+      this.shadow.toggleDetach();
+      this.shadow.actor.body.reset(data.shadow.x * this.artScale, data.shadow.y * this.artScale);
+      this.shadow.actor.setFlipX(!!data.shadow.facingLeft);
+      this.shadow.actor.body.setOffset(data.shadow.facingLeft ? 57 : 183, 60);
+      if (data.shadow.anchored) this.shadow.toggleAnchor();
+    }
+    this.followActor(this.shadow?.controlling ? this.shadow.actor : this.player);
+    this.cameras.main.centerOn(this.player.x, this.player.y);
+    if (data.completed) { this.finished = true; this.cinematics.finale(this.stage.chapter || 1); }
+  }
+
+  togglePause() {
+    if (this.paused) { this.closePause(); return; }
+    this.paused = true;
+    this.physics.world.pause();
+    this.tweens.pauseAll();
+    const w = this.viewportWidth, h = this.viewportHeight;
+    const offset = fixedLayerOffset(w, h);
+    this.pausePanel = this.add.container(offset.x, offset.y).setScrollFactor(0).setDepth(150);
+    this.pausePanel.add(this.add.rectangle(w / 2, h / 2, w, h, 0x020811, .8));
+    this.pausePanel.add(this.add.rectangle(w / 2, h / 2, Math.min(540, w - 32), Math.min(450, h - 32), 0x10232d, .98)
+      .setStrokeStyle(2, 0xd8af69));
+    this.pausePanel.add(this.add.text(w / 2, h / 2 - 160, 'GAME PAUSED', {
+      fontFamily: 'Georgia, serif', fontSize: '31px', color: '#f5eddb',
+    }).setOrigin(.5));
+    this.pauseRows = ['Resume', 'Save & Main Menu', 'Settings'].map((label, index) => {
+      const row = this.add.text(w / 2, h / 2 - 57 + index * 72, label, {
+        fontFamily: 'Georgia, serif', fontSize: '23px', color: '#c7d5d2',
+      }).setOrigin(.5);
+      this.pausePanel.add(row);
+      return row;
+    });
+    this.pauseSelection = 0;
+    this.refreshPauseRows();
+    this.pausePanel.add(this.add.text(w / 2, h / 2 + 177, 'ESC RESUME  ·  ↑ ↓ SELECT  ·  ENTER CONFIRM', {
+      fontFamily: 'Arial, sans-serif', fontSize: '11px', color: '#9eafb0', letterSpacing: 1,
+    }).setOrigin(.5));
+    sharpenText(this);
+  }
+
+  refreshPauseRows() { this.pauseRows?.forEach((row, index) => row.setColor(index === this.pauseSelection ? '#f5d499' : '#c7d5d2')); }
+  pauseUp() { if (this.paused && !this.pauseSettings) { this.pauseSelection = (this.pauseSelection + 2) % 3; this.refreshPauseRows(); } }
+  pauseDown() { if (this.paused && !this.pauseSettings) { this.pauseSelection = (this.pauseSelection + 1) % 3; this.refreshPauseRows(); } }
+  handlePausePointer(pointer) {
+    if (!this.paused) return;
+    const x = pointer.x / renderScale, y = pointer.y / renderScale;
+    const midX = this.viewportWidth / 2, midY = this.viewportHeight / 2;
+    if (Math.abs(x - midX) > Math.min(270, (this.viewportWidth - 32) / 2)) return;
+    if (this.pauseSettings) {
+      if (Math.abs(y - (midY + 140)) < 30) { this.pauseSettings.destroy(true); this.pauseSettings = null; return; }
+      const index = [midY - 50, midY + 24].findIndex(rowY => Math.abs(y - rowY) < 30);
+      if (index >= 0) this.pauseSettingToggles[index]();
+      return;
+    }
+    const index = [midY - 57, midY + 15, midY + 87].findIndex(rowY => Math.abs(y - rowY) < 31);
+    if (index >= 0) { this.pauseSelection = index; this.pauseActivate(); }
+  }
+  pauseActivate() {
+    if (!this.paused || this.pauseSettings) return;
+    if (this.pauseSelection === 0) this.closePause();
+    else if (this.pauseSelection === 1) {
+      if (!this.saveProgress()) { this.announce('SAVE FAILED. CHECK BROWSER STORAGE.', 0xf19a9a); return; }
+      this.physics.world.resume();
+      this.tweens.resumeAll();
+      this.scene.start('MainMenu');
+    } else this.showPauseSettings();
+  }
+
+  showPauseSettings() {
+    const w = this.viewportWidth, h = this.viewportHeight;
+    const settings = (() => { try { return { rain: true, shake: true, ...JSON.parse(localStorage.getItem('wtld-settings') || '{}') }; }
+      catch { return { rain: true, shake: true }; } })();
+    this.pauseSettings = this.add.container(0, 0);
+    this.pausePanel.add(this.pauseSettings);
+    this.pauseSettings.add(this.add.rectangle(w / 2, h / 2, Math.min(540, w - 32), Math.min(450, h - 32), 0x10232d, .99)
+      .setStrokeStyle(2, 0xd8af69));
+    this.pauseSettings.add(this.add.text(w / 2, h / 2 - 154, 'SETTINGS', {
+      fontFamily: 'Georgia, serif', fontSize: '30px', color: '#f5eddb',
+    }).setOrigin(.5));
+    this.pauseSettingToggles = [];
+    for (const [index, key, label] of [[0, 'rain', 'Rain effects'], [1, 'shake', 'Screen shake']]) {
+      const row = this.add.text(w / 2, h / 2 - 50 + index * 74, '', {
+        fontFamily: 'Arial, sans-serif', fontSize: '19px', color: '#d8e1dc',
+      }).setOrigin(.5);
+      const refresh = () => row.setText(`${label}     ${settings[key] ? 'ON' : 'OFF'}`);
+      refresh();
+      this.pauseSettingToggles[index] = () => { settings[key] = !settings[key]; localStorage.setItem('wtld-settings', JSON.stringify(settings)); refresh(); };
+      this.pauseSettings.add(row);
+    }
+    this.pauseSettings.add(this.add.text(w / 2, h / 2 + 140, 'BACK', { fontFamily: 'Georgia, serif', fontSize: '21px', color: '#f5d499' })
+      .setOrigin(.5));
+  }
+
+  closePause() {
+    if (this.pauseSettings) { this.pauseSettings.destroy(true); this.pauseSettings = null; return; }
+    this.pausePanel?.destroy(true);
+    this.pausePanel = null;
+    this.paused = false;
+    this.physics.world.resume();
+    this.tweens.resumeAll();
+  }
 
   addHud(w, h) {
     const offset = fixedLayerOffset(w, h);
@@ -180,21 +332,26 @@ export class ChapterScene extends Phaser.Scene {
     this.finished = true;
     this.player.setVelocity(0, 0).setAcceleration(0, 0);
     if (this.levelIndex === CHAPTER_STAGES.length - 1) {
+      this.saveProgress();
       this.cinematics.finale(2);
       return;
     }
     if (this.levelIndex === 4) this.cinematics.pulse('CHAPTER II · THE FACILITY BELOW', 'The signal opens a path beneath the island. The shadow reaches for what the light left behind.', 0xe96756, 2400);
     this.cameras.main.fadeOut(this.levelIndex === 4 ? 2500 : 600, 2, 7, 16);
     this.cameras.main.once(Phaser.Cameras.Scene2D.Events.FADE_OUT_COMPLETE,
-      () => this.scene.start('Chapter', { levelIndex: this.levelIndex + 1 }));
+      () => {
+        if (this.slotIndex !== null) saveSlot(this.slotIndex, { levelIndex: this.levelIndex + 1, x: 145, y: null, mechanics: null, shadow: null });
+        this.scene.start('Chapter', { levelIndex: this.levelIndex + 1, slotIndex: this.slotIndex });
+      });
   }
 
   update(time, delta) {
+    if (this.paused) return;
     if (this.finished) {
-      if (Phaser.Input.Keyboard.JustDown(this.keys.R)) this.scene.start('Chapter', { levelIndex: this.stage.chapter === 2 ? 5 : 0 });
+      if (Phaser.Input.Keyboard.JustDown(this.keys.R)) this.scene.start('Chapter', { levelIndex: this.stage.chapter === 2 ? 5 : 0, slotIndex: this.slotIndex });
       return;
     }
-    if (Phaser.Input.Keyboard.JustDown(this.keys.R)) { this.scene.restart({ levelIndex: this.levelIndex }); return; }
+    if (Phaser.Input.Keyboard.JustDown(this.keys.R)) { this.scene.restart({ levelIndex: this.levelIndex, slotIndex: this.slotIndex }); return; }
     if (this.shadow && Phaser.Input.Keyboard.JustDown(this.keys.Q)) {
       if (this.stage.grasp && this.mechanics.held) this.mechanics.toggleGrasp();
       const detached = this.shadow.toggleDetach();

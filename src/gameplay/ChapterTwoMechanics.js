@@ -1,139 +1,216 @@
-// The second chapter's grasp puzzles are separate from the signal chapter's
-// machinery, so the two routes can be tuned independently.
 const RED = 0xf36a65;
 const GOLD = 0xffc984;
+const GHOST = 0xaddde9;
 
+// Each area adds a different beat. Only the first, fourth and final areas
+// ask the shadow to carry an object; ordinary crates are pushed by the boy.
 export class ChapterTwoMechanics {
   constructor(scene) {
     this.scene = scene;
     this.scale = scene.artScale;
     this.area = scene.levelIndex - 5;
-    this.prompt = 'Q DETACH THE SHADOW  ·  G GRASP A WEIGHT';
+    this.prompt = '';
     this.held = null;
-    this.weights = [];
-    this.plates = [];
-    this.gates = [];
+    this.puzzles = [];
     this.beams = [];
-    this.makePuzzle(0, 1010, 1220, 1660);
-    if (this.area > 0) this.makePuzzle(1, 2810, 2950, 3460);
-    if (this.area > 0) this.makeBeam(2320, 2050, this.area >= 2);
-    if (this.area >= 3) this.makeBeam(3600, 3330, this.area === 4);
-    if (this.area === 0) scene.cinematics.pulse('GRASP', 'Detach your shadow with Q. Stand near the iron weight and press G to lift or release it.', RED, 3200);
+    this.levers = [];
+    if (this.area === 0) {
+      this.makePuzzle({ kind: 'shadow', platform: 2, weight: 1550, plate: 1810, gate: 2240 });
+      scene.cinematics.pulse('GRASP', 'Q releases the shadow. G lets it carry the pale relic. Drop it on the matching seal.', GHOST, 3100);
+    } else if (this.area === 1) {
+      this.makePuzzle({ kind: 'ordinary', platform: 1, weight: 970, plate: 1210, gate: 1700 });
+      this.makeBeam(2320, 2110, { color: GOLD, pulsing: true });
+      this.makeLever(2850, 3450);
+    } else if (this.area === 2) {
+      this.makeBeam(1640, 1480, { color: 0x8be2dc, pulsing: true });
+      this.makeBeam(3360, 3200, { color: RED, pulsing: false });
+    } else if (this.area === 3) {
+      this.makeBeam(1510, 1500, { color: 0xc49de8, pulsing: true });
+      this.makePuzzle({ kind: 'shadow', platform: 3, weight: 2130, plate: 2390, gate: 2850 });
+    } else {
+      this.makePuzzle({ kind: 'ordinary', platform: 1, weight: 990, plate: 1230, gate: 1690 });
+      this.makeBeam(2320, 2140, { color: RED, pulsing: true });
+      this.makePuzzle({ kind: 'shadow', platform: 4, weight: 2730, plate: 2980, gate: 3490 });
+    }
   }
 
-  position(x, y) { return [x * this.scale, y * this.scale]; }
-
-  makePuzzle(index, weightX, plateX, gateX) {
-    const platformIndex = index ? 4 : 1;
-    const floor = this.scene.platforms[platformIndex].y;
-    const size = 56 * this.scale;
-    const [x] = this.position(weightX, 0);
-    const block = this.scene.add.rectangle(x, floor - size / 2 - 2, size, size, 0x33242a)
-      .setStrokeStyle(4 * this.scale, 0xf1a784).setDepth(7);
+  makePuzzle({ kind, platform, weight, plate, gate }) {
+    const floor = this.scene.platforms[platform].y;
+    const s = this.scale;
+    const size = (kind === 'shadow' ? 52 : 66) * s;
+    const x = weight * s;
+    const block = this.scene.add.rectangle(x, floor - size / 2 - 2, size, size,
+      kind === 'shadow' ? 0x172537 : 0x66503a)
+      .setStrokeStyle(4 * s, kind === 'shadow' ? GHOST : 0xd5aa70).setDepth(7);
     this.scene.physics.add.existing(block);
-    block.body.setSize(size, size).setCollideWorldBounds(true).setDragX(800).setMaxVelocity(250, 900);
+    block.body.setSize(size, size).setCollideWorldBounds(true).setDragX(kind === 'shadow' ? 760 : 450)
+      .setMaxVelocity(230, 900);
     for (const ledge of this.scene.platforms) this.scene.physics.add.collider(block, ledge.zone);
-    this.weights.push(block);
-    const [platePos] = this.position(plateX, 0);
-    const plateBase = this.scene.add.rectangle(platePos, floor - 6 * this.scale, 120 * this.scale, 18 * this.scale, 0x21171d)
-      .setStrokeStyle(3 * this.scale, RED).setDepth(5);
-    const plateLight = this.scene.add.rectangle(platePos, floor - 19 * this.scale, 86 * this.scale, 8 * this.scale, RED, .32).setDepth(6);
-    const counter = this.scene.add.text(platePos, floor - 51 * this.scale, '0/1', {
-      fontFamily: 'Arial, sans-serif', fontSize: `${Math.max(13, Math.round(19 * this.scale))}px`, color: '#f8bbb1', fontStyle: 'bold',
+    if (kind === 'ordinary') this.scene.physics.add.collider(this.scene.player, block);
+    const badge = this.scene.add.text(x, block.y, kind === 'shadow' ? '✦' : '╳', {
+      fontFamily: 'Georgia, serif', fontSize: `${Math.max(22, Math.round(33 * s))}px`,
+      color: kind === 'shadow' ? '#d8f6ff' : '#d8b27d',
     }).setOrigin(.5).setDepth(8);
-    this.plates.push({ x: platePos, y: floor, base: plateBase, light: plateLight, counter, lit: false });
-    const [gx] = this.position(gateX, 0);
-    const gate = this.scene.add.rectangle(gx, floor / 2, 32 * this.scale, floor, 0x240e19, .94)
-      .setStrokeStyle(5 * this.scale, RED).setDepth(7);
-    this.scene.physics.add.existing(gate, true);
-    this.scene.physics.add.collider(this.scene.player, gate);
-    this.gates.push({ x: gx, object: gate, open: false });
-    this.scene.add.text(platePos, floor - 80 * this.scale, index ? 'TRANSFER' : 'GRASP / RELEASE', {
-      fontFamily: 'Arial, sans-serif', fontSize: `${Math.max(11, Math.round(15 * this.scale))}px`, color: '#e4aaa6', letterSpacing: 2,
-    }).setOrigin(.5).setDepth(7);
+    if (kind === 'shadow') {
+      this.scene.tweens.add({ targets: [block, badge], alpha: { from: .75, to: 1 }, duration: 900, yoyo: true, repeat: -1 });
+    }
+    const px = plate * s;
+    const color = kind === 'shadow' ? GHOST : GOLD;
+    const base = this.scene.add.rectangle(px, floor - 9 * s, 122 * s, 20 * s, kind === 'shadow' ? 0x152b36 : 0x3b2b1f)
+      .setStrokeStyle(3 * s, color).setDepth(5);
+    const light = this.scene.add.rectangle(px, floor - 20 * s, 85 * s, 8 * s, color, .32).setDepth(6);
+    const label = this.scene.add.text(px, floor - 58 * s, kind === 'shadow' ? 'SHADOW SEAL  0/1' : 'MASS PLATE  0/1', {
+      fontFamily: 'Arial, sans-serif', fontStyle: 'bold', fontSize: `${Math.max(12, Math.round(17 * s))}px`,
+      color: kind === 'shadow' ? '#c7edf6' : '#f2cc94', letterSpacing: 1,
+    }).setOrigin(.5).setDepth(8);
+    const gx = gate * s;
+    const wall = this.scene.add.rectangle(gx, floor / 2, 33 * s, floor, 0x1c1823, .95)
+      .setStrokeStyle(5 * s, color).setDepth(7);
+    this.scene.physics.add.existing(wall, true);
+    this.scene.physics.add.collider(this.scene.player, wall);
+    this.puzzles.push({ kind, block, badge, plateX: px, floor, base, light, label, wall, gateX: gx, lit: false });
   }
 
-  makeBeam(x, receptorX, pulsing) {
-    const [bx] = this.position(x, 0);
-    const [rx, ry] = this.position(receptorX, 500);
-    const beam = this.scene.add.rectangle(bx, this.scene.viewportHeight * .42, 10 * this.scale, this.scene.viewportHeight * .84, RED, .7)
-      .setDepth(4);
-    const glow = this.scene.add.rectangle(bx, this.scene.viewportHeight * .42, 37 * this.scale, this.scene.viewportHeight * .84, RED, .12)
-      .setDepth(3);
-    const receptor = this.scene.add.circle(rx, ry, 38 * this.scale, 0x170d18, .9)
-      .setStrokeStyle(5 * this.scale, 0xf3938e).setDepth(5);
-    this.scene.add.text(rx, ry, '✦', { fontFamily: 'Georgia, serif', fontSize: `${Math.round(30 * this.scale)}px`, color: '#ffd2c0' })
+  makeBeam(x, receptorX, { color, pulsing }) {
+    const s = this.scale, bx = x * s, rx = receptorX * s, ry = 530 * s;
+    const beam = this.scene.add.rectangle(bx, this.scene.viewportHeight * .42, 10 * s, this.scene.viewportHeight * .84, color, .78).setDepth(4);
+    const glow = this.scene.add.rectangle(bx, this.scene.viewportHeight * .42, 40 * s, this.scene.viewportHeight * .84, color, .18).setDepth(3);
+    const receptor = this.scene.add.circle(rx, ry, 36 * s, 0x131724, .93).setStrokeStyle(5 * s, color).setDepth(5);
+    this.scene.add.text(rx, ry, '✦', { fontFamily: 'Georgia, serif', fontSize: `${Math.round(30 * s)}px`, color: '#f5e8e0' })
       .setOrigin(.5).setDepth(6);
-    this.beams.push({ x: bx, rx, ry, beam, glow, receptor, pulsing, disabled: false });
+    this.beams.push({ x: bx, rx, ry, beam, glow, receptor, color, pulsing });
+  }
+
+  makeLever(x, gateX) {
+    const s = this.scale, floor = this.scene.platforms[4].y;
+    const lever = this.scene.add.rectangle(x * s, (floor - 58 * s), 18 * s, 78 * s, 0x88623e)
+      .setStrokeStyle(3 * s, GOLD).setDepth(6);
+    this.scene.add.text(x * s, floor - 115 * s, 'E  /  ROUTE POWER', {
+      fontFamily: 'Arial, sans-serif', fontSize: `${Math.max(12, Math.round(17 * s))}px`, color: '#f6d19c',
+    }).setOrigin(.5).setDepth(7);
+    const gateFloor = this.scene.platforms[5].y;
+    const wall = this.scene.add.rectangle(gateX * s, gateFloor / 2, 33 * s, gateFloor, 0x211722, .94)
+      .setStrokeStyle(5 * s, GOLD).setDepth(7);
+    this.scene.physics.add.existing(wall, true);
+    this.scene.physics.add.collider(this.scene.player, wall);
+    this.levers.push({ x: x * s, lever, wall, active: false });
   }
 
   toggleGrasp() {
     const shadow = this.scene.shadow;
     if (!shadow?.detached || !shadow.controlling) {
-      this.scene.announce('CONTROL THE DETACHED SHADOW TO GRASP.', RED);
+      this.scene.announce('CONTROL THE DETACHED SHADOW TO GRASP.', GHOST);
       return;
     }
     if (this.held) {
-      const block = this.held;
+      const block = this.held.block;
       this.held = null;
       block.body.enable = true;
       block.body.reset(block.x, block.y);
       block.body.setAllowGravity(true);
-      this.scene.announce('WEIGHT RELEASED.', GOLD);
+      this.scene.announce('RELIC RELEASED.', GHOST);
       return;
     }
     const actor = shadow.actor;
-    const nearest = this.weights.find(block => Math.hypot(block.x - actor.x, block.y - actor.y) < 115 * this.scale);
-    if (!nearest) { this.scene.announce('MOVE THE SHADOW CLOSER TO AN IRON WEIGHT.', RED); return; }
+    const nearest = this.puzzles.find(p => p.kind === 'shadow' && !p.lit
+      && Math.hypot(p.block.x - actor.x, p.block.y - actor.y) < 125 * this.scale);
+    if (!nearest) { this.scene.announce('G ONLY LIFTS A PALE SHADOW RELIC.', GHOST); return; }
     this.held = nearest;
-    nearest.body.enable = false;
-    this.scene.announce('GRASP ACTIVE. CARRY THE WEIGHT TO THE LIT PLATE. G RELEASES.', GOLD);
+    nearest.block.body.enable = false;
+    this.scene.announce('RELIC HELD. CARRY IT TO THE PALE SEAL, THEN PRESS G.', GHOST);
   }
 
-  interact() { /* Existing E input belongs to the first chapter's machinery. */ }
+  interact() {
+    const lever = this.levers.find(item => !item.active && Math.abs(this.scene.player.x - item.x) < 90 * this.scale);
+    if (!lever) return;
+    lever.active = true;
+    lever.lever.setAngle(34).setFillStyle(GOLD);
+    lever.wall.body.enable = false;
+    this.scene.tweens.add({ targets: lever.wall, alpha: .08, duration: 380 });
+    this.scene.announce('POWER ROUTED. THE SERVICE GATE IS OPEN.', GOLD);
+  }
+
+  snapshot() {
+    return {
+      puzzles: this.puzzles.map(p => ({ x: p.block.x / this.scale, y: p.block.y / this.scale, lit: p.lit })),
+      levers: this.levers.map(l => l.active),
+      held: this.held ? this.puzzles.indexOf(this.held) : -1,
+    };
+  }
+
+  restore(data) {
+    if (!data || typeof data !== 'object') return;
+    data.puzzles?.forEach((saved, index) => {
+      const p = this.puzzles[index];
+      if (!p) return;
+      if (Number.isFinite(saved.x) && Number.isFinite(saved.y)) p.block.body.reset(saved.x * this.scale, saved.y * this.scale);
+      if (!saved.lit) return;
+      p.lit = true;
+      p.label.setText(p.kind === 'shadow' ? 'SHADOW SEAL  1/1' : 'MASS PLATE  1/1');
+      p.light.setFillStyle(p.kind === 'shadow' ? GHOST : GOLD, .98);
+      p.wall.body.enable = false;
+      p.wall.setAlpha(.08);
+    });
+    data.levers?.forEach((active, index) => {
+      const lever = this.levers[index];
+      if (!lever || !active) return;
+      lever.active = true;
+      lever.lever.setAngle(34).setFillStyle(GOLD);
+      lever.wall.body.enable = false;
+      lever.wall.setAlpha(.08);
+    });
+    if (Number.isInteger(data.held) && data.held >= 0 && this.puzzles[data.held]?.kind === 'shadow') {
+      this.held = this.puzzles[data.held];
+      this.held.block.body.enable = false;
+    }
+  }
 
   update(time) {
     const actor = this.scene.shadow?.actor;
     if (this.held) {
       if (!this.scene.shadow?.detached) {
-        this.held.body.enable = true;
-        this.held.body.reset(this.held.x, this.held.y);
+        const block = this.held.block;
         this.held = null;
-      } else {
-        this.held.setPosition(actor.x, actor.body.bottom - 30 * this.scale);
-      }
+        block.body.enable = true;
+        block.body.reset(block.x, block.y);
+      } else this.held.block.setPosition(actor.x, actor.body.bottom - 30 * this.scale);
     }
-    this.plates.forEach((plate, index) => {
-      const block = this.weights[index];
-      const active = !this.held && Math.abs(block.x - plate.x) < 40 * this.scale
-        && Math.abs(block.body.bottom - plate.y) < 28 * this.scale;
-      if (active && !plate.lit) {
-        plate.lit = true;
-        plate.counter.setText('1/1');
-        plate.light.setFillStyle(GOLD, .96);
-        const gate = this.gates[index];
-        gate.open = true;
-        gate.object.body.enable = false;
-        this.scene.tweens.add({ targets: gate.object, alpha: .08, duration: 450 });
-        this.scene.flashAt(gate.x, this.scene.viewportHeight * .42, GOLD);
-        this.scene.announce('MASS CONFIRMED. BULKHEAD RELEASED.', GOLD);
-      }
-    });
+    for (const puzzle of this.puzzles) {
+      puzzle.badge.setPosition(puzzle.block.x, puzzle.block.y);
+      if (puzzle.lit || this.held === puzzle) continue;
+      const active = Math.abs(puzzle.block.x - puzzle.plateX) < 44 * this.scale
+        && Math.abs(puzzle.block.body.bottom - puzzle.floor) < 28 * this.scale;
+      if (!active) continue;
+      puzzle.lit = true;
+      puzzle.label.setText(puzzle.kind === 'shadow' ? 'SHADOW SEAL  1/1' : 'MASS PLATE  1/1');
+      puzzle.light.setFillStyle(puzzle.kind === 'shadow' ? GHOST : GOLD, .98);
+      puzzle.wall.body.enable = false;
+      this.scene.tweens.add({ targets: puzzle.wall, alpha: .08, duration: 420 });
+      this.scene.flashAt(puzzle.gateX, this.scene.viewportHeight * .42, puzzle.kind === 'shadow' ? GHOST : GOLD);
+      this.scene.announce(puzzle.kind === 'shadow' ? 'THE SHADOW SEAL OPENS.' : 'MASS CONFIRMED. BULKHEAD RELEASED.', GOLD);
+    }
     for (const beam of this.beams) {
-      const anchored = this.scene.shadow?.isAnchoredNear(beam.rx, beam.ry, 115 * this.scale);
-      const powered = beam.pulsing ? Math.sin(time * .003) > -.3 : true;
+      const anchored = this.scene.shadow?.isAnchoredNear(beam.rx, beam.ry, 120 * this.scale);
+      const powered = !beam.pulsing || Math.sin(time * .003) > -.3;
       const dangerous = powered && !anchored;
-      beam.beam.setAlpha(dangerous ? .8 : .06);
+      beam.beam.setAlpha(dangerous ? .82 : .06);
       beam.glow.setAlpha(dangerous ? .22 : .02);
-      beam.receptor.setStrokeStyle(5 * this.scale, anchored ? GOLD : RED);
-      if (dangerous && Math.abs(this.scene.player.x - beam.x) < 24 * this.scale && this.scene.player.body.bottom > 430 * this.scale) {
-        this.scene.announce('THE RED BEAM FOUND YOU.', RED);
+      beam.receptor.setStrokeStyle(5 * this.scale, anchored ? GOLD : beam.color);
+      if (dangerous && Math.abs(this.scene.player.x - beam.x) < 25 * this.scale
+        && this.scene.player.body.bottom > 430 * this.scale) {
+        this.scene.announce('THE BEAM FOUND YOU.', beam.color);
         this.scene.respawn();
       }
     }
-    const remaining = this.plates.findIndex(plate => !plate.lit);
-    this.prompt = remaining >= 0 ? 'Q DETACH  ·  G LIFT / DROP WEIGHT ON 0/1 PLATE  ·  F ANCHOR'
-      : this.beams.length ? 'ANCHOR THE SHADOW IN A RED RECEPTOR TO SILENCE ITS BEAM.'
-        : 'THE BULKHEAD IS OPEN. FOLLOW THE RED CABLES.';
+    const unsolved = this.puzzles.find(p => !p.lit);
+    const nextBeam = this.beams.find(beam => this.scene.player.x < beam.x + 35 * this.scale);
+    if (nextBeam && (!unsolved || unsolved.block.x > nextBeam.x))
+      this.prompt = 'F  /  ANCHOR THE SHADOW IN A RECEPTOR TO SILENCE A BEAM.';
+    else if (unsolved) this.prompt = unsolved.kind === 'shadow'
+      ? 'PALE RELIC: Q DETACH  ·  G LIFT / DROP ON SHADOW SEAL'
+      : 'WOODEN WEIGHT: PUSH IT ONTO THE GOLD MASS PLATE.';
+    else if (this.levers.some(l => !l.active)) this.prompt = 'E  /  OPERATE THE BRASS POWER LEVER.';
+    else if (this.beams.length) this.prompt = 'F  /  ANCHOR THE SHADOW IN A RECEPTOR TO SILENCE A BEAM.';
+    else this.prompt = 'FOLLOW THE PATH INTO THE DARK.';
   }
 }
