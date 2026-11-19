@@ -13,9 +13,10 @@ npm install
 npm run dev
 ```
 
-Open the local URL Vite prints in the terminal. Press `Begin Prototype` to
-enter the lighthouse graybox. Use `A` / `D` or arrow keys to move, `Space` to
-jump, and `Esc` to return to the menu.
+Open the local URL Vite prints in the terminal. Select `New Game` to enter the
+storm coast prototype. Use `A` / `D` or arrow keys to run, `Space` to jump,
+`Q` to detach or recall the Shadow, and `Esc` to return to the menu. While the
+Shadow is detached, movement keys guide it within its tether range.
 
 ## Build and deploy
 
@@ -25,6 +26,6 @@ is intentionally not committed.
 
 ## Prototype scope
 
-The current title screen and lighthouse scene are code-drawn placeholders for
-the web prototype. They establish the mood and interaction loop without
-locking the team into final art, lore, animation, or gameplay systems.
+The title screen and coastal ruins are code-drawn prototype art. Settings for
+rain and screen shake are saved in the browser. Collections will gain entries
+when the team adds story content.
