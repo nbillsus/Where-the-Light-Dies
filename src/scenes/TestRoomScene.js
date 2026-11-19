@@ -1,6 +1,7 @@
 import Phaser from 'phaser';
 import hallUrl from '../../assets/environment/watchful_hall.png?url';
-import boyUrl from '../../assets/characters/boy.png?url';
+import boyUpperUrl from '../../assets/characters/boy_upper.png?url';
+import { BoyAnimator } from '../animation/BoyAnimator.js';
 import { logicalSize, renderScale, sharpenText } from '../rendering.js';
 
 const WALKWAY_Y_IN_IMAGE = 670;
@@ -12,7 +13,7 @@ export class TestRoomScene extends Phaser.Scene {
 
   preload() {
     this.load.image('watchful-hall', hallUrl);
-    this.load.image('boy', boyUrl);
+    this.load.image('boy-upper', boyUpperUrl);
   }
 
   create() {
@@ -32,12 +33,13 @@ export class TestRoomScene extends Phaser.Scene {
     const spriteWidth = spriteHeight * 330 / 410;
     const edgeInset = spriteWidth * 0.19;
     this.physics.world.setBounds(edgeInset, 0, w - edgeInset * 2, h);
-    this.player = this.physics.add.sprite(w * 0.24, walkwayY - spriteHeight * 0.49, 'boy')
+    this.player = this.physics.add.sprite(w * 0.24, walkwayY - spriteHeight * 0.49, 'boy-upper')
       .setDisplaySize(spriteWidth, spriteHeight).setDepth(2);
     this.player.body.setSize(90, 345, false).setOffset(183, 60)
       .setCollideWorldBounds(true).setMaxVelocity(RUN_SPEED, 950);
     this.player.setDragX(2200);
     this.physics.add.collider(this.player, floor);
+    this.animator = new BoyAnimator(this, this.player, spriteHeight);
 
     this.cursors = this.input.keyboard.createCursorKeys();
     this.keys = this.input.keyboard.addKeys('A,D,SPACE');
@@ -63,7 +65,7 @@ export class TestRoomScene extends Phaser.Scene {
   onResize() { this.scene.restart(); }
   returnToMenu() { this.scene.start('MainMenu'); }
 
-  update(time) {
+  update(time, delta) {
     const left = this.cursors.left.isDown || this.keys.A.isDown;
     const right = this.cursors.right.isDown || this.keys.D.isDown;
     const direction = Number(right) - Number(left);
@@ -74,12 +76,14 @@ export class TestRoomScene extends Phaser.Scene {
       this.player.body.setOffset(facingLeft ? 57 : 183, 60);
     }
 
-    if (this.player.body.blocked.down || this.player.body.touching.down) this.lastGrounded = time;
+    const grounded = this.player.body.blocked.down || this.player.body.touching.down;
+    if (grounded) this.lastGrounded = time;
     if (Phaser.Input.Keyboard.JustDown(this.keys.SPACE) || Phaser.Input.Keyboard.JustDown(this.cursors.space)) this.jumpQueued = time;
     if (time - this.jumpQueued < 130 && time - this.lastGrounded < 120) {
       this.player.setVelocityY(JUMP_SPEED);
       this.jumpQueued = -1000;
       this.lastGrounded = -1000;
     }
+    this.animator.update(time, delta, grounded);
   }
 }
