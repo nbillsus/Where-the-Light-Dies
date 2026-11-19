@@ -2,64 +2,67 @@
 
 ## Setup
 
-1. Install **Godot 4.7** (standard build, not .NET). Everyone uses the same
-   version; opening the project in a newer one rewrites files and causes
-   noisy diffs.
-2. Install Git LFS once per machine, then pull the binary files:
+1. Install **Node.js 20 or later** (check with `node -v`).
+2. From the repo folder, install the libraries once (and again whenever
+   `package.json` changes):
 
    ```bash
-   brew install git-lfs
-   git lfs install
-   git lfs pull
+   npm install
    ```
 
-3. Open `project.godot` in Godot. The first import creates `.godot/`, which
-   is ignored.
+3. Start the game:
+
+   ```bash
+   npm run dev
+   ```
+
+   Open the `http://localhost:…` address it prints. The page reloads by itself
+   when you save a file. Stop it with `Ctrl + C`.
+
+`npm install` creates `node_modules/` and `npm run build` creates `dist/`.
+Both are generated, so they are ignored by Git. **Never commit them.**
+
+## Branches
+
+Everyone works on their own branch (`Lucas`, `Neel`, `Axel`) and merges
+into `main` with a pull request. Before starting work, update your branch
+from `main` (GitHub Desktop: **Branch → Update from main**).
 
 ## File ownership
 
-Only the owner edits files in their folders. Ask before touching someone
-else's scene: `.tscn` merge conflicts are painful to fix.
+Only the owner edits files in their folders. If you need a change in
+someone else's file, ask them first. This keeps merge conflicts rare.
 
-| Member | Folders |
+> **Proposed after the move to Phaser, confirm with the team.** Some files
+> currently mix lanes (e.g. Keeper movement lives in `ChapterScene.js`); they
+> will be split as each owner's step comes up.
+
+| Member | Owns |
 | --- | --- |
-| Lucas | `scripts/player`, `scripts/shadow`, `scripts/lighting`, `scripts/puzzles`, `scripts/core`, `scenes/player`, `scenes/shadow`, `scenes/lighting`, `scenes/puzzles`, `scenes/sandbox`, `assets/environment`, `assets/effects`, `assets/textures`, `shaders`, `project.godot` |
-| Neel | `scenes/levels` (one scene per chapter), `scenes/enemies`, `assets/characters`, `animations`, `scripts/enemies`, `scripts/level_events` |
-| Axel | `audio`, `scenes/ui`, `scenes/cutscenes`, `scripts/ui`, `scripts/story` (radio), `scripts/audio`, `assets/fonts`, `assets/presentation`, `docs/lore`, `docs/STORY.md`, `docs/AUDIO_DESIGN.md`, `docs/ART_PRESENTATION.md` |
+| Lucas | Game rules and core systems: `src/player/`, `src/shadow/`, `src/puzzles/` (reusable building blocks), `src/core/` (events, rendering), `src/effects/` (lighting, VFX), `package.json`, `vite` config, `.gitattributes`, `.gitignore` |
+| Neel | Levels and characters: `src/levels/`, `src/scenes/ChapterScene.js` (level flow), `src/gameplay/ChapterMechanics.js` (level-specific puzzles), `src/animation/`, `src/enemies/`, `assets/characters/`, `scripts/generate_parkour_art.mjs` |
+| Axel | Story, audio and UI: `src/scenes/MainMenuScene.js`, `src/ui/`, `src/audio/`, `src/radio/`, `src/gameplay/Cinematics.js`, `audio/`, `assets/fonts/`, `assets/presentation/`, `docs/lore/`, `docs/STORY.md`, `docs/AUDIO_DESIGN.md`, `docs/ART_PRESENTATION.md` |
 
-Shared: `docs/` (except lore), `README.md`, `CONTRIBUTING.md`, `tests/`.
+Shared: `docs/` (except Axel's), `README.md`, `CONTRIBUTING.md`, `index.html`,
+`src/main.js`.
 
-Need a change in someone else's folder? Ask them, or make your own scene
-that instances theirs.
+Environment art (`assets/environment/`) is Lucas's lane in the Division of
+Labor; the current backgrounds are Neel's placeholders.
 
-## Talking between systems
+## Assets and Git LFS
 
-Gameplay code announces events through the `GameEvents` autoload
-(`scripts/core/game_events.gd`). Listen there instead of reaching into
-another person's nodes:
-
-```gdscript
-func _ready() -> void:
-    GameEvents.shadow_detached.connect(_start_whispers)
-```
-
-Adding a signal is fine. Renaming or removing one breaks other people's
-code, so ask Lucas first.
+- Files the game loads (`.png`, `.webp`, `.svg`, `.ogg`, `.mp3`, fonts) go in
+  plain Git, so the browser build and Vercel get the real files.
+- Big source files the game never loads (`.psd`, `.kra`, `.wav` masters,
+  video) go through Git LFS automatically. Export a compressed copy for the
+  game to use.
+- Install LFS once per machine: `brew install git-lfs`, then `git lfs install`.
 
 ## Conventions
 
-- Files and folders: `snake_case`. Node names: `PascalCase`.
-- GDScript: static types on functions and members, tabs for indentation.
-- Keep test scenes in your own folder (Lucas uses `scenes/sandbox`).
+- JavaScript modules (`import` / `export`), one main class per file.
+- Files: `PascalCase.js` for classes, `camelCase.js` for data and helpers.
+- Tuning numbers go in named constants at the top of a file (or a tuning
+  object), never scattered inline.
 - Commit small and often, with a message that says what changed.
 - Pull before you start work; push before you stop.
-
-## Tests
-
-Automated tests live in `tests/` and run headless from the repo root:
-
-```bash
-godot --headless res://tests/test_keeper_movement.tscn
-```
-
-It prints PASS/FAIL per check and exits with code 1 if anything fails.

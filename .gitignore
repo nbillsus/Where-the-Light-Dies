@@ -12,5 +12,5 @@ Thumbs.db
 .idea/
 *.swp
 
-# Legacy engine cache, retained only to keep old files from creating noise
+# Old Godot editor cache (the project moved to Phaser)
 .godot/
