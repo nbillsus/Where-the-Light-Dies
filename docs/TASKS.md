@@ -7,13 +7,17 @@ This list intentionally covers only the audio, story, and presentation lane. Gam
 - [x] Draft core story bible for The Keeper, the Detached Shadow, radio contact, and previous crew.
 - [x] Define Act 1-3 narrative progression tied to relay restoration.
 - [x] Write first-pass radio transmission script for Prologue, Act 1, Act 2, and Act 3.
+- [x] Add more chilling lighthouse-origin backstory and Drowned Choir threat concept.
+- [x] Add story-based jump-scare beats and player/fog cries for help.
 - [ ] Record scratch voice-over for the four radio transmissions.
+- [ ] Record scratch cries for help and false Keeper voice lines.
 - [ ] Add final voice-over files to `audio/radio/` once recorded.
 - [ ] Review level grayboxes and add environmental story notes per location.
 
 ## Audio
 
 - [x] Define audio style goals for rain, storm, foghorns, radio static, Shadow detachment, and crystal refraction.
+- [x] Define suspense buildup, jump-scare stingers, and cry-for-help voice treatment.
 - [ ] Source or create placeholder ambience loops:
   - [ ] lighthouse interior rain muffled by stone
   - [ ] exterior storm and cliff wind
@@ -26,6 +30,10 @@ This list intentionally covers only the audio, story, and presentation lane. Gam
   - [ ] crystal beam lock-on
   - [ ] relay restore
   - [ ] radio tuning sweep
+  - [ ] lens room knock jump scare
+  - [ ] under-pier hand jump scare
+  - [ ] chapel reflection glass shriek
+  - [ ] close-behind whisper scare
 - [ ] Create naming convention and import notes for final audio assets.
 
 ## Graphics & Presentation

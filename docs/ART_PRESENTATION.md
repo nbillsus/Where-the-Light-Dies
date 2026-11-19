@@ -34,19 +34,19 @@ The game should look lush and dimensional while staying readable on a 2D gamepla
 
 ### Lighthouse Interior
 
-Cold wet stone, brass machinery, lens fragments, spiral stairs, dripping windows, and candles fighting drafts. The opening should make the lighthouse feel vertical, old, and underpowered.
+Cold wet stone, brass machinery, lens fragments, spiral stairs, dripping windows, and candles fighting drafts. The opening should make the lighthouse feel vertical, old, and underpowered. The original lighthouse should show its purpose as a warning machine: old plaques, reef maps, crystal housings, and marks from generations of keepers who maintained the beacon.
 
 ### Storm-Lashed Pier
 
-Flooded planks, swinging lamps, ropes, cracked boats, foam, and broken relay hardware. Use strong foreground rain streaks and distant silhouettes to sell depth.
+Flooded planks, swinging lamps, ropes, cracked boats, foam, and broken relay hardware. Use strong foreground rain streaks and distant silhouettes to sell depth. Under-pier spaces should be dark enough that cries for help feel plausible before the scare reveals something unnatural.
 
 ### Crystal Sea Caves & Sunken Chapel
 
-Wet stone, shallow reflective water, stained glass debris, and exposed crystal clusters. This is where the visual language shifts from survival horror into mystery and discovery.
+Wet stone, shallow reflective water, stained glass debris, and exposed crystal clusters. This is where the visual language shifts from survival horror into mystery and discovery. Add old lighthouse-origin clues here: carved crystal channels, broken warning bells, keeper tally marks, and chapel glass that catches the lantern before anything else moves.
 
 ### Cliffside Ascent
 
-High wind, exposed scaffolding, broken beacon infrastructure, and lightning silhouettes. The final climb should echo the opening lighthouse shot but add urgency and clearer rescue light.
+High wind, exposed scaffolding, broken beacon infrastructure, and lightning silhouettes. The final climb should echo the opening lighthouse shot but add urgency and clearer rescue light. Late-game scares should use empty spaces behind the player, clean radio light, and sudden silhouettes at the edge of lightning flashes.
 
 ## Opening Cutscene Storyboard
 
@@ -55,8 +55,10 @@ High wind, exposed scaffolding, broken beacon infrastructure, and lightning silh
 3. Lantern room interior: Keeper framed small beneath the dead lens.
 4. Radio close-up: tuning needle jitters, speaker cloth vibrates.
 5. Wall shadow: lightning reveals impossible movement.
-6. Shadow separation: silhouette peels away from the Keeper's feet.
-7. Lantern flare: warm light blooms, cutting to player control.
+6. Radio wrongness: the speaker whispers the Keeper's name while the needle drops to zero.
+7. Shadow separation: silhouette peels away from the Keeper's feet.
+8. Lens room scare: one violent impact above shakes dust through the lantern beam.
+9. Lantern flare: warm light blooms, cutting to player control.
 
 ## UI & Presentation Notes
 
@@ -64,6 +66,7 @@ High wind, exposed scaffolding, broken beacon infrastructure, and lightning silh
 - Avoid clean futuristic HUD styling.
 - Story text should be minimal; radio audio and environmental art should carry narrative.
 - Checkpoint relay activation should be a presentation moment: sparks, clearing static, light traveling through cable or crystal, then a radio voice.
+- Jump scares should be built visually before they hit: a still frame, a wrong reflection, a gap under the pier, a door that should not move, or a silhouette that disappears when the lantern turns.
 
 ## Asset Folder Plan
 
