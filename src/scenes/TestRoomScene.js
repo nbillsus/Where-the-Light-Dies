@@ -32,6 +32,7 @@ export class TestRoomScene extends Phaser.Scene {
     const spriteHeight = Phaser.Math.Clamp(h * 0.21, 100, 190);
     const spriteWidth = spriteHeight * 330 / 410;
     const edgeInset = spriteWidth * 0.19;
+    this.exitX = w - spriteWidth * 0.8;
     this.physics.world.setBounds(edgeInset, 0, w - edgeInset * 2, h);
     this.player = this.physics.add.sprite(w * 0.24, walkwayY - spriteHeight * 0.49, 'boy-upper')
       .setDisplaySize(spriteWidth, spriteHeight).setDepth(2);
@@ -40,6 +41,9 @@ export class TestRoomScene extends Phaser.Scene {
     this.player.setDragX(2200);
     this.physics.add.collider(this.player, floor);
     this.animator = new BoyAnimator(this, this.player, spriteHeight);
+    this.add.text(w - 28, walkwayY - 105, 'FOLLOW THE PATH  →', {
+      fontFamily: 'Georgia, serif', fontSize: '18px', color: '#f1dda1',
+    }).setOrigin(1, 0).setDepth(3);
 
     this.cursors = this.input.keyboard.createCursorKeys();
     this.keys = this.input.keyboard.addKeys('A,D,SPACE');
@@ -52,7 +56,7 @@ export class TestRoomScene extends Phaser.Scene {
 
     const label = this.add.graphics().setDepth(10);
     label.fillStyle(0x070d11, 0.72).fillRoundedRect(18, 16, Math.min(350, w - 36), 61, 8);
-    this.add.text(31, 25, 'TEST ROOM', { fontFamily: 'Georgia, serif', fontSize: '17px', color: '#e7d2a4' }).setDepth(11);
+    this.add.text(31, 25, 'THE WATCHFUL HALL', { fontFamily: 'Georgia, serif', fontSize: '17px', color: '#e7d2a4' }).setDepth(11);
     this.add.text(31, 52, 'A / D  MOVE     SPACE  JUMP     ESC  MENU', {
       fontFamily: 'Arial, sans-serif', fontSize: '11px', color: '#dce1d9', letterSpacing: 1,
     }).setDepth(11);
@@ -85,5 +89,6 @@ export class TestRoomScene extends Phaser.Scene {
       this.lastGrounded = -1000;
     }
     this.animator.update(time, delta, grounded);
+    if (grounded && direction > 0 && this.player.x >= this.exitX) this.scene.start('Parkour', { levelIndex: 0 });
   }
 }

@@ -2,6 +2,7 @@ import './styles.css';
 import Phaser from 'phaser';
 import { MainMenuScene } from './scenes/MainMenuScene.js';
 import { TestRoomScene } from './scenes/TestRoomScene.js';
+import { ParkourScene } from './scenes/ParkourScene.js';
 import { renderScale } from './rendering.js';
 
 const game = new Phaser.Game({
@@ -22,7 +23,7 @@ const game = new Phaser.Game({
     mode: Phaser.Scale.FIT,
     autoCenter: Phaser.Scale.CENTER_BOTH,
   },
-  scene: [MainMenuScene, TestRoomScene],
+  scene: [MainMenuScene, TestRoomScene, ParkourScene],
 });
 
 window.addEventListener('beforeunload', () => game.destroy(true));
