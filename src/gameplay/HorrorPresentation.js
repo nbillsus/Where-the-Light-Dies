@@ -1,3 +1,4 @@
+import Phaser from 'phaser';
 import { fixedLayerOffset } from '../rendering.js';
 
 const AMBER = 0xf4c16b;
@@ -122,9 +123,10 @@ export class HorrorPresentation {
     this.triggered = new Set();
     this.audioContext = null;
     this.master = null;
-    this.drone = null;
+    this.music = null;
     this.isScaring = false;
     this.createAmbience();
+    this.createLighting();
     this.installAudioUnlock();
     this.showOpeningIfNeeded();
   }
@@ -141,8 +143,9 @@ export class HorrorPresentation {
     if (!this.audioContext) {
       this.audioContext = new AudioContextClass();
       this.master = this.audioContext.createGain();
-      this.master.gain.value = 0.18;
+      this.master.gain.value = 0.26;
       this.master.connect(this.audioContext.destination);
+      this.startSuspenseMusic();
     }
     if (this.audioContext.state === 'suspended') this.audioContext.resume();
     return this.audioContext;
@@ -156,6 +159,60 @@ export class HorrorPresentation {
     this.vignette.add(this.scene.add.rectangle(w / 2, h / 2, w, h, 0x000000, 0.1));
     this.vignette.add(this.scene.add.rectangle(w / 2, 9, w, 18, 0x000000, 0.22));
     this.vignette.add(this.scene.add.rectangle(w / 2, h - 9, w, 18, 0x000000, 0.22));
+  }
+
+  createLighting() {
+    const scene = this.scene;
+    const h = scene.viewportHeight;
+    this.moonDimmer = scene.add.rectangle(scene.worldWidth / 2, h / 2, scene.worldWidth, h, 0x020713, 0.68)
+      .setDepth(-8);
+    this.deepFog = scene.add.rectangle(scene.worldWidth / 2, h / 2, scene.worldWidth, h, 0x02050a, 0.24)
+      .setDepth(1);
+
+    this.torches = [];
+    const torchPositions = [0.12, 0.29, 0.46, 0.64, 0.81, 0.94];
+    for (const [index, ratio] of torchPositions.entries()) {
+      const x = scene.worldWidth * ratio;
+      const nearest = scene.platforms.reduce((best, platform) => Math.abs(platform.y - h * 0.72) < Math.abs(best.y - h * 0.72) ? platform : best, scene.platforms[0]);
+      const y = Math.min(h - 72 * this.scale, nearest.y - (index % 2 ? 82 : 118) * this.scale);
+      const torch = scene.add.container(x, y).setDepth(3.4);
+      const post = scene.add.rectangle(0, 42 * this.scale, 9 * this.scale, 95 * this.scale, 0x120905, 0.88);
+      const halo = scene.add.ellipse(0, 0, 330 * this.scale, 230 * this.scale, AMBER, 0.26)
+        .setBlendMode(Phaser.BlendModes.ADD);
+      const flame = scene.add.ellipse(0, 0, 45 * this.scale, 75 * this.scale, 0xff9d3f, 0.78)
+        .setBlendMode(Phaser.BlendModes.ADD);
+      const core = scene.add.ellipse(0, -6 * this.scale, 18 * this.scale, 37 * this.scale, 0xfff1b2, 0.96)
+        .setBlendMode(Phaser.BlendModes.ADD);
+      torch.add([halo, post, flame, core]);
+      scene.tweens.add({
+        targets: [halo, flame, core],
+        alpha: { from: 0.2, to: 0.58 },
+        scaleX: { from: 0.92, to: 1.16 },
+        scaleY: { from: 0.86, to: 1.08 },
+        duration: 620 + index * 73,
+        yoyo: true,
+        repeat: -1,
+        ease: 'Sine.easeInOut',
+      });
+      this.torches.push(torch);
+    }
+
+    this.lanternGlow = scene.add.container(0, 0).setDepth(3.2);
+    this.lanternAura = scene.add.ellipse(0, 0, 380 * this.scale, 280 * this.scale, AMBER, 0.34)
+      .setBlendMode(Phaser.BlendModes.ADD);
+    this.lanternCore = scene.add.ellipse(0, 0, 102 * this.scale, 132 * this.scale, 0xffe1a1, 0.48)
+      .setBlendMode(Phaser.BlendModes.ADD);
+    this.lanternGlow.add([this.lanternAura, this.lanternCore]);
+    scene.tweens.add({
+      targets: [this.lanternAura, this.lanternCore],
+      alpha: { from: 0.24, to: 0.52 },
+      scaleX: { from: 0.9, to: 1.08 },
+      scaleY: { from: 0.86, to: 1.04 },
+      duration: 760,
+      yoyo: true,
+      repeat: -1,
+      ease: 'Sine.easeInOut',
+    });
   }
 
   showOpeningIfNeeded() {
@@ -173,6 +230,8 @@ export class HorrorPresentation {
   }
 
   update() {
+    this.updateLighting();
+    this.updateSuspenseMusic();
     for (const beat of this.beats) {
       if (this.triggered.has(beat.key)) continue;
       if (this.scene.player.x >= beat.x * this.scale) {
@@ -181,6 +240,25 @@ export class HorrorPresentation {
       }
     }
   }
+
+  updateLighting() {
+    if (!this.lanternGlow) return;
+    const actor = this.scene.shadow?.controlling ? this.scene.shadow.actor : this.scene.player;
+    this.lanternGlow.setPosition(actor.x, actor.y + 14 * this.scale);
+  }
+
+  updateSuspenseMusic() {
+    if (!this.music) return;
+    const scare = this.beats.find(beat => beat.kind === 'scare' && !this.triggered.has(beat.key));
+    let level = this.isScaring ? 1 : 0.18;
+    if (scare) {
+      const distance = Math.max(0, scare.x * this.scale - this.scene.player.x);
+      const range = 720 * this.scale;
+      if (distance < range) level = Math.max(level, 1 - distance / range);
+    }
+    this.setMusicIntensity(level);
+  }
+
 
   playBeat(beat) {
     if (beat.kind === 'scare') {
@@ -232,8 +310,8 @@ export class HorrorPresentation {
     if (this.isScaring) return;
     this.isScaring = true;
     this.radioPanel(beat.title, beat.message, 'signal pressure rising...', beat.color, 2600);
-    this.suspense(1600, 115);
-    this.scene.time.delayedCall(1450, () => {
+    this.linkedCrescendo(2400, 82);
+    this.scene.time.delayedCall(2150, () => {
       this.playImpact(beat.scare);
       this.flash(beat.color);
       this.drawScareVisual(beat);
@@ -304,6 +382,75 @@ export class HorrorPresentation {
     osc.connect(gain).connect(this.master);
     osc.start(now);
     osc.stop(now + duration / 1000 + 0.05);
+  }
+
+  startSuspenseMusic() {
+    const ctx = this.audioContext;
+    if (!ctx || this.music) return;
+
+    const bed = ctx.createGain();
+    const tension = ctx.createGain();
+    const filter = ctx.createBiquadFilter();
+    const bass = ctx.createOscillator();
+    const fifth = ctx.createOscillator();
+    const scrape = ctx.createOscillator();
+
+    bed.gain.value = 0.038;
+    tension.gain.value = 0.014;
+    filter.type = 'lowpass';
+    filter.frequency.value = 420;
+    filter.Q.value = 8;
+
+    bass.type = 'sine';
+    fifth.type = 'sawtooth';
+    scrape.type = 'triangle';
+    bass.frequency.value = 43.65;
+    fifth.frequency.value = 65.4;
+    scrape.frequency.value = 116.5;
+
+    bass.connect(bed);
+    fifth.connect(tension);
+    scrape.connect(tension);
+    tension.connect(filter);
+    bed.connect(this.master);
+    filter.connect(this.master);
+
+    const now = ctx.currentTime;
+    bass.start(now);
+    fifth.start(now);
+    scrape.start(now);
+    this.music = { bed, tension, filter, bass, fifth, scrape, level: 0 };
+    this.setMusicIntensity(0.18);
+  }
+
+  setMusicIntensity(level) {
+    const ctx = this.audioContext;
+    if (!ctx || !this.music) return;
+    const amount = Phaser.Math.Clamp(level, 0, 1);
+    const now = ctx.currentTime;
+    this.music.level = amount;
+    this.music.bed.gain.cancelScheduledValues(now);
+    this.music.tension.gain.cancelScheduledValues(now);
+    this.music.filter.frequency.cancelScheduledValues(now);
+    this.music.bed.gain.linearRampToValueAtTime(0.035 + amount * 0.045, now + 0.28);
+    this.music.tension.gain.linearRampToValueAtTime(0.012 + amount * 0.15, now + 0.28);
+    this.music.filter.frequency.linearRampToValueAtTime(320 + amount * 1350, now + 0.28);
+  }
+
+  linkedCrescendo(duration = 2400, pitch = 82) {
+    this.suspense(duration, pitch);
+    const ctx = this.audioContext;
+    if (!ctx || !this.music) return;
+    const now = ctx.currentTime;
+    this.music.bed.gain.cancelScheduledValues(now);
+    this.music.tension.gain.cancelScheduledValues(now);
+    this.music.filter.frequency.cancelScheduledValues(now);
+    this.music.bed.gain.setValueAtTime(this.music.bed.gain.value, now);
+    this.music.tension.gain.setValueAtTime(this.music.tension.gain.value, now);
+    this.music.filter.frequency.setValueAtTime(this.music.filter.frequency.value, now);
+    this.music.bed.gain.linearRampToValueAtTime(0.11, now + duration / 1000);
+    this.music.tension.gain.linearRampToValueAtTime(0.24, now + duration / 1000);
+    this.music.filter.frequency.linearRampToValueAtTime(2100, now + duration / 1000);
   }
 
   playRadioNoise() {
