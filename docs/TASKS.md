@@ -9,12 +9,11 @@ Each step below ends with one commit.
 
 ### Phase 1: Prototype (Prologue)
 
-- [x] **Step 1 — Engine and repo setup.** Godot 4.7 project, folder structure
-      with ownership, Git LFS rules, input map, physics layers, `GameEvents`
-      signal bus for cross-team hooks, and a sandbox scene to test in.
-- [x] **Step 2 — Keeper movement.** 2.5D `CharacterBody3D` locked to the
-      gameplay plane: run, variable jump (coyote time, jump buffer), ledge
-      mantle, ladders, push/pull. All tuning values in one resource.
+- [x] **Step 1 — Engine and repo setup.** Browser project using Phaser and
+      Vite, with Git LFS rules for large source assets and a Vercel-ready build.
+- [x] **Step 2 — Keeper movement.** Side-scrolling Arcade Physics movement:
+      run, gravity-based variable jump, coyote time, jump buffering, animation,
+      checkpoints, and area respawning.
 - [ ] **Step 3 — Shadow detach and Solidify.** Detach/recall state machine,
       control switching (inactive character holds stance), tether limit and
       snap-back, Solidify as a platform the Keeper can stand on. Emits

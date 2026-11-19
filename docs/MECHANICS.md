@@ -1,7 +1,8 @@
 # Mechanics
 
-Owner: Lucas. These are the rules the code implements. Numbers come from
-`scenes/player/keeper_tuning.tres`; if you change one there, update it here.
+Owner: Lucas. These are the intended player-facing rules. Current movement
+constants live in `src/scenes/ChapterScene.js` and shadow movement is isolated in
+`src/gameplay/ShadowController.js`; update this document when those rules change.
 
 Units: metres, seconds, metres per second. The Keeper is 1.8 m tall.
 
@@ -57,10 +58,6 @@ position (it still falls if unsupported).
 
 ## Building blocks for level design
 
-Drop these scenes into levels; their behaviour is fixed by the rules above.
-
-| Scene | What to set |
-| --- | --- |
-| `scenes/puzzles/ladder.tscn` | Origin at the bottom, about 0.5 m out from the platform edge. `height` = platform top; `exit_direction` = side the platform is on. |
-| `scenes/puzzles/pushable_block.tscn` | Origin at the bottom centre. 1 × 1 × 1 m. |
-| `scenes/player/keeper.tscn` | Origin at the feet, on Z = 0. |
+Area dimensions and walkable platform coordinates are defined in
+`src/levels/chapterData.js`. Interactive bridges, buttons, ignitions, gates, and
+shadow seals are created by `src/gameplay/ChapterMechanics.js`.

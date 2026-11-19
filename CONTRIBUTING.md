@@ -2,64 +2,47 @@
 
 ## Setup
 
-1. Install **Godot 4.7** (standard build, not .NET). Everyone uses the same
-   version; opening the project in a newer one rewrites files and causes
-   noisy diffs.
-2. Install Git LFS once per machine, then pull the binary files:
+1. Install Node.js 20 or later.
+2. Clone the repository and install the locked dependencies:
 
    ```bash
-   brew install git-lfs
-   git lfs install
-   git lfs pull
+   npm install
    ```
 
-3. Open `project.godot` in Godot. The first import creates `.godot/`, which
-   is ignored.
+3. Start the local development server:
 
-## File ownership
+   ```bash
+   npm run dev
+   ```
 
-Only the owner edits files in their folders. Ask before touching someone
-else's scene: `.tscn` merge conflicts are painful to fix.
+4. Open the local URL printed by Vite.
 
-| Member | Folders |
-| --- | --- |
-| Lucas | `scripts/player`, `scripts/shadow`, `scripts/lighting`, `scripts/puzzles`, `scripts/core`, `scenes/player`, `scenes/shadow`, `scenes/lighting`, `scenes/puzzles`, `scenes/sandbox`, `assets/environment`, `assets/effects`, `assets/textures`, `shaders`, `project.godot` |
-| Neel | `scenes/levels` (one scene per chapter), `scenes/enemies`, `assets/characters`, `animations`, `scripts/enemies`, `scripts/level_events` |
-| Axel | `audio`, `scenes/ui`, `scenes/cutscenes`, `scripts/ui`, `scripts/story` (radio), `scripts/audio`, `assets/fonts`, `assets/presentation`, `docs/lore`, `docs/STORY.md`, `docs/AUDIO_DESIGN.md`, `docs/ART_PRESENTATION.md` |
+Git LFS is only needed when adding asset types covered by `.gitattributes`.
+Do not commit `node_modules/` or `dist/`; both are generated locally.
 
-Shared: `docs/` (except lore), `README.md`, `CONTRIBUTING.md`, `tests/`.
+## Team workflow
 
-Need a change in someone else's folder? Ask them, or make your own scene
-that instances theirs.
+- Create or switch to your own branch before editing.
+- Work only in the areas assigned to you in the team division-of-labor document.
+- Check GitHub Desktop's **Changes** list before committing so generated or unrelated files are not included.
+- Commit your work on your branch, push the branch, then open a pull request into `main`.
+- Pull the latest `main` before starting a new piece of work.
+- Ask the file owner before changing a teammate's active work.
 
-## Talking between systems
+## Project conventions
 
-Gameplay code announces events through the `GameEvents` autoload
-(`scripts/core/game_events.gd`). Listen there instead of reaching into
-another person's nodes:
+- Browser game code lives in `src/`.
+- Reusable source art and audio live in `assets/` and `audio/`.
+- Use descriptive `camelCase` names in JavaScript and kebab-case asset filenames.
+- Keep gameplay data in `src/levels/` and reusable systems in `src/gameplay/`.
+- Keep commits focused and use a message that describes the player-visible result.
 
-```gdscript
-func _ready() -> void:
-    GameEvents.shadow_detached.connect(_start_whispers)
-```
+## Checks
 
-Adding a signal is fine. Renaming or removing one breaks other people's
-code, so ask Lucas first.
-
-## Conventions
-
-- Files and folders: `snake_case`. Node names: `PascalCase`.
-- GDScript: static types on functions and members, tabs for indentation.
-- Keep test scenes in your own folder (Lucas uses `scenes/sandbox`).
-- Commit small and often, with a message that says what changed.
-- Pull before you start work; push before you stop.
-
-## Tests
-
-Automated tests live in `tests/` and run headless from the repo root:
+Before opening a pull request, run:
 
 ```bash
-godot --headless res://tests/test_keeper_movement.tscn
+npm run build
 ```
 
-It prints PASS/FAIL per check and exits with code 1 if anything fails.
+The build must complete successfully. Test the affected game areas in the browser as well.

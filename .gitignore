@@ -11,6 +11,3 @@ Thumbs.db
 .vscode/
 .idea/
 *.swp
-
-# Legacy engine cache, retained only to keep old files from creating noise
-.godot/
