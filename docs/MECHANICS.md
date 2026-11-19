@@ -5,7 +5,9 @@ pixels and seconds unless noted (see "Coordinates and scale" in
 `TECHNICAL_DESIGN.md`).
 
 This page describes the **current Phaser build** (Neel's first playable pass).
-Planned changes from Lucas's steps are marked *planned*.
+Planned changes from Lucas's steps are marked *planned*. Movement constants
+live in `src/scenes/ChapterScene.js` and Shadow movement in
+`src/gameplay/ShadowController.js`; update this page when those rules change.
 
 ## The Keeper: movement
 

@@ -3,8 +3,8 @@
 ## Setup
 
 1. Install **Node.js 20 or later** (check with `node -v`).
-2. From the repo folder, install the libraries once (and again whenever
-   `package.json` changes):
+2. From the repo folder, install the locked libraries once (and again
+   whenever `package.json` changes):
 
    ```bash
    npm install
@@ -16,22 +16,25 @@
    npm run dev
    ```
 
-   Open the `http://localhost:…` address it prints. The page reloads by itself
-   when you save a file. Stop it with `Ctrl + C`.
+   Open the `http://localhost:…` address Vite prints. The page reloads by
+   itself when you save a file. Stop it with `Ctrl + C`.
 
 `npm install` creates `node_modules/` and `npm run build` creates `dist/`.
 Both are generated, so they are ignored by Git. **Never commit them.**
 
-## Branches
+## Team workflow
 
-Everyone works on their own branch (`Lucas`, `Neel`, `Axel`) and merges
-into `main` with a pull request. Before starting work, update your branch
-from `main` (GitHub Desktop: **Branch → Update from main**).
+- Everyone works on their own branch (`Lucas`, `Neel`, `Axel`). Switch to
+  it before editing.
+- Before starting new work, update your branch from `main` (GitHub Desktop:
+  **Branch → Update from main**).
+- Work only in the areas assigned to you (see the ownership table below and
+  the Division of Labor doc). Ask the owner before changing their files.
+- Check GitHub Desktop's **Changes** list before committing so generated or
+  unrelated files (`node_modules/`, `dist/`, `.DS_Store`) are not included.
+- Commit on your branch, push it, then open a pull request into `main`.
 
 ## File ownership
-
-Only the owner edits files in their folders. If you need a change in
-someone else's file, ask them first. This keeps merge conflicts rare.
 
 > **Proposed after the move to Phaser, confirm with the team.** Some files
 > currently mix lanes (e.g. Keeper movement lives in `ChapterScene.js`); they
@@ -57,12 +60,27 @@ Labor; the current backgrounds are Neel's placeholders.
   video) go through Git LFS automatically. Export a compressed copy for the
   game to use.
 - Install LFS once per machine: `brew install git-lfs`, then `git lfs install`.
+- Reusable source art and audio live in `assets/` and `audio/`.
 
 ## Conventions
 
-- JavaScript modules (`import` / `export`), one main class per file.
-- Files: `PascalCase.js` for classes, `camelCase.js` for data and helpers.
+- Browser game code lives in `src/`, as JavaScript modules (`import` /
+  `export`), one main class per file.
+- Files: `PascalCase.js` for classes, `camelCase.js` for data and helpers,
+  kebab-case for asset filenames.
+- Keep gameplay data in `src/levels/` and reusable systems out of level files.
 - Tuning numbers go in named constants at the top of a file (or a tuning
   object), never scattered inline.
-- Commit small and often, with a message that says what changed.
-- Pull before you start work; push before you stop.
+- Keep commits focused, with a message that describes the player-visible
+  result.
+
+## Checks
+
+Before opening a pull request, run:
+
+```bash
+npm run build
+```
+
+The build must complete successfully. Also play the affected areas in the
+browser (`?stage=N` and `&checkpoint=N` in the dev URL jump straight there).
