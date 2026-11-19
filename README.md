@@ -14,9 +14,8 @@ npm run dev
 ```
 
 Open the local URL Vite prints in the terminal. Select `New Game` to enter the
-storm coast prototype. Use `A` / `D` or arrow keys to run, `Space` to jump,
-`Q` to detach or recall the Shadow, and `Esc` to return to the menu. While the
-Shadow is detached, movement keys guide it within its tether range.
+single-screen test room. Use `A` / `D` or arrow keys to run, `Space` to jump,
+and `Esc` to return to the menu. Shadow controls are not part of this test room.
 
 ## Build and deploy
 
@@ -26,6 +25,6 @@ is intentionally not committed.
 
 ## Prototype scope
 
-The title screen and coastal ruins are code-drawn prototype art. Settings for
-rain and screen shake are saved in the browser. Collections will gain entries
-when the team adds story content.
+The title screen and test room use supplied artwork. The test room has one
+walkable floor and no level transitions. Collections will gain entries when
+the team adds story content.

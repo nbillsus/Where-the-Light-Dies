@@ -11,10 +11,6 @@ export function logicalSize(scene) {
   return { width: scene.scale.width / renderScale, height: scene.scale.height / renderScale };
 }
 
-export function fixedLayerOffset(width, height) {
-  return { x: (renderScale - 1) * width / 2, y: (renderScale - 1) * height / 2 };
-}
-
 export function sharpenText(scene) {
   const visit = (item) => {
     if (item.type === 'Text') item.setResolution(renderScale);

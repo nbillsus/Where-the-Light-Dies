@@ -82,7 +82,7 @@ export class MainMenuScene extends Phaser.Scene {
   }
   up() { if (!this.panel) this.select(this.selected - 1); }
   down() { if (!this.panel) this.select(this.selected + 1); }
-  activate() { if (this.panel) return; const name = entries[this.selected]; if (name === 'New Game') this.scene.start('PrototypeLevel'); else this.showPanel(name); }
+  activate() { if (this.panel) return; const name = entries[this.selected]; if (name === 'New Game') this.scene.start('TestRoom'); else this.showPanel(name); }
   closePanel() { if (this.panel) { this.panel.destroy(true); this.panel = null; } }
 
   showPanel(name) {
