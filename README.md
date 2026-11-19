@@ -1,6 +1,6 @@
 # Where the Light Dies
 
-An atmospheric, side-scrolling puzzle-platformer prototype that runs in the browser. This build is the first playable pass of Chapter 1, with five connected areas and an ending reveal.
+An atmospheric, side-scrolling puzzle-platformer prototype that runs in the browser. This build contains two connected five-area chapters: The Signal and The Grasp.
 
 ## Run locally
 
@@ -11,7 +11,7 @@ npm install
 npm run dev
 ```
 
-Open the local URL Vite prints and choose **New Game**. The route is **Storm Coast → Abandoned Facility → Thornwood → Drowned Cavern → Lantern Vault**. The Coast and Facility teach movement and environmental mechanisms before the shadow appears in the Thornwood.
+Open the local URL Vite prints and choose **New Game**. Chapter 1 runs **Storm Coast → Abandoned Facility → Thornwood → Drowned Cavern → Lantern Vault**. It flows into Chapter 2: **Red Descent → Ossuary Works → Crimson Array → Bloodglass Chamber → Heart of the Works**. The second chapter introduces the shadow's Grasp ability and red beam hazards.
 
 ## Controls
 
@@ -21,6 +21,7 @@ Open the local URL Vite prints and choose **New Game**. The route is **Storm Coa
 | `Space` | Jump as the boy or detached shadow |
 | `Q` | Detach or recall the shadow, starting in the Thornwood |
 | `F` | Lock or release the detached shadow; locking returns control to the boy |
+| `G` | In Chapter 2, grasp or drop a nearby iron weight while controlling the shadow |
 | `E` | Operate a nearby mechanism as the boy |
 | `R` | Restart the current area (`R` after the finale restarts the chapter) |
 | `Esc` | Return to the main menu |
@@ -29,7 +30,7 @@ The detached shadow is a pale version of the boy. It runs, jumps, falls, and lan
 
 ## Build and deploy
 
-Run `npm run build` to produce `dist/`. Vercel can build this Vite project from the repository; `dist/` is intentionally ignored. For local level testing, `npm run dev` also accepts `?stage=1` through `?stage=5` and an optional one-based `&checkpoint=6` in the browser URL. These shortcuts are disabled in production builds.
+Run `npm run build` to produce `dist/`. Vercel can build this Vite project from the repository; `dist/` is intentionally ignored. For local level testing, `npm run dev` also accepts `?stage=1` through `?stage=10` and an optional one-based `&checkpoint=6` in the browser URL. These shortcuts are disabled in production builds.
 
 ## Project layout
 
@@ -37,7 +38,9 @@ Run `npm run build` to produce `dist/`. Vercel can build this Vite project from 
 - `src/scenes/ChapterScene.js` handles movement, camera, checkpoints, and transitions.
 - `src/gameplay/ShadowController.js` isolates shadow control for later team integration.
 - `src/gameplay/ChapterMechanics.js` contains the stage puzzles.
+- `src/gameplay/ChapterTwoMechanics.js` contains Grasp, weight plates, and red beam hazards.
 - `src/gameplay/Cinematics.js` contains chapter title and reveal sequences.
 - `scripts/generate_parkour_art.mjs` regenerates the five editable SVG backgrounds in `assets/environment/parkour/`.
+- `scripts/generate_chapter_two_art.mjs` regenerates the five red and black SVG backgrounds in `assets/environment/chapter-two/`.
 
 The chapter route and puzzle steps are described in `docs/LEVEL_DESIGN.md`. The current build is a playable design pass; art, story, timing, sound, and puzzle depth remain open for team iteration.

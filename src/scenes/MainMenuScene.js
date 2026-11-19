@@ -1,6 +1,7 @@
 import Phaser from 'phaser';
 import lighthouseUrl from '../../assets/environment/menu_lighthouse.png?url';
 import { logicalSize, renderScale, sharpenText } from '../rendering.js';
+import { CHAPTER_STAGES } from '../levels/chapterData.js';
 
 const entries = ['New Game', 'Settings', 'Collections', 'Credits'];
 const gold = 0xd8af69;
@@ -87,7 +88,7 @@ export class MainMenuScene extends Phaser.Scene {
     const name = entries[this.selected];
     if (name === 'New Game') {
       const requested = Number(new URLSearchParams(window.location.search).get('stage'));
-      const levelIndex = import.meta.env.DEV && Number.isInteger(requested) && requested >= 1 && requested <= 5 ? requested - 1 : 0;
+      const levelIndex = import.meta.env.DEV && Number.isInteger(requested) && requested >= 1 && requested <= CHAPTER_STAGES.length ? requested - 1 : 0;
       this.scene.start('Chapter', { levelIndex });
     } else this.showPanel(name);
   }
