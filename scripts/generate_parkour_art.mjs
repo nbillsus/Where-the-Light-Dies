@@ -1,5 +1,5 @@
 import { mkdirSync, writeFileSync } from 'node:fs';
-import { PARKOUR_STAGES } from '../src/levels/parkourData.js';
+import { CHAPTER_STAGES } from '../src/levels/chapterData.js';
 
 const outDir = new URL('../assets/environment/parkour/', import.meta.url);
 mkdirSync(outDir, { recursive: true });
@@ -21,6 +21,61 @@ function grain(rand, color, count = 560) {
   }).join('');
 }
 
+function coast(rand) {
+  let result = `<rect width="4096" height="900" fill="url(#coastSky)"/>
+    <ellipse cx="820" cy="190" rx="740" ry="380" fill="url(#coastMoon)"/>
+    <path d="M0 410 Q700 290 1280 410 T2600 360 T4096 430 V900 H0Z" fill="#253755" opacity=".8"/>
+    <path d="M0 575 Q430 460 880 545 T1840 505 T2770 570 T4096 495 V900 H0Z" fill="#172844"/>
+    <path d="M0 785 Q400 730 800 790 T1600 778 T2430 800 T3320 765 T4096 795 V900 H0Z" fill="#0b2034"/>
+    <path d="M0 795 Q190 780 375 800 T750 800 T1120 795 T1510 805 T1900 795 T2280 800 T2650 790 T3090 805 T3510 800 T4096 798" fill="none" stroke="#82d0e1" stroke-width="7" opacity=".3"/>`;
+  for (let x = 70; x < 4200; x += 150 + rand() * 110) {
+    const y = 560 + rand() * 150;
+    result += `<path d="M${x} ${y + 120} l${70 + rand() * 85} ${-130 - rand() * 130} l${-20 - rand() * 25} ${140 + rand() * 100}Z" fill="#0b1729" opacity="${(0.38 + rand() * .3).toFixed(2)}"/>`;
+  }
+  for (const x of [980, 1880, 3050, 3800]) {
+    result += `<path d="M${x} 740 v-210 h17 v210 m-26 -180 h70" stroke="#090f1c" stroke-width="18" fill="none"/>
+      <path d="M${x + 5} 540 l-60 -26 m66 22 l65 -35" stroke="#b5d5de" stroke-width="3" opacity=".3"/>`;
+  }
+  result += `<path d="M165 650 V258 l40 -42 40 42 V650Z" fill="#0b1222" stroke="#566680" stroke-width="7"/>
+    <path d="M188 258 V235 h34 v23" fill="#e4cf93" opacity=".75"/>
+    <path d="M205 247 L960 70 L960 410Z" fill="url(#coastBeam)" opacity=".4"/>
+    <path d="M2540 605 Q2660 480 2800 600" stroke="#a7e5ef" stroke-width="8" opacity=".14" fill="none"/>
+    ${grain(rand, '#d7e9f0', 650)}`;
+  return result;
+}
+
+function facility(rand) {
+  let result = `<rect width="4096" height="900" fill="url(#facilitySky)"/>
+    <path d="M0 0 H4096 V260 Q3600 200 3100 250 T2100 210 T1030 250 T0 225Z" fill="#080d1b"/>
+    <path d="M0 790 H4096 V900 H0Z" fill="#0a1120"/>`;
+  for (let x = 0; x < 4300; x += 515) {
+    result += `<path d="M${x + 50} 800 V235 h390 V800" fill="none" stroke="#111b31" stroke-width="62"/>
+      <path d="M${x + 50} 800 V235 h390 V800" fill="none" stroke="#57969f" stroke-width="7" opacity=".28"/>
+      <path d="M${x + 90} 340 h310 M${x + 90} 430 h310" stroke="#76bdc1" stroke-width="3" opacity=".14"/>
+      <rect x="${x + 175}" y="290" width="132" height="190" rx="11" fill="#07151f" stroke="#7b849c" stroke-width="5" opacity=".55"/>
+      <path d="M${x + 242} 325 v120 M${x + 196} 385 h93" stroke="#7bd9dd" stroke-width="4" opacity=".25"/>`;
+  }
+  for (let x = 340; x < 4400; x += 780) {
+    result += `<circle cx="${x}" cy="390" r="138" fill="url(#facilityGlow)"/>
+      <circle cx="${x}" cy="390" r="96" fill="none" stroke="#6394a1" stroke-width="17" opacity=".45"/>
+      <circle cx="${x}" cy="390" r="65" fill="#101d32" stroke="#a07aa9" stroke-width="6" opacity=".65"/>`;
+    for (let i = 0; i < 12; i++) {
+      const a = i * Math.PI / 6;
+      const cx = (x + Math.cos(a) * 117).toFixed(1);
+      const cy = (390 + Math.sin(a) * 117).toFixed(1);
+      result += `<circle cx="${cx}" cy="${cy}" r="5" fill="#b5d5d3" opacity=".36"/>`;
+    }
+  }
+  for (const x of [740, 1740, 2800, 3700]) {
+    result += `<path d="M${x} 0 V180 q0 70 65 70 h70" fill="none" stroke="#162c3b" stroke-width="35"/>
+      <path d="M${x} 0 V180 q0 70 65 70 h70" fill="none" stroke="#83c6bf" stroke-width="3" opacity=".4"/>
+      <path d="M${x - 70} 60 l190 540 h-420Z" fill="url(#facilityShaft)" opacity=".22"/>`;
+  }
+  result += `<path d="M0 170 H4096 M0 185 H4096" stroke="#81748b" stroke-width="6" opacity=".16"/>
+    ${grain(rand, '#b9e8e5', 590)}`;
+  return result;
+}
+
 function tree(x, base, size, color, rand) {
   const sway = (rand() - 0.5) * 50 * size;
   const top = base - (220 + rand() * 160) * size;
@@ -39,6 +94,7 @@ function forest(rand) {
   let result = `<rect width="4096" height="900" fill="url(#forestSky)"/>
     <ellipse cx="1080" cy="490" rx="950" ry="590" fill="url(#amberHaze)"/>
     <ellipse cx="3330" cy="420" rx="760" ry="520" fill="url(#amberHaze)" opacity=".7"/>
+    <ellipse cx="2450" cy="490" rx="620" ry="370" fill="url(#violetHaze)" opacity=".6"/>
     <path d="M0 590 Q400 515 760 600 T1480 565 T2250 610 T3010 550 T4096 610 L4096 900 H0Z" fill="#4c382d" opacity=".48"/>
     <path d="M0 680 Q430 590 850 670 T1750 630 T2620 675 T3400 620 T4096 670 L4096 900 H0Z" fill="#251f1d" opacity=".58"/>
     <g opacity=".47">`;
@@ -116,10 +172,12 @@ function vault(rand) {
 }
 
 function platformArt(stage, rand) {
+  const coastStage = stage.id === 'storm-coast';
+  const facilityStage = stage.id === 'abandoned-facility';
   const forestStage = stage.id === 'thornwood';
   const caveStage = stage.id === 'drowned-cavern';
-  const topColor = forestStage ? '#b59a6d' : caveStage ? '#a5c8c0' : '#baa477';
-  const face = forestStage ? 'url(#forestFace)' : caveStage ? 'url(#caveFace)' : 'url(#vaultFace)';
+  const topColor = coastStage ? '#7dbbc9' : facilityStage ? '#83c7c8' : forestStage ? '#b59a6d' : caveStage ? '#a5c8c0' : '#baa477';
+  const face = coastStage ? 'url(#coastFace)' : facilityStage ? 'url(#facilityFace)' : forestStage ? 'url(#forestFace)' : caveStage ? 'url(#caveFace)' : 'url(#vaultFace)';
   let result = '';
   for (const [index, [start, end, top]] of stage.platforms.entries()) {
     const left = start === 0 ? 0 : start + 14;
@@ -140,7 +198,7 @@ function platformArt(stage, rand) {
     for (let x = start + 36; x < end - 20; x += 76 + rand() * 60) {
       const y = top + 48 + rand() * 35;
       const length = 90 + rand() * 140;
-      result += `<path d="M${x} ${y} l${-24 - rand() * 25} ${length * 0.42} l${25 + rand() * 35} ${length * 0.58} l${45 + rand() * 45} ${-length * 0.45}Z" fill="${caveStage ? '#719b9b' : forestStage ? '#8e6f4e' : '#967858'}" opacity="${(0.045 + rand() * 0.07).toFixed(2)}"/>`;
+      result += `<path d="M${x} ${y} l${-24 - rand() * 25} ${length * 0.42} l${25 + rand() * 35} ${length * 0.58} l${45 + rand() * 45} ${-length * 0.45}Z" fill="${coastStage ? '#5d9fb1' : facilityStage ? '#628f9f' : caveStage ? '#719b9b' : forestStage ? '#8e6f4e' : '#967858'}" opacity="${(0.045 + rand() * 0.07).toFixed(2)}"/>`;
     }
     for (let x = start + 26; x < end - 20; x += 53 + rand() * 43) {
       const crack = top + 8 + rand() * 6;
@@ -160,7 +218,15 @@ function platformArt(stage, rand) {
         <path d="M${x} ${top} v-72" stroke="#171818" stroke-width="8"/>
         <path d="M${x - 13} ${top - 78} h26 v15 h-26Z" fill="#ad8953"/>
         <circle cx="${x}" cy="${top - 73}" r="8" fill="#fce5a1"/>`;
-    } else if (!forestStage && !caveStage && index % 2 === 0) {
+    } else if (coastStage && index % 2 === 1) {
+      const x = start + 70;
+      result += `<path d="M${x} ${top} v-82 m-9 0 h18" stroke="#172836" stroke-width="12"/>
+        <circle cx="${x}" cy="${top - 87}" r="12" fill="#cceaf0" opacity=".7"/>`;
+    } else if (facilityStage && index % 2 === 0) {
+      const x = start + 105;
+      result += `<rect x="${x - 29}" y="${top - 73}" width="58" height="73" rx="6" fill="#152630" stroke="#5c91a5" stroke-width="4"/>
+        <circle cx="${x}" cy="${top - 44}" r="11" fill="#74d8da" opacity=".7"/>`;
+    } else if (!coastStage && !facilityStage && !forestStage && !caveStage && index % 2 === 0) {
       const x = start + 105;
       result += `<path d="M${x - 23} ${top} v-82 l23 -24 l23 24 v82" fill="#262225" stroke="#9a8058" stroke-width="4"/>
         <circle cx="${x}" cy="${top - 79}" r="16" fill="#f7d085" opacity=".6"/>`;
@@ -177,8 +243,15 @@ function platformArt(stage, rand) {
 
 function defs() {
   return `<defs>
+    <linearGradient id="coastSky" x2="0" y2="1"><stop stop-color="#070d22"/><stop offset=".52" stop-color="#254d73"/><stop offset=".82" stop-color="#407f94"/><stop offset="1" stop-color="#071321"/></linearGradient>
+    <radialGradient id="coastMoon"><stop stop-color="#bdd9e6" stop-opacity=".68"/><stop offset=".47" stop-color="#788bb8" stop-opacity=".24"/><stop offset="1" stop-color="#20355c" stop-opacity="0"/></radialGradient>
+    <linearGradient id="coastBeam"><stop stop-color="#fff4c5" stop-opacity=".74"/><stop offset="1" stop-color="#c8f1e9" stop-opacity="0"/></linearGradient>
+    <linearGradient id="facilitySky" x2="0" y2="1"><stop stop-color="#0b0b20"/><stop offset=".48" stop-color="#27374d"/><stop offset=".85" stop-color="#233f4a"/><stop offset="1" stop-color="#090d19"/></linearGradient>
+    <radialGradient id="facilityGlow"><stop stop-color="#59d0c7" stop-opacity=".36"/><stop offset="1" stop-color="#513c78" stop-opacity="0"/></radialGradient>
+    <linearGradient id="facilityShaft"><stop stop-color="#b7f2e9" stop-opacity=".6"/><stop offset="1" stop-color="#b7f2e9" stop-opacity="0"/></linearGradient>
     <linearGradient id="forestSky" x2="0" y2="1"><stop stop-color="#090d16"/><stop offset=".55" stop-color="#4b3a32"/><stop offset=".78" stop-color="#a0774c"/><stop offset="1" stop-color="#211a18"/></linearGradient>
     <radialGradient id="amberHaze"><stop stop-color="#efd1a2" stop-opacity=".77"/><stop offset=".45" stop-color="#ba8456" stop-opacity=".38"/><stop offset="1" stop-color="#37251f" stop-opacity="0"/></radialGradient>
+    <radialGradient id="violetHaze"><stop stop-color="#af78c7" stop-opacity=".32"/><stop offset="1" stop-color="#702d85" stop-opacity="0"/></radialGradient>
     <linearGradient id="caveSky" x2="0" y2="1"><stop stop-color="#061113"/><stop offset=".45" stop-color="#15383b"/><stop offset=".82" stop-color="#2b6b6d"/><stop offset="1" stop-color="#071b20"/></linearGradient>
     <radialGradient id="tealHaze"><stop stop-color="#a8d8d1" stop-opacity=".55"/><stop offset="1" stop-color="#2d7b7d" stop-opacity="0"/></radialGradient>
     <linearGradient id="lightShaft" x2=".35" y2="1"><stop stop-color="#ecfff3" stop-opacity=".7"/><stop offset="1" stop-color="#7fd1c6" stop-opacity="0"/></linearGradient>
@@ -188,6 +261,8 @@ function defs() {
     <radialGradient id="torchGlow"><stop stop-color="#ffad3e" stop-opacity=".45"/><stop offset="1" stop-color="#ffad3e" stop-opacity="0"/></radialGradient>
     <radialGradient id="exitGlow"><stop stop-color="#dfd4a2" stop-opacity=".4"/><stop offset="1" stop-color="#dfd4a2" stop-opacity="0"/></radialGradient>
     <linearGradient id="forestFace" x2=".4" y2="1"><stop stop-color="#302922"/><stop offset=".3" stop-color="#171719"/><stop offset="1" stop-color="#090b10"/></linearGradient>
+    <linearGradient id="coastFace" x2=".4" y2="1"><stop stop-color="#294251"/><stop offset=".3" stop-color="#142432"/><stop offset="1" stop-color="#070f1d"/></linearGradient>
+    <linearGradient id="facilityFace" x2=".4" y2="1"><stop stop-color="#385359"/><stop offset=".3" stop-color="#172c34"/><stop offset="1" stop-color="#080f1d"/></linearGradient>
     <linearGradient id="caveFace" x2=".3" y2="1"><stop stop-color="#31565a"/><stop offset=".26" stop-color="#123034"/><stop offset="1" stop-color="#06171b"/></linearGradient>
     <linearGradient id="vaultFace" x2=".2" y2="1"><stop stop-color="#453629"/><stop offset=".32" stop-color="#201a1b"/><stop offset="1" stop-color="#0a0b11"/></linearGradient>
     <linearGradient id="doorLight" x2="0" y2="1"><stop stop-color="#e6ddb3"/><stop offset="1" stop-color="#6f8f8e" stop-opacity=".15"/></linearGradient>
@@ -195,9 +270,11 @@ function defs() {
   </defs>`;
 }
 
-for (const stage of PARKOUR_STAGES) {
+for (const stage of CHAPTER_STAGES) {
   const rand = random([...stage.id].reduce((value, char) => value * 31 + char.charCodeAt(0), 1729));
-  const scene = stage.id === 'thornwood' ? forest(rand) : stage.id === 'drowned-cavern' ? cavern(rand) : vault(rand);
+  const scene = stage.id === 'storm-coast' ? coast(rand)
+    : stage.id === 'abandoned-facility' ? facility(rand)
+      : stage.id === 'thornwood' ? forest(rand) : stage.id === 'drowned-cavern' ? cavern(rand) : vault(rand);
   const svg = `<svg xmlns="http://www.w3.org/2000/svg" width="${stage.width}" height="${stage.height}" viewBox="0 0 ${stage.width} ${stage.height}">${defs()}${scene}${platformArt(stage, rand)}</svg>`;
   const path = new URL(`${stage.id}.svg`, outDir);
   writeFileSync(path, svg);

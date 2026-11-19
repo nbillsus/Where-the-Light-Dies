@@ -1,28 +1,36 @@
 const ART_WIDTH = 330;
 const ART_HEIGHT = 410;
 
-function drawLeg(graphics, hipX, kneeX, kneeY, ankleX, ankleY, color, rimAlpha) {
+function drawLeg(graphics, hipX, kneeX, kneeY, ankleX, ankleY, color, rimAlpha, ghost = false) {
   graphics.lineStyle(34, color, 1).beginPath().moveTo(hipX, 317).lineTo(kneeX, kneeY).lineTo(ankleX, ankleY - 9).strokePath();
   graphics.fillStyle(color, 1).fillCircle(kneeX, kneeY, 17);
-  graphics.fillStyle(0x03050b, 1).fillPoints([
+  graphics.fillStyle(ghost ? 0xb9d4df : 0x03050b, 1).fillPoints([
     { x: ankleX - 17, y: ankleY - 13 }, { x: ankleX + 13, y: ankleY - 13 },
     { x: ankleX + 29, y: ankleY - 3 }, { x: ankleX + 31, y: ankleY + 3 },
     { x: ankleX - 18, y: ankleY + 3 },
   ], true);
-  graphics.lineStyle(3, 0x8e9db8, rimAlpha).lineBetween(ankleX + 9, ankleY - 13, ankleX + 27, ankleY - 3);
-  graphics.lineStyle(2, 0x8e9db8, rimAlpha * 0.8).lineBetween(ankleX - 13, ankleY + 2, ankleX + 24, ankleY + 2);
+  graphics.lineStyle(3, ghost ? 0xf1faff : 0x8e9db8, rimAlpha).lineBetween(ankleX + 9, ankleY - 13, ankleX + 27, ankleY - 3);
+  graphics.lineStyle(2, ghost ? 0xf1faff : 0x8e9db8, rimAlpha * 0.8).lineBetween(ankleX - 13, ankleY + 2, ankleX + 24, ankleY + 2);
 }
 
 export class BoyAnimator {
-  constructor(scene, player, displayHeight) {
+  constructor(scene, player, displayHeight, { ghost = false } = {}) {
     this.player = player;
+    this.ghost = ghost;
     this.scale = displayHeight / ART_HEIGHT;
     this.displayWidth = ART_WIDTH * this.scale;
-    this.visual = scene.add.container(0, 0).setDepth(2);
+    this.visual = scene.add.container(0, 0).setDepth(ghost ? 4 : 2);
     this.cape = scene.add.graphics();
     this.legs = scene.add.graphics();
     this.upper = scene.add.image(0, 0, 'boy-upper').setOrigin(0);
     this.visual.add([this.cape, this.legs, this.upper]);
+    if (ghost) {
+      this.upper.setTintFill(0xbdd8e4);
+      this.visual.setAlpha(0.68);
+      const eyes = scene.add.graphics().fillStyle(0xf7ffff, 1);
+      eyes.fillEllipse(258, 120, 10, 30).fillEllipse(282, 123, 7, 24);
+      this.visual.add(eyes);
+    }
     this.phase = 0;
     this.runBlend = 0;
     this.wasAirborne = false;
@@ -53,13 +61,13 @@ export class BoyAnimator {
 
     const flutter = (Math.sin(this.phase - 0.7) * 9 * this.runBlend) + Math.sin(time * 0.003) * 2;
     this.cape.clear();
-    this.cape.fillStyle(0x050711, 0.98).fillPoints([
+    this.cape.fillStyle(this.ghost ? 0xa9cadc : 0x050711, this.ghost ? 0.72 : 0.98).fillPoints([
       { x: 225, y: 209 + bob }, { x: 145, y: 226 + bob },
       { x: 57, y: 273 + flutter + bob }, { x: 72, y: 302 + flutter + bob },
       { x: 122, y: 280 + flutter + bob }, { x: 161, y: 338 + flutter + bob },
       { x: 215, y: 250 + bob },
     ], true);
-    this.cape.lineStyle(4, 0x8e9db8, 0.38).lineBetween(145, 226 + bob, 59, 273 + flutter + bob);
+    this.cape.lineStyle(4, this.ghost ? 0xe5f8ff : 0x8e9db8, 0.38).lineBetween(145, 226 + bob, 59, 273 + flutter + bob);
 
     let nearKneeX, nearKneeY, nearAnkleX, nearAnkleY;
     let farKneeX, farKneeY, farAnkleX, farAnkleY;
@@ -83,7 +91,7 @@ export class BoyAnimator {
       farAnkleY = 405 - farLift * 43;
     }
     this.legs.clear();
-    drawLeg(this.legs, 207, farKneeX, farKneeY, farAnkleX, farAnkleY, 0x10131b, 0.19);
-    drawLeg(this.legs, 246, nearKneeX, nearKneeY, nearAnkleX, nearAnkleY, 0x05070d, 0.39);
+    drawLeg(this.legs, 207, farKneeX, farKneeY, farAnkleX, farAnkleY, this.ghost ? 0xaacbd8 : 0x10131b, 0.19, this.ghost);
+    drawLeg(this.legs, 246, nearKneeX, nearKneeY, nearAnkleX, nearAnkleY, this.ghost ? 0xc7dce5 : 0x05070d, 0.39, this.ghost);
   }
 }
