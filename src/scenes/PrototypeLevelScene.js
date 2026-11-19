@@ -1,4 +1,5 @@
 import Phaser from 'phaser';
+import coastBackdropUrl from '../../assets/environment/coast_backdrop.png?url';
 
 const WORLD_WIDTH = 3100;
 const SPEED = 320;
@@ -6,6 +7,10 @@ const JUMP = -505;
 
 export class PrototypeLevelScene extends Phaser.Scene {
   constructor() { super('PrototypeLevel'); }
+
+  preload() {
+    this.load.image('coast-backdrop', coastBackdropUrl);
+  }
 
   create() {
     this.settings = { rain: true, shake: true };
@@ -74,6 +79,7 @@ export class PrototypeLevelScene extends Phaser.Scene {
       const y = h * (0.69 + row * 0.034);
       g.lineBetween(col * w / 12 + row * 17, y, col * w / 12 + row * 17 + w * 0.06, y - 3);
     }
+    this.add.image(w / 2, h / 2, 'coast-backdrop').setDisplaySize(w + 420, h).setScrollFactor(0.06, 0).setDepth(-9);
     if (this.settings.rain) {
       this.rain = this.add.graphics().setScrollFactor(0).setDepth(15).lineStyle(1, 0xd5e9e8, 0.16);
       for (let i = 0; i < 170; i++) {
