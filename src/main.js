@@ -25,6 +25,9 @@ const game = new Phaser.Game({
   scene: [MainMenuScene, ChapterScene],
 });
 
+// Dev-only handle for automated play-tests and debugging (not in production builds).
+if (import.meta.env.DEV) window.__WTLD_GAME__ = game;
+
 window.addEventListener('beforeunload', () => game.destroy(true));
 window.addEventListener('resize', () => {
   game.scale.setGameSize(

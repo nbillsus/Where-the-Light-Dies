@@ -1,8 +1,12 @@
 import Phaser from 'phaser';
+import {
+  crate as crateArt, gate as gateArt, hideShape, lever as leverArt, link, plate as plateArt,
+  prism as prismArt, seal as sealArt, shadowBridge as shadowBridgeArt,
+} from '../puzzles/PropArt.js';
 
-const INK = 0x07121d;
 const CYAN = 0x9ce6e0;
 const AMBER = 0xf6c874;
+const VIOLET = 0xc9b2ff;
 
 export class ChapterMechanics {
   constructor(scene) {
@@ -13,6 +17,8 @@ export class ChapterMechanics {
     this.switches = [];
     this.receivers = [];
     this.crates = [];
+    this.hints = [];
+    this.links = [];
     this.flags = {};
     this.prompt = '';
     if (this.id === 'storm-coast') this.buildCoast();
@@ -24,25 +30,38 @@ export class ChapterMechanics {
 
   p(x, y) { return { x: x * this.scale, y: y * this.scale }; }
 
-  marker(x, y, color, symbol, radius = 33) {
-    const pos = this.p(x, y);
-    const ring = this.scene.add.circle(pos.x, pos.y, radius * this.scale, INK, .8)
-      .setStrokeStyle(5 * this.scale, color, .88).setDepth(5);
-    const glyph = this.scene.add.text(pos.x, pos.y, symbol, {
-      fontFamily: 'Georgia, serif', fontSize: `${Math.round(30 * this.scale)}px`, color: `#${color.toString(16).padStart(6, '0')}`,
-    }).setOrigin(.5).setDepth(6);
-    this.scene.tweens.add({ targets: [ring, glyph], alpha: { from: .65, to: 1 }, scale: { from: .95, to: 1.04 }, duration: 1200, yoyo: true, repeat: -1 });
-    return { ...pos, ring, glyph };
+  distance(a, b) { return Math.hypot(a.x - b.x, a.y - b.y); }
+
+  // Key icon over a mechanism the Keeper can operate (E).
+  useHint(target, isDone) {
+    this.hints.push({ key: 'E', at: () => target, active: () => !this.scene.shadow?.controlling && !isDone() && this.near(target, 83) });
+  }
+
+  // Key icons at an anchor point: F once the Shadow is on it, Q to send the Shadow out.
+  anchorHint(target) {
+    this.hints.push({ key: 'F', at: () => target, active: () => {
+      const shadow = this.scene.shadow;
+      return !!shadow?.controlling && this.distance(shadow.actor, target) < 105 * this.scale;
+    } });
+    this.hints.push({ key: 'Q', at: () => target, active: () => {
+      const shadow = this.scene.shadow;
+      return !!shadow && !shadow.detached && this.distance(this.scene.player, target) < 360 * this.scale;
+    } });
+  }
+
+  // A cable (or rune line) that lights up when its mechanism is solved.
+  linkUp(from, to, isLit, color = AMBER, style = 'cable') {
+    this.links.push({ wire: link(this.scene, from, to, this.scale, color, style), isLit });
   }
 
   gate(name, x, floorY, color = CYAN) {
     const px = x * this.scale;
     const h = floorY * this.scale;
-    const wall = this.scene.add.rectangle(px, h / 2, 28 * this.scale, h, INK, .92)
-      .setStrokeStyle(5 * this.scale, color, .9).setDepth(7);
+    const wall = hideShape(this.scene.add.rectangle(px, h / 2, 28 * this.scale, h, 0, 0));
     this.scene.physics.add.existing(wall, true);
     this.scene.physics.add.collider(this.scene.player, wall);
-    const gate = { name, x: px, wall, opened: false, latched: false };
+    const art = gateArt(this.scene, px, h, this.scale, color);
+    const gate = { name, x: px, wall, art, base: art.base, opened: false, latched: false };
     this.gates.push(gate);
     return gate;
   }
@@ -53,113 +72,82 @@ export class ChapterMechanics {
     if (gate.opened === shouldOpen) return;
     gate.opened = shouldOpen;
     gate.wall.body.enable = !shouldOpen;
-    this.scene.tweens.add({ targets: gate.wall, alpha: shouldOpen ? .09 : 1, duration: 340 });
-    if (shouldOpen) this.scene.flashAt(gate.x, this.scene.viewportHeight * .42, CYAN);
+    gate.art.setOpen(shouldOpen);
   }
 
-  plate(x, floorY, label) {
+  plate(x, floorY) {
     const pos = this.p(x, floorY);
-    const base = this.scene.add.rectangle(pos.x, pos.y - 8 * this.scale, 118 * this.scale, 18 * this.scale, 0x101b22)
-      .setStrokeStyle(4 * this.scale, 0x6f8c91).setDepth(5);
-    const top = this.scene.add.rectangle(pos.x, pos.y - 18 * this.scale, 86 * this.scale, 13 * this.scale, 0x8b7048)
-      .setStrokeStyle(3 * this.scale, 0xe0bd78).setDepth(6);
-    this.scene.add.text(pos.x, pos.y - 54 * this.scale, label, { fontFamily: 'Arial, sans-serif', fontSize: `${Math.round(16 * this.scale)}px`, color: '#f0d59c' })
-      .setOrigin(.5).setDepth(6);
-    const count = this.scene.add.text(pos.x, pos.y - 33 * this.scale, '0/1', {
-      fontFamily: 'Arial, sans-serif', fontStyle: 'bold', fontSize: `${Math.round(18 * this.scale)}px`, color: '#dec48d',
-    }).setOrigin(.5).setDepth(7);
-    return { ...pos, base, top, count, active: false };
+    const art = plateArt(this.scene, pos.x, pos.y, this.scale, AMBER);
+    return { ...pos, art, active: false, anchor: { x: pos.x, y: pos.y - 14 * this.scale } };
   }
 
   setPlateState(plate, active) {
     if (plate.active === active) return;
     plate.active = active;
-    plate.count.setText(active ? '1/1' : '0/1').setColor(active ? '#dff9dc' : '#dec48d');
-    plate.top.setFillStyle(active ? 0x78b98a : 0x8b7048);
-    this.scene.tweens.add({ targets: plate.top, y: plate.y - (active ? 12 : 18) * this.scale, duration: 130 });
+    plate.art.setActive(active);
   }
 
-  crate(x, platformIndex, color = 0x527d87) {
+  crate(x, platformIndex, { dark = false } = {}) {
     const top = this.scene.platforms[platformIndex].y;
     const size = 62 * this.scale;
-    const box = this.scene.add.rectangle(x * this.scale, top - size / 2 - 3, size, size, color)
-      .setStrokeStyle(4 * this.scale, 0xb1e4db).setDepth(6);
+    const box = hideShape(this.scene.add.rectangle(x * this.scale, top - size / 2 - 3, size, size, 0, 0));
     this.scene.physics.add.existing(box);
     box.body.setSize(size, size).setCollideWorldBounds(true).setDragX(1050)
       .setMaxVelocity(160, 950);
     for (const platform of this.scene.platforms) this.scene.physics.add.collider(box, platform.zone);
     this.scene.physics.add.collider(this.scene.player, box);
+    crateArt(this.scene, box, size, this.scale, { dark });
     this.crates.push(box);
     return box;
   }
 
-  switch(x, y, label) {
-    const marker = this.marker(x, y, AMBER, '◇', 28);
-    this.scene.add.text(marker.x, marker.y - 57 * this.scale, label, {
-      fontFamily: 'Arial, sans-serif', fontSize: `${Math.round(19 * this.scale)}px`, color: '#f7d595',
-    }).setOrigin(.5).setDepth(6);
-    const result = { ...marker, label };
+  // A lever on a pedestal (used for every switch and ignition).
+  switch(x, y) {
+    const pos = this.p(x, y);
+    const result = { ...pos, art: leverArt(this.scene, pos.x, pos.y, this.scale, AMBER) };
     this.switches.push(result);
     return result;
   }
 
-  ignitor(x, y, label, { timed = false } = {}) {
-    const marker = this.marker(x, y, AMBER, '◇', 30);
-    const bubble = this.scene.add.circle(marker.x, marker.y, 23 * this.scale, 0xffca55, .92)
-      .setStrokeStyle(3 * this.scale, 0xffedaa).setScale(0).setDepth(6);
-    const labelText = this.scene.add.text(marker.x, marker.y - 61 * this.scale, label, {
-      fontFamily: 'Arial, sans-serif', fontSize: `${Math.round(18 * this.scale)}px`, color: '#f7d595',
-    }).setOrigin(.5).setDepth(6);
-    const timerText = this.scene.add.text(marker.x, marker.y, '', {
-      fontFamily: 'Arial, sans-serif', fontStyle: 'bold', fontSize: `${Math.round(18 * this.scale)}px`, color: '#201605',
-    }).setOrigin(.5).setDepth(7);
-    return { ...marker, bubble, labelText, timerText, timed, active: false, parts: [marker.ring, marker.glyph, bubble, labelText, timerText] };
+  ignitor(x, y, { timed = false } = {}) {
+    const pos = this.p(x, y);
+    return { ...pos, timed, active: false, art: leverArt(this.scene, pos.x, pos.y, this.scale, AMBER, { timed }) };
   }
 
-  activateIgnitor(ignitor, disappear = true) {
+  activateIgnitor(ignitor) {
     if (ignitor.active && !ignitor.timed) return;
     ignitor.active = true;
-    ignitor.bubble.setVisible(true).setAlpha(.95).setScale(0);
-    this.scene.tweens.add({ targets: ignitor.bubble, scale: 1, duration: 260, ease: 'Back.easeOut' });
-    if (!disappear) return;
-    this.scene.time.delayedCall(520, () => {
-      this.scene.tweens.killTweensOf([ignitor.ring, ignitor.glyph]);
-      this.scene.tweens.add({ targets: ignitor.parts, alpha: 0, scale: .72, duration: 260 });
-    });
+    ignitor.art.activate();
   }
 
   resetTimedIgnitor(ignitor) {
     ignitor.active = false;
-    ignitor.timerText.setText('');
-    ignitor.bubble.setScale(0).setVisible(true);
+    ignitor.art.reset();
   }
 
-  combinationIgnitor(x, y, label) {
-    const marker = this.marker(x, y, 0xe5c48f, '⬡', 36);
-    const labelText = this.scene.add.text(marker.x, marker.y - 68 * this.scale, label, {
-      fontFamily: 'Arial, sans-serif', fontSize: `${Math.round(18 * this.scale)}px`, color: '#f4d9a6',
-    }).setOrigin(.5).setDepth(6);
-    const dots = [-24, 0, 24].map(offset => this.scene.add.circle(marker.x + offset * this.scale, marker.y + 48 * this.scale, 7 * this.scale, 0x28333a)
-      .setStrokeStyle(2 * this.scale, 0xd5b77e).setDepth(7));
-    return { ...marker, labelText, dots };
+  // Release lever with three status lamps (weight, light, released).
+  combinationIgnitor(x, y) {
+    const pos = this.p(x, y);
+    return { ...pos, art: leverArt(this.scene, pos.x, pos.y, this.scale, 0xe5c48f, { lamps: 3 }) };
   }
 
-  receiver(x, y, label) {
-    const marker = this.marker(x, y, CYAN, '✦', 40);
-    this.scene.add.text(marker.x, marker.y - 65 * this.scale, label, {
-      fontFamily: 'Arial, sans-serif', fontSize: `${Math.round(18 * this.scale)}px`, color: '#bdebe8',
-    }).setOrigin(.5).setDepth(6);
+  // A place to anchor the Shadow: a carved seal or a floating prism.
+  receiver(x, y, { kind = 'seal', color = VIOLET } = {}) {
+    const pos = this.p(x, y);
+    const art = kind === 'prism' ? prismArt(this.scene, pos.x, pos.y, this.scale, color) : sealArt(this.scene, pos.x, pos.y, this.scale, color);
+    const marker = { ...pos, art };
     this.receivers.push(marker);
+    this.anchorHint(marker);
     return marker;
   }
 
   bridge(start, end, y, color = CYAN) {
     const left = start * this.scale, right = end * this.scale, top = y * this.scale;
-    const surface = this.scene.add.rectangle((left + right) / 2, top + 13 * this.scale, right - left, 25 * this.scale, 0x274855, .92)
-      .setStrokeStyle(5 * this.scale, color, .95).setDepth(3);
+    const surface = hideShape(this.scene.add.rectangle((left + right) / 2, top + 13 * this.scale, right - left, 25 * this.scale, 0, 0));
     this.scene.physics.add.existing(surface, true);
     this.scene.physics.add.collider(this.scene.player, surface);
-    return { left, right, top, surface };
+    const art = shadowBridgeArt(this.scene, left, right, top, this.scale, color);
+    return { left, right, top, surface, art };
   }
 
   woodenPlatform(start, end, y, moving = false) {
@@ -194,53 +182,70 @@ export class ChapterMechanics {
     this.collapsing = this.woodenPlatform(1800, 1940, 680);
     this.flags.collapsingStarted = false;
     this.flags.collapsed = false;
-    this.scene.add.text(2420 * this.scale, 590 * this.scale, 'TIDAL LIFT', {
-      fontFamily: 'Arial, sans-serif', fontSize: `${Math.round(20 * this.scale)}px`, color: '#cde8ee',
-    }).setOrigin(.5).setDepth(5);
   }
 
   buildFacility() {
     this.boxA = this.crate(345, 0);
-    this.plateA = this.plate(720, 735, 'MASS BUTTON');
+    this.plateA = this.plate(720, 735);
     this.gateA = this.gate('pressure', 900, 735);
-    this.switchA = this.ignitor(1280, 625, 'A / IGNITION');
-    this.switchB = this.ignitor(2380, 620, 'B / ROUTING');
+    this.switchA = this.ignitor(1280, 625);
+    this.switchB = this.ignitor(2380, 620);
     this.gateB = this.gate('sequence', 2560, 690, 0xb898da);
-    this.switchC = this.ignitor(2820, 580, 'C / TEMPORAL BYPASS', { timed: true });
+    this.switchC = this.ignitor(2820, 580, { timed: true });
     this.gateC = this.gate('timed', 3630, 620, 0xf2b96a);
     this.flags.sequence = 0;
     this.flags.timerEnd = 0;
+    const housing = lever => ({ x: lever.x, y: lever.y + 8 * this.scale });
+    this.linkUp(this.plateA.anchor, this.gateA.base, () => !!this.flags.plateSolved, CYAN);
+    this.linkUp(housing(this.switchA), housing(this.switchB), () => this.flags.sequence >= 1);
+    this.linkUp(housing(this.switchB), this.gateB.base, () => this.flags.sequence >= 2, 0xb898da);
+    this.linkUp(housing(this.switchC), this.gateC.base, () => !!this.flags.timerEnd || this.gateC.latched, 0xf2b96a);
+    this.useHint(this.switchA, () => this.flags.sequence >= 1);
+    this.useHint(this.switchB, () => this.flags.sequence >= 2);
+    this.useHint(this.switchC, () => !!this.flags.timerEnd);
   }
 
   buildForest() {
-    this.forestSeal = this.receiver(1480, 420, 'HOLD THE SEAL');
+    this.forestSeal = this.receiver(1480, 420);
     this.forestGate = this.gate('forest', 1640, 650, 0xb995d8);
-    this.bridgeSeal = this.receiver(3410, 460, 'HOLD THE PATH');
+    this.bridgeSeal = this.receiver(3410, 460);
     this.shadowBridge = this.bridge(3200, 3630, 680, 0xb4e7e9);
     this.shadowBridge.surface.body.enable = false;
-    this.shadowBridge.surface.setAlpha(.1);
+    this.shadowBridge.art.setAlpha(.12);
     this.flags.bridgeLatched = false;
+    const bridge = this.shadowBridge;
+    this.linkUp(this.forestSeal, this.forestGate.base, () => this.forestGate.opened, VIOLET, 'rune');
+    this.linkUp(this.bridgeSeal, { x: (bridge.left + bridge.right) / 2, y: bridge.top }, () => bridge.surface.body.enable, VIOLET, 'rune');
   }
 
   buildCavern() {
-    this.caveSeal = this.receiver(1480, 390, 'PRISM I');
+    this.caveSeal = this.receiver(1480, 390, { kind: 'prism', color: CYAN });
     this.caveGate = this.gate('cave-prism', 1990, 680);
-    this.caveLever = this.switch(2780, 585, 'ALIGN THE BEAM');
-    this.caveReceiver = this.receiver(3240, 330, 'PRISM II');
+    this.caveLever = this.switch(2780, 585);
+    this.caveReceiver = this.receiver(3240, 330, { kind: 'prism', color: CYAN });
     this.caveGateB = this.gate('cave-combination', 3430, 600, 0xe4b886);
     this.flags.lever = false;
+    this.linkUp(this.caveSeal, this.caveGate.base, () => this.caveGate.opened, CYAN, 'rune');
+    this.linkUp({ x: this.caveLever.x, y: this.caveLever.y + 8 * this.scale }, this.caveReceiver, () => this.flags.lever);
+    this.linkUp(this.caveReceiver, this.caveGateB.base, () => this.caveGateB.opened, 0xe4b886, 'rune');
+    this.useHint(this.caveLever, () => this.flags.lever);
     const pos = this.p(3200, 330);
     this.spotlight = this.scene.add.graphics().setDepth(1);
     this.spotlightOrigin = pos;
   }
 
   buildVault() {
-    this.vaultBox = this.crate(2940, 5, 0x776052);
-    this.vaultPlate = this.plate(3050, 665, 'WEIGHT BUTTON');
-    this.vaultPrism = this.receiver(3500, 360, 'LIGHT');
-    this.vaultLever = this.combinationIgnitor(3390, 540, 'THREE-PART RELEASE');
+    this.vaultBox = this.crate(2940, 5, { dark: true });
+    this.vaultPlate = this.plate(3050, 665);
+    this.vaultPrism = this.receiver(3500, 360, { kind: 'prism', color: 0xf2d29a });
+    this.vaultLever = this.combinationIgnitor(3390, 540);
     this.vaultGate = this.gate('final', 3990, 660, 0xe5c48f);
     this.flags.release = false;
+    const housing = { x: this.vaultLever.x, y: this.vaultLever.y + 8 * this.scale };
+    this.linkUp(this.vaultPlate.anchor, housing, () => this.vaultPlate.active);
+    this.linkUp(this.vaultPrism, housing, () => this.shadowAt(this.vaultPrism), 0xf2d29a, 'rune');
+    this.linkUp(housing, this.vaultGate.base, () => this.flags.release, 0xe5c48f);
+    this.useHint(this.vaultLever, () => this.flags.release);
   }
 
   interact() {
@@ -249,35 +254,29 @@ export class ChapterMechanics {
         if (this.flags.sequence === 0) {
           this.flags.sequence = 1;
           this.activateIgnitor(this.switchA);
-          this.scene.announce('IGNITION ONLINE. FIND ROUTING B.', AMBER);
         }
       } else if (this.near(this.switchB, 83)) {
         if (this.flags.sequence === 1) {
           this.flags.sequence = 2;
           this.activateIgnitor(this.switchB);
           this.setGate(this.gateB, true, true);
-          this.scene.announce('ROUTING COMPLETE. SECOND BULKHEAD OPEN.', CYAN);
-        } else this.scene.announce('ROUTING NEEDS IGNITION A FIRST.', 0xf19a9a);
+        } else if (this.flags.sequence < 1) this.switchB.art.deny();
       } else if (this.near(this.switchC, 83)) {
         this.flags.timerEnd = this.scene.time.now + 11000;
-        this.activateIgnitor(this.switchC, false);
-        this.scene.announce('BYPASS ACTIVE: 11 SECONDS.', AMBER);
+        this.activateIgnitor(this.switchC);
       }
     } else if (this.id === 'drowned-cavern' && this.near(this.caveLever, 83)) {
       this.flags.lever = true;
-      this.scene.announce('BEAM ALIGNED. ANCHOR THE SHADOW IN PRISM II.', AMBER);
+      this.caveLever.art.activate();
     } else if (this.id === 'lantern-vault' && this.near(this.vaultLever, 83)) {
       const plate = this.boxOn(this.vaultBox, this.vaultPlate);
       const prism = this.shadowAt(this.vaultPrism);
       if (plate && prism) {
         this.flags.release = true;
         this.setGate(this.vaultGate, true, true);
-        this.scene.announce('THE LENS REMEMBERS.', AMBER);
+        this.vaultLever.art.activate();
         this.scene.cinematics.pulse('THE FINAL RELAY', 'Something answers from beneath the island.', 0xe6bd83, 2300);
-      } else {
-        const missing = [!plate && 'WEIGHT', !prism && 'LIGHT'].filter(Boolean).join(' + ');
-        this.scene.announce(`NEEDS ${missing}.`, 0xf19a9a);
-      }
+      } else this.vaultLever.art.deny();
     }
   }
 
@@ -299,7 +298,7 @@ export class ChapterMechanics {
       this.moving.visual.setPosition(this.moving.surface.x - this.moving.width / 2, this.moving.surface.y - 8 * this.scale);
       if (!this.flags.collapsingStarted && player.body.blocked.down && Math.abs(player.x - this.collapsing.surface.x) < 64 * this.scale) {
         this.flags.collapsingStarted = true;
-        this.scene.announce('THE OLD BRIDGE GIVES WAY!', 0xd7b989);
+        this.scene.cameras.main.shake(380, .004);
         this.scene.time.delayedCall(480, () => {
           this.collapsing.surface.body.enable = false;
           this.scene.tweens.add({ targets: this.collapsing.ropes, alpha: 0, duration: 170 });
@@ -321,14 +320,10 @@ export class ChapterMechanics {
       const plateActive = this.boxOn(this.boxA, this.plateA);
       this.setPlateState(this.plateA, plateActive);
       if (plateActive) {
-        if (!this.flags.plateSolved) this.scene.announce('MASS CONFIRMED. BULKHEAD OPEN.', CYAN);
         this.flags.plateSolved = true;
         this.setGate(this.gateA, true, true);
       }
-      if (this.flags.timerEnd) {
-        const remaining = Math.max(0, Math.ceil((this.flags.timerEnd - time) / 1000));
-        this.switchC.timerText.setText(String(remaining));
-      }
+      if (this.flags.timerEnd) this.switchC.art.setTimer((this.flags.timerEnd - time) / 11000);
       if (this.flags.timerEnd && time > this.flags.timerEnd && player.x < this.gateC.x + 30 * this.scale) {
         this.flags.timerEnd = 0;
         this.resetTimedIgnitor(this.switchC);
@@ -343,7 +338,7 @@ export class ChapterMechanics {
       if (player.x > 3630 * this.scale) this.flags.bridgeLatched = true;
       if (this.shadowBridge.surface.body.enable !== bridge) {
         this.shadowBridge.surface.body.enable = bridge;
-        this.scene.tweens.add({ targets: this.shadowBridge.surface, alpha: bridge ? .95 : .1, duration: 270 });
+        this.scene.tweens.add({ targets: this.shadowBridge.art, alpha: bridge ? 1 : .12, duration: 270 });
       }
       this.prompt = player.x < this.forestGate.x ? 'Q  /  DETACH SHADOW     F  /  ANCHOR AT THE SEAL'
         : 'ANCHOR YOUR SHADOW AT THE DISTANT SEAL TO FORM A PATH.';
@@ -359,9 +354,12 @@ export class ChapterMechanics {
       const plate = this.boxOn(this.vaultBox, this.vaultPlate);
       const prism = this.shadowAt(this.vaultPrism);
       this.setPlateState(this.vaultPlate, plate);
-      [plate, prism, this.flags.release].forEach((active, index) => this.vaultLever.dots[index].setFillStyle(active ? 0xf2c66f : 0x28333a));
+      [plate, prism, this.flags.release].forEach((active, index) => this.vaultLever.art.setLamp(index, active));
       this.prompt = this.flags.release ? 'THE RELAY IS LIVE. WALK INTO THE SIGNAL.'
         : 'WEIGHT ON PLATE  ·  SHADOW IN LIGHT  ·  E AT RELEASE';
     }
+    // Visual state: anchor points light up under the Shadow; cables light when solved.
+    for (const receiver of this.receivers) receiver.art.setActive(this.shadowAt(receiver));
+    for (const { wire, isLit } of this.links) wire.setLit(!!isLit());
   }
 }
