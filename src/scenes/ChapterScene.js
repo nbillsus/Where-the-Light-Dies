@@ -149,16 +149,19 @@ export class ChapterScene extends Phaser.Scene {
     const platform = this.platforms[index];
     this.player.setPosition(x ?? Math.min(platform.right - 50, platform.left + 40), platform.y - this.spriteHeight * .49);
     this.player.body.updateFromGameObject();
-    this.player.y -= this.player.body.bottom - (platform.y - 8);
+    this.player.y -= this.player.body.bottom - (platform.y - 1);
     this.player.body.updateFromGameObject();
   }
 
   respawn() {
-    this.placePlayerOnPlatform(this.checkpoint);
+    this.checkpoint = 0;
+    this.placePlayerOnPlatform(0, 145 * this.artScale);
     this.player.setVelocity(0, 0).setAcceleration(0, 0);
     if (this.shadow?.detached) this.shadow.toggleDetach();
     this.jumpQueued = -1000;
+    this.lastGrounded = this.time.now;
     this.followActor(this.player);
+    this.cameras.main.centerOn(this.player.x, this.player.y);
   }
 
   finishStage() {
@@ -208,13 +211,7 @@ export class ChapterScene extends Phaser.Scene {
     }
 
     const grounded = this.player.body.blocked.down || this.player.body.touching.down;
-    if (grounded) {
-      this.lastGrounded = time;
-      const feet = this.player.body.bottom;
-      const index = this.platforms.findIndex(platform => this.player.body.center.x >= platform.left
-        && this.player.body.center.x <= platform.right && Math.abs(feet - platform.y) < 14);
-      if (index >= 0) this.checkpoint = index;
-    }
+    if (grounded) this.lastGrounded = time;
     if (!controllingShadow && jumpPressed) this.jumpQueued = time;
     if (!controllingShadow && time - this.jumpQueued < 130 && time - this.lastGrounded < 120) {
       this.player.setVelocityY(JUMP_SPEED);

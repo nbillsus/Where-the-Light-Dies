@@ -25,7 +25,7 @@ Open the local URL Vite prints and choose **New Game**. The route is **Storm Coa
 | `R` | Restart the current area (`R` after the finale restarts the chapter) |
 | `Esc` | Return to the main menu |
 
-The detached shadow is a pale version of the boy. It runs, jumps, falls, and lands on the same platforms, with no tether distance. Jump into a seal and press `F` to lock the shadow in place, even while airborne; control then returns to the boy. A fallen shadow respawns beside the boy.
+The detached shadow is a pale version of the boy. It runs, jumps, falls, and lands on the same platforms, with no tether distance. Jump into a seal and press `F` to lock the shadow in place, even while airborne; control then returns to the boy. A fallen shadow respawns directly on the boy. If the boy falls, he returns to the beginning of the current area.
 
 ## Build and deploy
 

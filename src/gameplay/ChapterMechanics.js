@@ -59,11 +59,24 @@ export class ChapterMechanics {
 
   plate(x, floorY, label) {
     const pos = this.p(x, floorY);
-    const base = this.scene.add.rectangle(pos.x, pos.y - 5 * this.scale, 92 * this.scale, 12 * this.scale, 0x557d86)
-      .setStrokeStyle(3 * this.scale, CYAN).setDepth(5);
-    this.scene.add.text(pos.x, pos.y - 33 * this.scale, label, { fontFamily: 'Arial, sans-serif', fontSize: `${Math.round(18 * this.scale)}px`, color: '#c9f3e7' })
+    const base = this.scene.add.rectangle(pos.x, pos.y - 8 * this.scale, 118 * this.scale, 18 * this.scale, 0x101b22)
+      .setStrokeStyle(4 * this.scale, 0x6f8c91).setDepth(5);
+    const top = this.scene.add.rectangle(pos.x, pos.y - 18 * this.scale, 86 * this.scale, 13 * this.scale, 0x8b7048)
+      .setStrokeStyle(3 * this.scale, 0xe0bd78).setDepth(6);
+    this.scene.add.text(pos.x, pos.y - 54 * this.scale, label, { fontFamily: 'Arial, sans-serif', fontSize: `${Math.round(16 * this.scale)}px`, color: '#f0d59c' })
       .setOrigin(.5).setDepth(6);
-    return { ...pos, base };
+    const count = this.scene.add.text(pos.x, pos.y - 33 * this.scale, '0/1', {
+      fontFamily: 'Arial, sans-serif', fontStyle: 'bold', fontSize: `${Math.round(18 * this.scale)}px`, color: '#dec48d',
+    }).setOrigin(.5).setDepth(7);
+    return { ...pos, base, top, count, active: false };
+  }
+
+  setPlateState(plate, active) {
+    if (plate.active === active) return;
+    plate.active = active;
+    plate.count.setText(active ? '1/1' : '0/1').setColor(active ? '#dff9dc' : '#dec48d');
+    plate.top.setFillStyle(active ? 0x78b98a : 0x8b7048);
+    this.scene.tweens.add({ targets: plate.top, y: plate.y - (active ? 12 : 18) * this.scale, duration: 130 });
   }
 
   crate(x, platformIndex, color = 0x527d87) {
@@ -90,6 +103,47 @@ export class ChapterMechanics {
     return result;
   }
 
+  ignitor(x, y, label, { timed = false } = {}) {
+    const marker = this.marker(x, y, AMBER, '◇', 30);
+    const bubble = this.scene.add.circle(marker.x, marker.y, 23 * this.scale, 0xffca55, .92)
+      .setStrokeStyle(3 * this.scale, 0xffedaa).setScale(0).setDepth(6);
+    const labelText = this.scene.add.text(marker.x, marker.y - 61 * this.scale, label, {
+      fontFamily: 'Arial, sans-serif', fontSize: `${Math.round(18 * this.scale)}px`, color: '#f7d595',
+    }).setOrigin(.5).setDepth(6);
+    const timerText = this.scene.add.text(marker.x, marker.y, '', {
+      fontFamily: 'Arial, sans-serif', fontStyle: 'bold', fontSize: `${Math.round(18 * this.scale)}px`, color: '#201605',
+    }).setOrigin(.5).setDepth(7);
+    return { ...marker, bubble, labelText, timerText, timed, active: false, parts: [marker.ring, marker.glyph, bubble, labelText, timerText] };
+  }
+
+  activateIgnitor(ignitor, disappear = true) {
+    if (ignitor.active && !ignitor.timed) return;
+    ignitor.active = true;
+    ignitor.bubble.setVisible(true).setAlpha(.95).setScale(0);
+    this.scene.tweens.add({ targets: ignitor.bubble, scale: 1, duration: 260, ease: 'Back.easeOut' });
+    if (!disappear) return;
+    this.scene.time.delayedCall(520, () => {
+      this.scene.tweens.killTweensOf([ignitor.ring, ignitor.glyph]);
+      this.scene.tweens.add({ targets: ignitor.parts, alpha: 0, scale: .72, duration: 260 });
+    });
+  }
+
+  resetTimedIgnitor(ignitor) {
+    ignitor.active = false;
+    ignitor.timerText.setText('');
+    ignitor.bubble.setScale(0).setVisible(true);
+  }
+
+  combinationIgnitor(x, y, label) {
+    const marker = this.marker(x, y, 0xe5c48f, '⬡', 36);
+    const labelText = this.scene.add.text(marker.x, marker.y - 68 * this.scale, label, {
+      fontFamily: 'Arial, sans-serif', fontSize: `${Math.round(18 * this.scale)}px`, color: '#f4d9a6',
+    }).setOrigin(.5).setDepth(6);
+    const dots = [-24, 0, 24].map(offset => this.scene.add.circle(marker.x + offset * this.scale, marker.y + 48 * this.scale, 7 * this.scale, 0x28333a)
+      .setStrokeStyle(2 * this.scale, 0xd5b77e).setDepth(7));
+    return { ...marker, labelText, dots };
+  }
+
   receiver(x, y, label) {
     const marker = this.marker(x, y, CYAN, '✦', 40);
     this.scene.add.text(marker.x, marker.y - 65 * this.scale, label, {
@@ -108,15 +162,36 @@ export class ChapterMechanics {
     return { left, right, top, surface };
   }
 
-  buildCoast() {
-    const pos = this.p(2465, 664);
-    const surface = this.scene.add.rectangle(pos.x, pos.y + 13 * this.scale, 190 * this.scale, 26 * this.scale, 0x365e6d)
-      .setStrokeStyle(5 * this.scale, 0x99dff3).setDepth(3);
-    this.scene.physics.add.existing(surface);
-    surface.body.setAllowGravity(false).setImmovable(true).setVelocityX(75 * this.scale);
+  woodenPlatform(start, end, y, moving = false) {
+    const left = start * this.scale, right = end * this.scale, top = y * this.scale;
+    const width = right - left;
+    const surface = this.scene.add.rectangle((left + right) / 2, top + 8 * this.scale, width, 18 * this.scale, 0x000000, .001);
+    this.scene.physics.add.existing(surface, !moving);
     this.scene.physics.add.collider(this.scene.player, surface);
-    this.moving = { surface, min: 2310 * this.scale, max: 2630 * this.scale, velocity: 75 * this.scale };
-    this.collapsing = this.bridge(1800, 1940, 680, 0xc4d7dc);
+    const visual = this.scene.add.container(left, top).setDepth(4);
+    const plankCount = Math.max(4, Math.round(width / (38 * this.scale)));
+    const plankWidth = width / plankCount;
+    const planks = [];
+    for (let i = 0; i < plankCount; i++) {
+      const plank = this.scene.add.rectangle((i + .5) * plankWidth, 7 * this.scale, plankWidth - 3 * this.scale, 17 * this.scale, i % 2 ? 0x76502f : 0x8d6237)
+        .setStrokeStyle(2 * this.scale, 0x3d281b);
+      visual.add(plank);
+      planks.push(plank);
+    }
+    const ropes = this.scene.add.graphics().lineStyle(3 * this.scale, 0x38271c, .9);
+    ropes.lineBetween(0, -2 * this.scale, width, -2 * this.scale);
+    ropes.lineBetween(0, 17 * this.scale, width, 17 * this.scale);
+    visual.addAt(ropes, 0);
+    return { left, right, top, width, surface, visual, planks, ropes };
+  }
+
+  buildCoast() {
+    this.moving = this.woodenPlatform(2370, 2560, 664, true);
+    this.moving.surface.body.setAllowGravity(false).setImmovable(true).setVelocityX(75 * this.scale);
+    this.moving.min = 2310 * this.scale;
+    this.moving.max = 2630 * this.scale;
+    this.moving.velocity = 75 * this.scale;
+    this.collapsing = this.woodenPlatform(1800, 1940, 680);
     this.flags.collapsingStarted = false;
     this.flags.collapsed = false;
     this.scene.add.text(2420 * this.scale, 590 * this.scale, 'TIDAL LIFT', {
@@ -126,12 +201,12 @@ export class ChapterMechanics {
 
   buildFacility() {
     this.boxA = this.crate(345, 0);
-    this.plateA = this.plate(720, 735, '01 / MASS');
+    this.plateA = this.plate(720, 735, 'MASS BUTTON');
     this.gateA = this.gate('pressure', 900, 735);
-    this.switchA = this.switch(1280, 625, 'A / IGNITION');
-    this.switchB = this.switch(2380, 620, 'B / ROUTING');
+    this.switchA = this.ignitor(1280, 625, 'A / IGNITION');
+    this.switchB = this.ignitor(2380, 620, 'B / ROUTING');
     this.gateB = this.gate('sequence', 2560, 690, 0xb898da);
-    this.switchC = this.switch(2820, 580, 'C / TEMPORAL BYPASS');
+    this.switchC = this.ignitor(2820, 580, 'C / TEMPORAL BYPASS', { timed: true });
     this.gateC = this.gate('timed', 3630, 620, 0xf2b96a);
     this.flags.sequence = 0;
     this.flags.timerEnd = 0;
@@ -161,9 +236,9 @@ export class ChapterMechanics {
 
   buildVault() {
     this.vaultBox = this.crate(2940, 5, 0x776052);
-    this.vaultPlate = this.plate(3050, 665, 'WEIGHT');
+    this.vaultPlate = this.plate(3050, 665, 'WEIGHT BUTTON');
     this.vaultPrism = this.receiver(3500, 360, 'LIGHT');
-    this.vaultLever = this.switch(3390, 540, 'RELEASE');
+    this.vaultLever = this.combinationIgnitor(3390, 540, 'THREE-PART RELEASE');
     this.vaultGate = this.gate('final', 3990, 660, 0xe5c48f);
     this.flags.release = false;
   }
@@ -171,16 +246,21 @@ export class ChapterMechanics {
   interact() {
     if (this.id === 'abandoned-facility') {
       if (this.near(this.switchA, 83)) {
-        this.flags.sequence = 1;
-        this.scene.announce('IGNITION ONLINE. FIND ROUTING B.', AMBER);
+        if (this.flags.sequence === 0) {
+          this.flags.sequence = 1;
+          this.activateIgnitor(this.switchA);
+          this.scene.announce('IGNITION ONLINE. FIND ROUTING B.', AMBER);
+        }
       } else if (this.near(this.switchB, 83)) {
         if (this.flags.sequence === 1) {
           this.flags.sequence = 2;
+          this.activateIgnitor(this.switchB);
           this.setGate(this.gateB, true, true);
           this.scene.announce('ROUTING COMPLETE. SECOND BULKHEAD OPEN.', CYAN);
         } else this.scene.announce('ROUTING NEEDS IGNITION A FIRST.', 0xf19a9a);
       } else if (this.near(this.switchC, 83)) {
         this.flags.timerEnd = this.scene.time.now + 11000;
+        this.activateIgnitor(this.switchC, false);
         this.scene.announce('BYPASS ACTIVE: 11 SECONDS.', AMBER);
       }
     } else if (this.id === 'drowned-cavern' && this.near(this.caveLever, 83)) {
@@ -216,12 +296,19 @@ export class ChapterMechanics {
         this.moving.velocity *= -1;
         body.setVelocityX(this.moving.velocity);
       }
+      this.moving.visual.setPosition(this.moving.surface.x - this.moving.width / 2, this.moving.surface.y - 8 * this.scale);
       if (!this.flags.collapsingStarted && player.body.blocked.down && Math.abs(player.x - this.collapsing.surface.x) < 64 * this.scale) {
         this.flags.collapsingStarted = true;
-        this.scene.announce('THE BRIDGE GIVES WAY!', 0xbfe4ed);
-        this.scene.time.delayedCall(1000, () => {
+        this.scene.announce('THE OLD BRIDGE GIVES WAY!', 0xd7b989);
+        this.scene.time.delayedCall(480, () => {
           this.collapsing.surface.body.enable = false;
-          this.scene.tweens.add({ targets: this.collapsing.surface, y: '+=85', alpha: 0, angle: 15, duration: 550 });
+          this.scene.tweens.add({ targets: this.collapsing.ropes, alpha: 0, duration: 170 });
+          this.collapsing.planks.forEach((plank, index) => {
+            this.scene.tweens.add({
+              targets: plank, y: `+=${115 + index * 14}`, angle: index % 2 ? 48 : -38,
+              alpha: .08, duration: 600 + index * 80, delay: index * 45, ease: 'Quad.easeIn',
+            });
+          });
           this.flags.collapsed = true;
         });
       }
@@ -229,14 +316,23 @@ export class ChapterMechanics {
         this.flags.silhouette = true;
         this.scene.showDistantSilhouette();
       }
-      this.prompt = player.x < 2300 * this.scale ? 'THE LIGHTHOUSE IS BEHIND YOU.' : 'TIME YOUR JUMP WITH THE TIDAL LIFT.';
+      this.prompt = player.x < 2300 * this.scale ? 'FOLLOW THE DEAD RELAY LIGHTS.' : 'TIME YOUR JUMP WITH THE WOODEN TIDAL LIFT.';
     } else if (this.id === 'abandoned-facility') {
-      if (this.boxOn(this.boxA, this.plateA)) {
+      const plateActive = this.boxOn(this.boxA, this.plateA);
+      this.setPlateState(this.plateA, plateActive);
+      if (plateActive) {
         if (!this.flags.plateSolved) this.scene.announce('MASS CONFIRMED. BULKHEAD OPEN.', CYAN);
         this.flags.plateSolved = true;
         this.setGate(this.gateA, true, true);
       }
-      if (this.flags.timerEnd && time > this.flags.timerEnd && player.x < this.gateC.x + 30 * this.scale) this.flags.timerEnd = 0;
+      if (this.flags.timerEnd) {
+        const remaining = Math.max(0, Math.ceil((this.flags.timerEnd - time) / 1000));
+        this.switchC.timerText.setText(String(remaining));
+      }
+      if (this.flags.timerEnd && time > this.flags.timerEnd && player.x < this.gateC.x + 30 * this.scale) {
+        this.flags.timerEnd = 0;
+        this.resetTimedIgnitor(this.switchC);
+      }
       this.setGate(this.gateC, !!this.flags.timerEnd, player.x > this.gateC.x + 30 * this.scale);
       this.prompt = this.near(this.switchA, 83) || this.near(this.switchB, 83) || this.near(this.switchC, 83)
         ? 'E  /  OPERATE MECHANISM' : this.flags.plateSolved ? 'FOLLOW THE POWERED CABLES.' : 'PUSH THE CRATE ONTO THE LIT PLATE.';
@@ -261,7 +357,9 @@ export class ChapterMechanics {
         : 'E  /  ALIGN LEVER     ANCHOR SHADOW IN PRISM II.';
     } else if (this.id === 'lantern-vault') {
       const plate = this.boxOn(this.vaultBox, this.vaultPlate);
-      this.vaultPlate.base.setFillStyle(plate ? 0xb7ddbf : 0x557d86);
+      const prism = this.shadowAt(this.vaultPrism);
+      this.setPlateState(this.vaultPlate, plate);
+      [plate, prism, this.flags.release].forEach((active, index) => this.vaultLever.dots[index].setFillStyle(active ? 0xf2c66f : 0x28333a));
       this.prompt = this.flags.release ? 'THE RELAY IS LIVE. WALK INTO THE SIGNAL.'
         : 'WEIGHT ON PLATE  ·  SHADOW IN LIGHT  ·  E AT RELEASE';
     }

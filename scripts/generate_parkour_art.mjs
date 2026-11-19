@@ -36,10 +36,7 @@ function coast(rand) {
     result += `<path d="M${x} 740 v-210 h17 v210 m-26 -180 h70" stroke="#090f1c" stroke-width="18" fill="none"/>
       <path d="M${x + 5} 540 l-60 -26 m66 22 l65 -35" stroke="#b5d5de" stroke-width="3" opacity=".3"/>`;
   }
-  result += `<path d="M165 650 V258 l40 -42 40 42 V650Z" fill="#0b1222" stroke="#566680" stroke-width="7"/>
-    <path d="M188 258 V235 h34 v23" fill="#e4cf93" opacity=".75"/>
-    <path d="M205 247 L960 70 L960 410Z" fill="url(#coastBeam)" opacity=".4"/>
-    <path d="M2540 605 Q2660 480 2800 600" stroke="#a7e5ef" stroke-width="8" opacity=".14" fill="none"/>
+  result += `<path d="M2540 605 Q2660 480 2800 600" stroke="#a7e5ef" stroke-width="8" opacity=".14" fill="none"/>
     ${grain(rand, '#d7e9f0', 650)}`;
   return result;
 }

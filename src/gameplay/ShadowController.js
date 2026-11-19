@@ -35,11 +35,11 @@ export class ShadowController {
       this.scene.followActor(this.player);
       return false;
     }
+    this.actor.setFlipX(this.player.flipX);
+    this.actor.body.setOffset(this.player.flipX ? 57 : 183, 60);
     this.actor.body.enable = true;
     this.actor.body.setAllowGravity(true);
-    this.actor.setPosition(this.player.x + 64, this.player.y - 10).setVelocity(0, 0);
-    this.actor.body.updateFromGameObject();
-    this.actor.setFlipX(this.player.flipX);
+    this.placeOnPlayer();
     this.animator.visual.setVisible(true);
     this.detached = true;
     this.anchored = false;
@@ -92,11 +92,22 @@ export class ShadowController {
 
   resetAtPlayer() {
     this.actor.body.setAllowGravity(true);
-    this.actor.setPosition(this.player.x + 64, this.player.y - 10).setVelocity(0, 0).setAcceleration(0, 0);
-    this.actor.body.updateFromGameObject();
+    this.placeOnPlayer();
     this.lastGrounded = this.scene.time.now;
     this.jumpQueued = -1000;
     this.scene.followActor(this.actor);
+  }
+
+  placeOnPlayer() {
+    this.actor.setPosition(this.player.x, this.player.y).setVelocity(0, 0).setAcceleration(0, 0);
+    this.actor.body.updateFromGameObject();
+    const platform = this.scene.platforms.find(candidate => this.player.body.center.x >= candidate.left
+      && this.player.body.center.x <= candidate.right && Math.abs(this.player.body.bottom - candidate.y) < 16);
+    if (platform) {
+      this.actor.y -= this.actor.body.bottom - (platform.y - 2);
+      this.actor.body.updateFromGameObject();
+    }
+    this.actor.body.reset(this.actor.x, this.actor.y);
   }
 
   isAnchoredNear(x, y, radius) {

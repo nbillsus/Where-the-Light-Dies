@@ -21,7 +21,7 @@ The Coast and Facility use only the boy. The shadow is introduced in the Thornwo
 - In the Thornwood, the shadow runs and jumps under gravity. Jump it into the first seal and lock it with `F` to open the gate. The far seal is reached with another jump and creates a physical bridge across the last large gap. Neither puzzle restricts horizontal travel distance.
 - In the Cavern, the first prism holds a gate open. Beyond it, the player aligns a lever and moves the shadow to a second prism. The rotating spotlight is currently a visual cue for later light puzzles.
 - The Vault combines a crate, a shadow receiver, and a switch. The release opens the final gate and triggers the relay sequence. The ending deliberately leaves the source of the signal unresolved.
-- Reaching a ledge makes it the next respawn point. Restarting an area resets its mechanisms. The prototype has no save system yet.
+- Falling returns the boy directly to the beginning of the current area. Restarting an area resets its mechanisms. The prototype has no save system yet.
 
 ## Art and presentation
 
