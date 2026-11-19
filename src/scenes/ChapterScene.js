@@ -4,15 +4,21 @@ import facilityUrl from '../../assets/environment/parkour/abandoned-facility.svg
 import thornwoodUrl from '../../assets/environment/parkour/thornwood.svg?url';
 import cavernUrl from '../../assets/environment/parkour/drowned-cavern.svg?url';
 import vaultUrl from '../../assets/environment/parkour/lantern-vault.svg?url';
+import descentUrl from '../../assets/environment/chapter-two/red-descent.svg?url';
+import worksUrl from '../../assets/environment/chapter-two/ossuary-works.svg?url';
+import arrayUrl from '../../assets/environment/chapter-two/crimson-array.svg?url';
+import chamberUrl from '../../assets/environment/chapter-two/bloodglass-chamber.svg?url';
+import heartUrl from '../../assets/environment/chapter-two/heart-of-works.svg?url';
 import boyUpperUrl from '../../assets/characters/boy_upper.png?url';
 import { BoyAnimator } from '../animation/BoyAnimator.js';
 import { CHAPTER_STAGES } from '../levels/chapterData.js';
 import { ShadowController } from '../gameplay/ShadowController.js';
 import { ChapterMechanics } from '../gameplay/ChapterMechanics.js';
+import { ChapterTwoMechanics } from '../gameplay/ChapterTwoMechanics.js';
 import { Cinematics } from '../gameplay/Cinematics.js';
 import { fixedLayerOffset, logicalSize, renderScale, sharpenText } from '../rendering.js';
 
-const ART_URLS = [coastUrl, facilityUrl, thornwoodUrl, cavernUrl, vaultUrl];
+const ART_URLS = [coastUrl, facilityUrl, thornwoodUrl, cavernUrl, vaultUrl, descentUrl, worksUrl, arrayUrl, chamberUrl, heartUrl];
 const RUN_SPEED = 320;
 const JUMP_SPEED = -490;
 
@@ -60,8 +66,8 @@ export class ChapterScene extends Phaser.Scene {
     for (const platform of this.platforms) this.physics.add.collider(this.player, platform.zone);
     this.animator = new BoyAnimator(this, this.player, this.spriteHeight);
     this.shadow = this.stage.shadow ? new ShadowController(this, this.player, this.spriteHeight) : null;
-    this.mechanics = new ChapterMechanics(this);
     this.cinematics = new Cinematics(this);
+    this.mechanics = this.stage.chapter === 2 ? new ChapterTwoMechanics(this) : new ChapterMechanics(this);
     this.checkpoint = 0;
     this.lastGrounded = 0;
     this.jumpQueued = -1000;
@@ -76,7 +82,7 @@ export class ChapterScene extends Phaser.Scene {
     }
 
     this.cursors = this.input.keyboard.createCursorKeys();
-    this.keys = this.input.keyboard.addKeys('A,D,W,S,SPACE,Q,F,E,R');
+    this.keys = this.input.keyboard.addKeys('A,D,W,S,SPACE,Q,F,G,E,R');
     this.input.keyboard.on('keydown-ESC', this.returnToMenu, this);
     this.scale.on('resize', this.onResize, this);
     this.events.once('shutdown', () => {
@@ -87,7 +93,8 @@ export class ChapterScene extends Phaser.Scene {
     this.cameras.main.setDeadzone(Math.min(w * .3, 360), h * .42);
     this.followActor(this.player);
     this.addHud(w, h);
-    this.cinematics.pulse(this.stage.phase, this.stage.subtitle, this.stage.shadow ? 0xb79bdb : 0xa5dde3);
+    if (this.levelIndex !== 5) this.cinematics.pulse(this.stage.phase, this.stage.subtitle,
+      this.stage.chapter === 2 ? 0xe96756 : this.stage.shadow ? 0xb79bdb : 0xa5dde3);
     sharpenText(this);
   }
 
@@ -102,9 +109,10 @@ export class ChapterScene extends Phaser.Scene {
     hud.add(this.add.text(29, 23, this.stage.title, {
       fontFamily: 'Georgia, serif', fontSize: '18px', color: '#f0e0bd',
     }));
-    const controls = this.stage.shadow ? 'A / D RUN   ·   SPACE JUMP   ·   Q SHADOW   ·   F ANCHOR   ·   E USE'
+    const controls = this.stage.grasp ? 'A / D RUN  ·  SPACE JUMP  ·  Q SHADOW  ·  G GRASP  ·  F ANCHOR'
+      : this.stage.shadow ? 'A / D RUN   ·   SPACE JUMP   ·   Q SHADOW   ·   F ANCHOR   ·   E USE'
       : 'A / D RUN   ·   SPACE JUMP   ·   E USE   ·   R RESTART';
-    hud.add(this.add.text(30, 54, `${this.levelIndex + 1} / ${CHAPTER_STAGES.length}   ·   ${controls}`, {
+    hud.add(this.add.text(30, 54, `CHAPTER ${this.stage.chapter || 1}  ·  AREA ${(this.levelIndex % 5) + 1} / 5   ·   ${controls}`, {
       fontFamily: 'Arial, sans-serif', fontSize: '10px', color: '#d1dbd5', letterSpacing: 1,
     }));
     hud.add(this.add.rectangle(w / 2, h - 37, Math.min(w - 28, 720), 39, 0x061015, .78));
@@ -169,21 +177,23 @@ export class ChapterScene extends Phaser.Scene {
     this.finished = true;
     this.player.setVelocity(0, 0).setAcceleration(0, 0);
     if (this.levelIndex === CHAPTER_STAGES.length - 1) {
-      this.cinematics.finale();
+      this.cinematics.finale(2);
       return;
     }
-    this.cameras.main.fadeOut(600, 2, 7, 16);
+    if (this.levelIndex === 4) this.cinematics.pulse('CHAPTER II · THE FACILITY BELOW', 'The signal opens a path beneath the island. The shadow reaches for what the light left behind.', 0xe96756, 2400);
+    this.cameras.main.fadeOut(this.levelIndex === 4 ? 2500 : 600, 2, 7, 16);
     this.cameras.main.once(Phaser.Cameras.Scene2D.Events.FADE_OUT_COMPLETE,
       () => this.scene.start('Chapter', { levelIndex: this.levelIndex + 1 }));
   }
 
   update(time, delta) {
     if (this.finished) {
-      if (Phaser.Input.Keyboard.JustDown(this.keys.R)) this.scene.start('Chapter', { levelIndex: 0 });
+      if (Phaser.Input.Keyboard.JustDown(this.keys.R)) this.scene.start('Chapter', { levelIndex: this.stage.chapter === 2 ? 5 : 0 });
       return;
     }
     if (Phaser.Input.Keyboard.JustDown(this.keys.R)) { this.scene.restart({ levelIndex: this.levelIndex }); return; }
     if (this.shadow && Phaser.Input.Keyboard.JustDown(this.keys.Q)) {
+      if (this.stage.grasp && this.mechanics.held) this.mechanics.toggleGrasp();
       const detached = this.shadow.toggleDetach();
       this.announce(detached ? 'THE SHADOW IS FREE. RUN AND JUMP WITH A / D + SPACE. F ANCHORS IT.' : 'THE SHADOW RETURNS.', detached ? 0xc0e8f0 : 0xf0d6a8);
       if (detached && this.stage.id === 'thornwood' && !this.shadowAwakeningShown) {
@@ -196,6 +206,7 @@ export class ChapterScene extends Phaser.Scene {
       this.announce(this.shadow.anchored ? 'SHADOW ANCHORED. THE KEEPER CAN MOVE.' : 'SHADOW RELEASED.', 0xbde7eb);
     }
     if (Phaser.Input.Keyboard.JustDown(this.keys.E) && !this.shadow?.controlling) this.mechanics.interact();
+    if (this.stage.grasp && Phaser.Input.Keyboard.JustDown(this.keys.G)) this.mechanics.toggleGrasp();
 
     const left = this.cursors.left.isDown || this.keys.A.isDown;
     const right = this.cursors.right.isDown || this.keys.D.isDown;
