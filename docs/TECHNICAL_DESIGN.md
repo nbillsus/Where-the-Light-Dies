@@ -2,62 +2,96 @@
 
 Owner: Lucas.
 
-## Engine
+## Runtime
 
-- **Godot 4.7**, standard (GDScript) build.
-- **Forward+** renderer: needed for volumetric fog and many real-time lights.
-- **Jolt** 3D physics.
-- 60 physics ticks per second.
+- **Phaser 3.90**: rendering (WebGL), input, scenes and Arcade Physics.
+- **Arcade physics**: Phaser's simple box physics. Gravity 1250 px/s².
+- **Vite 7**: dev server (`npm run dev`) and production build
+  (`npm run build` → `dist/`).
+- Native JavaScript modules, targeting modern browsers.
+- **Hosting**: Vercel builds the project with `npm run build` and serves
+  `dist/`. Nothing to install for players.
 
-Why Godot over Unity: scenes and resources are plain text, so Git diffs and
-merges work; native volumetric fog and 3D lighting cover the 2.5D look; no
-license or account setup for a three-person team.
+The game uses a full-window Phaser canvas with antialiasing. Its logical
+resolution follows the browser window, while render scaling keeps artwork
+sharp on high-density displays.
 
-## 2.5D setup
+The project started in Godot 4.7 (2.5D, 3D lighting). The team moved to
+Phaser in November 2026 for a browser-first 2D build. Depth now comes from
+layered 2D art rather than 3D models; the PRD's look (amber lantern light
+against slate-blue storm and black shadow) is kept through art and 2D
+lighting effects.
 
-Everything is 3D. Gameplay happens on the **X/Y plane at Z = 0**: X is
-left/right, Y is up. Characters and puzzle objects lock their Z position and
-only move on that plane. Background and foreground art can sit at any Z for
-parallax depth. The camera looks down -Z from positive Z.
+## Game structure
 
-1 unit = 1 metre. The Keeper is about 1.8 m tall.
+```
+index.html                        page that loads the game
+src/main.js                       Phaser config: scaling, rendering, physics, scenes
+src/rendering.js                  shared resolution and text-sharpening helpers
+src/scenes/MainMenuScene.js       title screen and menu flow
+src/scenes/ChapterScene.js        level runtime: input, movement, camera, checkpoints, area transitions
+src/levels/chapterData.js         source of truth for area sizes, platforms and progression
+src/gameplay/ShadowController.js  the detached Shadow
+src/gameplay/ChapterMechanics.js  puzzle mechanisms per area
+src/gameplay/Cinematics.js        title pulses and reveal sequences
+src/animation/BoyAnimator.js      procedural run and jump animation
+assets/                           images and SVG backgrounds the game loads
+audio/                            sound and music files the game loads
+scripts/generate_parkour_art.mjs  regenerates the editable SVG backgrounds
+docs/                             design docs
+```
 
-## Physics layers
+## Coordinates and scale
 
-| # | Name | What is on it |
+- Each area is authored in **art coordinates**: 4096 × 900, origin
+  top-left, Y pointing **down**. Platforms in `src/levels/chapterData.js`
+  use these.
+- At runtime `ChapterScene` scales the art and platforms to fit the window
+  height: `artScale = window height / 900`.
+- Movement speeds are currently in **screen pixels**, not art units, so the
+  same jump covers more of the level on a small window than on a large one.
+  Fixing this is part of Lucas's Keeper movement step.
+
+## Scenes and flow
+
+`MainMenu` → **New Game** → `Chapter` (level 0) → each area's exit starts
+`Chapter` again with the next `levelIndex` → finale.
+
+The player and Shadow share gravity-based movement, jumping, coyote time and
+jump buffering. Puzzle behaviour is isolated in `ChapterMechanics`, and puzzles
+only ask the Shadow "are you anchored near this receiver?", so level data and
+the Shadow can change independently.
+
+Dev-only shortcuts in the URL: `?stage=1`…`?stage=5` (applies when you press
+**New Game**), optionally `&checkpoint=N`.
+
+## Asset pipeline
+
+- Menu and character PNGs live under `assets/`.
+- Level backgrounds are SVG files in `assets/environment/parkour/`, generated
+  by `scripts/generate_parkour_art.mjs`.
+- Runtime assets stay in plain Git; only large source files use Git LFS (see
+  `.gitattributes` and CONTRIBUTING.md).
+- `node_modules/` and `dist/` are generated and must never be committed.
+
+## Validation
+
+`npm run build` is the required automated check before a pull request.
+Gameplay changes also need browser testing at the affected stages and
+checkpoints.
+
+## Events for other systems (planned)
+
+Audio, UI and radio code should react to gameplay without reaching into the
+player or Shadow objects. Lucas will add a small shared event bus
+(`src/core/events.js`) in the Shadow step with at least:
+
+| Event | When | Used by |
 | --- | --- | --- |
-| 1 | world | Static level geometry |
-| 2 | keeper | The Keeper |
-| 3 | shadow | The detached Shadow |
-| 4 | enemies | Skitterers, Wardens, Hollow hitboxes |
-| 5 | pushable | Crates and other push/pull objects |
-| 6 | grates | Iron grates: block the Keeper, the Shadow passes through |
-| 7 | solid_shadow | The Shadow while Solidified (the Keeper can stand on it) |
-| 8 | triggers | Pressure plates, checkpoints, zone areas |
-| 9 | light_blockers | Anything that stops a light beam |
-| 10 | light_receivers | Crystals, light locks, Warden backs |
-
-## Input actions
-
-Defined in `project.godot`; see the controls table in the README. Code reads
-actions by name (`Input.is_action_pressed("jump")`), never raw keys.
-
-## Event bus
-
-`GameEvents` (`scripts/core/game_events.gd`) is an autoload of signals that
-gameplay emits and audio, UI, radio and level scripts listen to. It is the
-contract between lanes; check it before inventing a new hook.
-
-## Folder layout
-
-```
-assets/       characters, environment, effects (VFX), textures, fonts
-animations/   character animation libraries
-audio/        ambience, music, sound_effects
-scenes/       levels, player, shadow, enemies, puzzles, lighting, ui, cutscenes, sandbox
-scripts/      core, player, shadow, enemies, puzzles, lighting, level_events, story (radio), audio, ui
-shaders/      .gdshader files
-docs/         design docs; docs/lore for world bible
-tests/        automated tests
-builds/       exported builds (ignored by Git)
-```
+| `shadow-detached` / `shadow-recalled` | Shadow leaves / returns | Axel: whisper audio |
+| `shadow-detach-time` (seconds) | Every frame while detached | Axel: whisper volume |
+| `shadow-tether` (0–1) | Tether tension | HUD tether indicator |
+| `keeper-landed` (fall speed) | Landing | Footstep / thud audio |
+| `beam-hit-target` | Light beam reaches a receiver | Crystal chime |
+| `relay-restored` (index) | Relay checkpoint activated | Radio log |
+| `checkpoint-reached` | Checkpoint touched | Save / respawn |

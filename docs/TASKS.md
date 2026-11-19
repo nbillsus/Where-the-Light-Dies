@@ -9,32 +9,34 @@ Each step below ends with one commit.
 
 ### Phase 1: Prototype (Prologue)
 
-- [x] **Step 1 — Engine and repo setup.** Godot 4.7 project, folder structure
-      with ownership, Git LFS rules, input map, physics layers, `GameEvents`
-      signal bus for cross-team hooks, and a sandbox scene to test in.
-- [x] **Step 2 — Keeper movement.** 2.5D `CharacterBody3D` locked to the
-      gameplay plane: run, variable jump (coyote time, jump buffer), ledge
-      mantle, ladders, push/pull. All tuning values in one resource.
-- [ ] **Step 3 — Shadow detach and Solidify.** Detach/recall state machine,
-      control switching (inactive character holds stance), tether limit and
-      snap-back, Solidify as a platform the Keeper can stand on. Emits
-      `shadow_detached` / `shadow_recalled` for Axel's whisper audio.
-- [ ] **Step 4 — Style guide, lantern aura, Phase 1 build.** Palette and
-      amber vs. slate-blue lighting rules in `docs/STYLE_GUIDE.md` (building
-      on `docs/ART_PRESENTATION.md`), the lantern light radius and rune-reveal
-      area, base fog/environment, and the first playable build.
+- [x] **Step 1 — Engine and repo setup** (Godot; retired after the move to Phaser).
+- [x] **Step 2 — Keeper movement in Godot** (retired; its rules carry over to Step 4).
+- [x] **Step 3 — Move to Phaser and clean up the repo.** Bring the branch up
+      to Neel's Phaser build, delete the Godot files, stop tracking
+      `node_modules`, make Git LFS safe for a browser build, and rewrite the
+      setup, technical and mechanics docs for Phaser.
+- [ ] **Step 4 — Keeper movement.** Move the Keeper's movement out of
+      `ChapterScene.js` into `src/player/` with all numbers in one tuning
+      object, measured in art units so jumps match on every screen size.
+      Add mantling and ladders. *(Agree with Neel first: it edits his file.)*
+- [ ] **Step 5 — The Shadow.** Upgrade `ShadowController.js` to the PRD:
+      tether limit with snap-back recall, Solidify (the Keeper can stand on
+      it), and a shared event bus with hooks for Axel's whisper audio.
+- [ ] **Step 6 — Style guide, lantern light, Phase 1 build.** Colour and
+      lighting rules (building on `docs/ART_PRESENTATION.md`), the lantern's
+      light radius, and the first playable build on Vercel.
 
 ### Phase 2: Vertical Slice (Act 1)
 
 - [ ] Combat: Light Strike 3-hit combo, Flare Pulse, dodge, hit detection, health.
 - [ ] Path Anchor ability.
-- [ ] Puzzle building blocks: pressure plates, gates, grates, collapsing bridges.
-- [ ] Lighthouse and docks environment kits; rain VFX.
+- [ ] Reusable puzzle building blocks (plates, gates, grates, collapsing bridges) out of `ChapterMechanics.js`.
+- [ ] Lighthouse and docks environment art; rain effects.
 
 ### Phase 3: Production (Acts 2–3)
 
-- [ ] Light raycasting, reflection/refraction, light locks; Phase & Switch.
-- [ ] Caves, chapel and cliff kits; crystal shaders.
+- [ ] Light beams: reflection/refraction, light locks; Phase & Switch.
+- [ ] Caves, chapel and cliff environment art; crystal effects.
 
 ### Phase 4: Polish
 
