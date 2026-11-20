@@ -215,6 +215,44 @@ export class HorrorPresentation {
     this.lanternCore = softLight(scene, 0, 0, 102 * this.scale, 132 * this.scale, 0xffe1a1, 0.48);
     this.lanternGlow.add([this.lanternAura, this.lanternCore]);
     flicker(scene, [this.lanternAura, this.lanternCore], 0.24, 0.52, 760);
+
+    this.watcherEyes = [];
+    const eyePositions = [
+      [0.2, 0.48], [0.34, 0.36], [0.54, 0.44], [0.72, 0.38], [0.89, 0.51],
+    ];
+    for (const [index, [rx, ry]] of eyePositions.entries()) {
+      const eyes = this.createWatcherEyes(scene.worldWidth * rx, h * ry, 0.72 + index * 0.08);
+      this.watcherEyes.push(eyes);
+    }
+  }
+
+  createWatcherEyes(x, y, delay) {
+    const scene = this.scene;
+    const eyes = scene.add.container(x, y).setDepth(2.7).setAlpha(0);
+    const shadow = scene.add.ellipse(0, 0, 118 * this.scale, 54 * this.scale, 0x000000, 0.58);
+    const left = scene.add.ellipse(-24 * this.scale, 0, 23 * this.scale, 13 * this.scale, 0xf1f7df, 0.9)
+      .setBlendMode(Phaser.BlendModes.ADD);
+    const right = scene.add.ellipse(24 * this.scale, 0, 23 * this.scale, 13 * this.scale, 0xf1f7df, 0.9)
+      .setBlendMode(Phaser.BlendModes.ADD);
+    const leftPupil = scene.add.circle(-24 * this.scale, 0, 4.5 * this.scale, 0x090b0d, 0.95);
+    const rightPupil = scene.add.circle(24 * this.scale, 0, 4.5 * this.scale, 0x090b0d, 0.95);
+    eyes.add([shadow, left, right, leftPupil, rightPupil]);
+    eyes.leftPupil = leftPupil;
+    eyes.rightPupil = rightPupil;
+    eyes.baseY = y;
+    eyes.phase = delay;
+    scene.tweens.add({
+      targets: eyes,
+      alpha: { from: 0.06, to: 0.82 },
+      duration: 1500 + delay * 220,
+      delay: delay * 900,
+      yoyo: true,
+      repeat: -1,
+      hold: 1300,
+      repeatDelay: 900,
+      ease: 'Sine.easeInOut',
+    });
+    return eyes;
   }
 
   showOpeningIfNeeded() {
@@ -248,6 +286,13 @@ export class HorrorPresentation {
     if (!this.lanternGlow) return;
     const actor = this.scene.shadow?.controlling ? this.scene.shadow.actor : this.scene.player;
     this.lanternGlow.setPosition(actor.x, actor.y + 14 * this.scale);
+    for (const eyes of this.watcherEyes || []) {
+      const dx = Phaser.Math.Clamp((actor.x - eyes.x) / (460 * this.scale), -1, 1) * 7 * this.scale;
+      const dy = Phaser.Math.Clamp((actor.y - eyes.y) / (280 * this.scale), -1, 1) * 4 * this.scale;
+      eyes.leftPupil.setPosition(-24 * this.scale + dx, dy);
+      eyes.rightPupil.setPosition(24 * this.scale + dx, dy);
+      eyes.y = eyes.baseY + Math.sin(this.scene.time.now * 0.0015 + eyes.phase) * 5 * this.scale;
+    }
   }
 
   updateSuspenseMusic() {
@@ -483,34 +528,56 @@ export class HorrorPresentation {
     const now = ctx.currentTime;
     const low = ctx.createOscillator();
     const lowGain = ctx.createGain();
-    const hiss = ctx.createBufferSource();
-    const hissFilter = ctx.createBiquadFilter();
+    const inhale = ctx.createBufferSource();
+    const throat = ctx.createBiquadFilter();
+    const teeth = ctx.createBiquadFilter();
     const hissGain = ctx.createGain();
-    const buffer = ctx.createBuffer(1, Math.floor(ctx.sampleRate * 0.55), ctx.sampleRate);
+    const bite = ctx.createOscillator();
+    const biteGain = ctx.createGain();
+    const buffer = ctx.createBuffer(1, Math.floor(ctx.sampleRate * 0.72), ctx.sampleRate);
     const data = buffer.getChannelData(0);
+    let last = 0;
     for (let i = 0; i < data.length; i++) {
-      const attack = Math.min(1, i / (ctx.sampleRate * 0.025));
-      const decay = 1 - i / data.length;
-      data[i] = (Math.random() * 2 - 1) * attack * decay;
+      const t = i / data.length;
+      const attack = Math.min(1, t / 0.045);
+      const body = Math.sin(t * Math.PI);
+      const flutter = 0.58 + Math.sin(t * 95) * 0.26 + Math.sin(t * 217) * 0.16;
+      last = last * 0.72 + (Math.random() * 2 - 1) * 0.28;
+      data[i] = last * attack * body * flutter;
     }
-    hiss.buffer = buffer;
+    inhale.buffer = buffer;
     low.type = 'sine';
     low.frequency.setValueAtTime(type === 'knock' ? 82 : 58, now);
     low.frequency.exponentialRampToValueAtTime(18, now + 0.28);
     lowGain.gain.setValueAtTime(0.5, now);
     lowGain.gain.exponentialRampToValueAtTime(0.0001, now + 0.36);
-    hissFilter.type = 'bandpass';
-    hissFilter.frequency.value = type === 'glass' ? 4200 : 2700;
-    hissFilter.Q.value = type === 'glass' ? 12 : 7;
+    throat.type = 'bandpass';
+    throat.frequency.setValueAtTime(type === 'glass' ? 1850 : 1350, now);
+    throat.frequency.exponentialRampToValueAtTime(type === 'glass' ? 5200 : 3900, now + 0.2);
+    throat.Q.value = 4.8;
+    teeth.type = 'highpass';
+    teeth.frequency.value = 1900;
+    teeth.Q.value = 2.4;
     hissGain.gain.setValueAtTime(0.0001, now);
-    hissGain.gain.exponentialRampToValueAtTime(type === 'glass' ? 0.38 : 0.44, now + 0.018);
-    hissGain.gain.exponentialRampToValueAtTime(0.0001, now + 0.52);
+    hissGain.gain.exponentialRampToValueAtTime(type === 'glass' ? 0.42 : 0.54, now + 0.035);
+    hissGain.gain.linearRampToValueAtTime(type === 'glass' ? 0.28 : 0.38, now + 0.22);
+    hissGain.gain.exponentialRampToValueAtTime(0.0001, now + 0.72);
+    bite.type = 'sawtooth';
+    bite.frequency.setValueAtTime(720, now);
+    bite.frequency.exponentialRampToValueAtTime(2800, now + 0.09);
+    bite.frequency.exponentialRampToValueAtTime(460, now + 0.2);
+    biteGain.gain.setValueAtTime(0.0001, now);
+    biteGain.gain.exponentialRampToValueAtTime(0.16, now + 0.018);
+    biteGain.gain.exponentialRampToValueAtTime(0.0001, now + 0.24);
     low.connect(lowGain).connect(this.master);
-    hiss.connect(hissFilter).connect(hissGain).connect(this.master);
+    inhale.connect(throat).connect(teeth).connect(hissGain).connect(this.master);
+    bite.connect(biteGain).connect(this.master);
     low.start(now);
-    hiss.start(now);
+    inhale.start(now);
+    bite.start(now);
     low.stop(now + 0.46);
-    hiss.stop(now + 0.58);
+    inhale.stop(now + 0.76);
+    bite.stop(now + 0.26);
   }
 
   playHelpCry(type = 'distant') {
