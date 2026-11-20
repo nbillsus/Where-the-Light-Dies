@@ -11,11 +11,21 @@ const PLANS = [
   { relays: [[1120, 1270], [2260, 2440]], beam: [2920, 2820], color: 0xa6a7ee },
   { relays: [[1120, 1270], [2260, 2440]], crate: { kind: 'ordinary', platform: 4, weight: 2810, plate: 3010, gate: 3500 }, color: 0xcbbda2 },
   { relays: [[1120, 1270], [2260, 2440], [2890, 3070]], beam: [3480, 3400], color: 0x8fe6dc },
-  { relays: [[1120, 1270], [2260, 2440]], beam: [2900, 2810], color: 0x9ad7e6 },
-  { relays: [[1120, 1270], [2260, 2440], [2890, 3070]], crate: { kind: 'shadow', platform: 4, weight: 2810, plate: 3010, gate: 3500 }, color: 0xe4a8c7 },
-  { relays: [[1120, 1270], [2260, 2440]], crate: { kind: 'ordinary', platform: 4, weight: 2810, plate: 3020, gate: 3500 }, beam: [3440, 3400], color: 0xe2b477 },
-  { relays: [[1120, 1270], [2260, 2440], [2890, 3070]], beam: [3480, 3400], color: 0xaab7f4 },
-  { relays: [[1120, 1270], [2260, 2440], [2890, 3070]], crate: { kind: 'shadow', platform: 4, weight: 2810, plate: 3000, gate: 3500 }, beam: [3430, 3400], color: 0xf0cf94, final: true },
+  { relays: [], shoreCollapse: true, color: 0x9ad7e6,
+    title: 'THE LAST SHORE', instruction: 'The coast gives way behind you. Keep moving across the broken path.' },
+  { relays: [], crates: [
+    { kind: 'ordinary', platform: 1, weight: 960, plate: 1140, gate: 1270 },
+    { kind: 'shadow', platform: 4, weight: 2810, plate: 3000, gate: 3500 },
+  ], color: 0xe4a8c7, title: 'TWO HANDS', instruction: 'The Keeper moves one weight. Only the Shadow can carry the other.' },
+  { relays: [[2260, 2440]], beams: [[1680, 1600, true], [3430, 3400, false]], color: 0xe2b477,
+    title: 'THE RED CATHEDRAL', instruction: 'Silence the first beam, send one signal, then cross the unbroken light.' },
+  { relays: [], beams: [[1680, 1600, false], [2900, 2810, true], [3450, 3400, false]], color: 0xaab7f4,
+    title: 'NIGHT ARRAY', instruction: 'Three beams divide the path. Anchor the Shadow at each receiver and move the Keeper through.' },
+  { relays: [[1120, 1270], [2260, 2440]], crates: [
+    { kind: 'ordinary', platform: 2, weight: 1610, plate: 1810, gate: 1900 },
+    { kind: 'shadow', platform: 4, weight: 2810, plate: 3000, gate: 3070 },
+  ], beams: [[3430, 3400, true]], color: 0xf0cf94, final: true,
+    title: 'THE THRESHOLD', instruction: 'Time two signals, move both kinds of weight, silence the beam, then align the last lens.' },
 ];
 
 export class DeepSignalMechanics extends ChapterTwoMechanics {
@@ -25,12 +35,39 @@ export class DeepSignalMechanics extends ChapterTwoMechanics {
     this.relays = [];
     this.color = this.plan.color;
     if (this.plan.crate) this.makePuzzle(this.plan.crate);
+    for (const crate of this.plan.crates ?? []) this.makePuzzle(crate);
     if (this.plan.beam) this.makeBeam(this.plan.beam[0], this.plan.beam[1], { color: this.color, pulsing: true });
+    for (const [beam, receiver, pulsing] of this.plan.beams ?? []) this.makeBeam(beam, receiver, { color: this.color, pulsing });
     for (const [station, gate] of this.plan.relays) this.makeRelay(station, gate);
+    if (this.plan.shoreCollapse) this.buildShoreCollapse();
     if (this.plan.final) this.makeFinalLens();
-    scene.cinematics.pulse(scene.stage.chapter === 4 ? 'THE SIGNAL PULSE' : 'THE LAST CIRCUIT',
-      scene.stage.chapter === 4 ? 'Press E at a relay. Anchor the Shadow in its receiver before the pulse fades.'
-        : 'Link the relays, carry the weight, redirect the beam, and hold the final lens.', this.color, 3000);
+    scene.cinematics.pulse(this.plan.title ?? 'THE SIGNAL PULSE', this.plan.instruction
+      ?? 'Press E at a relay. Anchor the Shadow in its receiver before the pulse fades.', this.color, 3000);
+  }
+
+  buildShoreCollapse() {
+    const scene = this.scene, s = this.scale;
+    this.shoreShelves = [[745, 905, 710], [1385, 1545, 670], [1995, 2155, 675]].map(([start, end, top], index) => {
+      const x = (start + end) * s / 2, y = top * s, width = (end - start) * s;
+      const surface = hideShape(scene.add.rectangle(x, y + 7 * s, width, 16 * s, 0, 0));
+      scene.physics.add.existing(surface, true);
+      scene.physics.add.collider(scene.player, surface);
+      if (scene.shadow?.actor) scene.physics.add.collider(scene.shadow.actor, surface);
+      const art = scene.add.rectangle(x, y + 6 * s, width, 13 * s, 0x263b4b, 1)
+        .setStrokeStyle(3 * s, this.color, .75).setDepth(4);
+      return { start: start * s, end: end * s, surface, art, triggeredAt: 0, delay: 690 - index * 90, fallen: false };
+    });
+  }
+
+  updateShoreCollapse(time) {
+    for (const shelf of this.shoreShelves ?? []) {
+      if (!shelf.triggeredAt && this.scene.player.x >= shelf.start && this.scene.player.x <= shelf.end) shelf.triggeredAt = time;
+      if (shelf.fallen || !shelf.triggeredAt || time - shelf.triggeredAt < shelf.delay) continue;
+      shelf.fallen = true;
+      shelf.surface.body.enable = false;
+      this.scene.tweens.add({ targets: shelf.art, y: shelf.art.y + 170 * this.scale, angle: 15, alpha: 0,
+        duration: 600, ease: 'Cubic.easeIn' });
+    }
   }
 
   platformAt(x) { return this.scene.platforms.find(p => x * this.scale >= p.left && x * this.scale <= p.right); }
@@ -86,6 +123,7 @@ export class DeepSignalMechanics extends ChapterTwoMechanics {
 
   update(time) {
     super.update(time);
+    if (this.plan.shoreCollapse) this.updateShoreCollapse(time);
     const scene = this.scene, shadow = scene.shadow;
     for (const relay of this.relays) {
       if (relay.open) continue;
