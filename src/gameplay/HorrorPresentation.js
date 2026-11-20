@@ -141,28 +141,6 @@ const STORY_BEATS = {
   }],
 };
 
-// Soft round light (radial gradient) instead of a hard-edged ellipse. The
-// gradient fades to nothing at its edge, so it is drawn a bit larger to keep
-// the same bright area.
-function softLight(scene, x, y, width, height, color, alpha) {
-  return scene.add.image(x, y, 'fx-glow').setTint(color).setDisplaySize(width * 1.6, height * 1.6)
-    .setAlpha(alpha).setBlendMode(Phaser.BlendModes.ADD);
-}
-
-// Flame flicker: brightness and a slight stretch, relative to each light's size.
-function flicker(scene, lights, low, high, duration) {
-  for (const light of lights) {
-    const sx = light.scaleX, sy = light.scaleY;
-    scene.tweens.add({
-      targets: light,
-      alpha: { from: low, to: high },
-      scaleX: { from: sx * 0.92, to: sx * 1.12 },
-      scaleY: { from: sy * 0.88, to: sy * 1.06 },
-      duration, yoyo: true, repeat: -1, ease: 'Sine.easeInOut',
-    });
-  }
-}
-
 export class HorrorPresentation {
   constructor(scene) {
     this.scene = scene;
@@ -256,28 +234,6 @@ export class HorrorPresentation {
     this.deepFog = scene.add.rectangle(scene.worldWidth / 2, h / 2, scene.worldWidth, h, 0x02050a, scene.stage.chapter === 3 ? 0.08 : 0.14)
       .setDepth(1);
 
-    this.torches = [];
-    const torchPositions = [0.12, 0.29, 0.46, 0.64, 0.81, 0.94];
-    for (const [index, ratio] of torchPositions.entries()) {
-      const x = scene.worldWidth * ratio;
-      const nearest = scene.platforms.reduce((best, platform) => Math.abs(platform.y - h * 0.72) < Math.abs(best.y - h * 0.72) ? platform : best, scene.platforms[0]);
-      const y = Math.min(h - 72 * this.scale, nearest.y - (index % 2 ? 82 : 118) * this.scale);
-      const torch = scene.add.container(x, y).setDepth(3.4);
-      const post = scene.add.rectangle(0, 42 * this.scale, 9 * this.scale, 95 * this.scale, 0x120905, 0.88);
-      const halo = softLight(scene, 0, 0, 330 * this.scale, 230 * this.scale, AMBER, 0.26);
-      const flame = softLight(scene, 0, 0, 45 * this.scale, 75 * this.scale, 0xff9d3f, 0.78);
-      const core = softLight(scene, 0, -6 * this.scale, 18 * this.scale, 37 * this.scale, 0xfff1b2, 0.96);
-      torch.add([halo, post, flame, core]);
-      flicker(scene, [halo, flame, core], 0.2, 0.58, 620 + index * 73);
-      this.torches.push(torch);
-    }
-
-    this.lanternGlow = scene.add.container(0, 0).setDepth(3.2);
-    this.lanternAura = softLight(scene, 0, 0, 380 * this.scale, 280 * this.scale, AMBER, 0.34);
-    this.lanternCore = softLight(scene, 0, 0, 102 * this.scale, 132 * this.scale, 0xffe1a1, 0.48);
-    this.lanternGlow.add([this.lanternAura, this.lanternCore]);
-    flicker(scene, [this.lanternAura, this.lanternCore], 0.24, 0.52, 760);
-
     this.watcherEyes = [];
     const eyePositions = [
       [0.2, 0.48], [0.34, 0.36], [0.54, 0.44], [0.72, 0.38], [0.89, 0.51],
@@ -347,9 +303,7 @@ export class HorrorPresentation {
   }
 
   updateLighting() {
-    if (!this.lanternGlow) return;
     const actor = this.scene.shadow?.controlling ? this.scene.shadow.actor : this.scene.player;
-    this.lanternGlow.setPosition(actor.x, actor.y + 14 * this.scale);
     for (const eyes of this.watcherEyes || []) {
       const dx = Phaser.Math.Clamp((actor.x - eyes.x) / (460 * this.scale), -1, 1) * 7 * this.scale;
       const dy = Phaser.Math.Clamp((actor.y - eyes.y) / (280 * this.scale), -1, 1) * 4 * this.scale;
