@@ -526,58 +526,75 @@ export class HorrorPresentation {
     const ctx = this.ensureAudio();
     if (!ctx || !this.master) return;
     const now = ctx.currentTime;
+    const duration = type === 'glass' ? 0.66 : 0.9;
     const low = ctx.createOscillator();
     const lowGain = ctx.createGain();
     const inhale = ctx.createBufferSource();
     const throat = ctx.createBiquadFilter();
     const teeth = ctx.createBiquadFilter();
+    const snarl = ctx.createWaveShaper();
     const hissGain = ctx.createGain();
-    const bite = ctx.createOscillator();
-    const biteGain = ctx.createGain();
-    const buffer = ctx.createBuffer(1, Math.floor(ctx.sampleRate * 0.72), ctx.sampleRate);
+    const snap = ctx.createBufferSource();
+    const snapFilter = ctx.createBiquadFilter();
+    const snapGain = ctx.createGain();
+    const buffer = ctx.createBuffer(1, Math.floor(ctx.sampleRate * duration), ctx.sampleRate);
     const data = buffer.getChannelData(0);
     let last = 0;
     for (let i = 0; i < data.length; i++) {
       const t = i / data.length;
-      const attack = Math.min(1, t / 0.045);
-      const body = Math.sin(t * Math.PI);
-      const flutter = 0.58 + Math.sin(t * 95) * 0.26 + Math.sin(t * 217) * 0.16;
-      last = last * 0.72 + (Math.random() * 2 - 1) * 0.28;
-      data[i] = last * attack * body * flutter;
+      const attack = Math.min(1, t / 0.018);
+      const decay = Math.pow(1 - t, 0.7);
+      const choke = 0.62 + Math.sin(t * 148) * 0.28 + Math.sin(t * 411) * 0.1;
+      const spit = Math.random() > 0.86 ? (Math.random() * 2 - 1) * 0.9 : 0;
+      last = last * 0.55 + (Math.random() * 2 - 1) * 0.45;
+      data[i] = (last + spit) * attack * decay * choke;
     }
     inhale.buffer = buffer;
+    const snapBuffer = ctx.createBuffer(1, Math.floor(ctx.sampleRate * 0.11), ctx.sampleRate);
+    const snapData = snapBuffer.getChannelData(0);
+    for (let i = 0; i < snapData.length; i++) {
+      const t = i / snapData.length;
+      const envelope = Math.pow(1 - t, 3.1);
+      snapData[i] = (Math.random() * 2 - 1) * envelope;
+    }
+    snap.buffer = snapBuffer;
     low.type = 'sine';
-    low.frequency.setValueAtTime(type === 'knock' ? 82 : 58, now);
-    low.frequency.exponentialRampToValueAtTime(18, now + 0.28);
-    lowGain.gain.setValueAtTime(0.5, now);
-    lowGain.gain.exponentialRampToValueAtTime(0.0001, now + 0.36);
+    low.frequency.setValueAtTime(type === 'knock' ? 70 : 47, now);
+    low.frequency.exponentialRampToValueAtTime(17, now + 0.24);
+    lowGain.gain.setValueAtTime(0.58, now);
+    lowGain.gain.exponentialRampToValueAtTime(0.0001, now + 0.42);
     throat.type = 'bandpass';
-    throat.frequency.setValueAtTime(type === 'glass' ? 1850 : 1350, now);
-    throat.frequency.exponentialRampToValueAtTime(type === 'glass' ? 5200 : 3900, now + 0.2);
-    throat.Q.value = 4.8;
+    throat.frequency.setValueAtTime(type === 'glass' ? 2300 : 860, now);
+    throat.frequency.exponentialRampToValueAtTime(type === 'glass' ? 5600 : 3200, now + 0.18);
+    throat.frequency.exponentialRampToValueAtTime(type === 'glass' ? 1800 : 1250, now + duration);
+    throat.Q.value = 7.5;
     teeth.type = 'highpass';
-    teeth.frequency.value = 1900;
-    teeth.Q.value = 2.4;
+    teeth.frequency.value = 1300;
+    teeth.Q.value = 4.2;
+    snarl.curve = new Float32Array(512).map((_, i) => {
+      const x = i / 255.5 - 1;
+      return Math.tanh(x * 7.5);
+    });
+    snarl.oversample = '4x';
     hissGain.gain.setValueAtTime(0.0001, now);
-    hissGain.gain.exponentialRampToValueAtTime(type === 'glass' ? 0.42 : 0.54, now + 0.035);
-    hissGain.gain.linearRampToValueAtTime(type === 'glass' ? 0.28 : 0.38, now + 0.22);
-    hissGain.gain.exponentialRampToValueAtTime(0.0001, now + 0.72);
-    bite.type = 'sawtooth';
-    bite.frequency.setValueAtTime(720, now);
-    bite.frequency.exponentialRampToValueAtTime(2800, now + 0.09);
-    bite.frequency.exponentialRampToValueAtTime(460, now + 0.2);
-    biteGain.gain.setValueAtTime(0.0001, now);
-    biteGain.gain.exponentialRampToValueAtTime(0.16, now + 0.018);
-    biteGain.gain.exponentialRampToValueAtTime(0.0001, now + 0.24);
+    hissGain.gain.exponentialRampToValueAtTime(type === 'glass' ? 0.46 : 0.68, now + 0.018);
+    hissGain.gain.linearRampToValueAtTime(type === 'glass' ? 0.26 : 0.42, now + 0.2);
+    hissGain.gain.exponentialRampToValueAtTime(0.0001, now + duration);
+    snapFilter.type = 'highpass';
+    snapFilter.frequency.value = type === 'glass' ? 2600 : 1700;
+    snapFilter.Q.value = 8;
+    snapGain.gain.setValueAtTime(0.0001, now);
+    snapGain.gain.exponentialRampToValueAtTime(type === 'glass' ? 0.42 : 0.58, now + 0.006);
+    snapGain.gain.exponentialRampToValueAtTime(0.0001, now + 0.11);
     low.connect(lowGain).connect(this.master);
-    inhale.connect(throat).connect(teeth).connect(hissGain).connect(this.master);
-    bite.connect(biteGain).connect(this.master);
+    inhale.connect(throat).connect(teeth).connect(snarl).connect(hissGain).connect(this.master);
+    snap.connect(snapFilter).connect(snapGain).connect(this.master);
     low.start(now);
     inhale.start(now);
-    bite.start(now);
+    snap.start(now + 0.012);
     low.stop(now + 0.46);
-    inhale.stop(now + 0.76);
-    bite.stop(now + 0.26);
+    inhale.stop(now + duration + 0.04);
+    snap.stop(now + 0.13);
   }
 
   playHelpCry(type = 'distant') {
@@ -634,62 +651,79 @@ export class HorrorPresentation {
     const ctx = this.ensureAudio();
     if (!ctx || !this.master) return;
     const now = ctx.currentTime;
+    const duration = type === 'glass' ? 0.58 : 0.82;
     const noise = ctx.createBufferSource();
-    const buffer = ctx.createBuffer(1, Math.floor(ctx.sampleRate * 0.48), ctx.sampleRate);
+    const rawScream = ctx.createBufferSource();
+    const buffer = ctx.createBuffer(1, Math.floor(ctx.sampleRate * duration), ctx.sampleRate);
     const data = buffer.getChannelData(0);
+    let dirt = 0;
     for (let i = 0; i < data.length; i++) {
-      const falloff = 1 - i / data.length;
-      data[i] = (Math.random() * 2 - 1) * falloff;
+      const t = i / data.length;
+      const attack = Math.min(1, t / 0.025);
+      const falloff = Math.pow(1 - t, 0.58);
+      const flutter = 0.55 + Math.sin(t * 116) * 0.25 + Math.sin(t * 293) * 0.18;
+      dirt = dirt * 0.46 + (Math.random() * 2 - 1) * 0.54;
+      data[i] = dirt * attack * falloff * flutter;
     }
     noise.buffer = buffer;
+    const screamBuffer = ctx.createBuffer(1, Math.floor(ctx.sampleRate * duration), ctx.sampleRate);
+    const screamData = screamBuffer.getChannelData(0);
+    let phase = 0;
+    for (let i = 0; i < screamData.length; i++) {
+      const t = i / screamData.length;
+      const attack = Math.min(1, t / 0.018);
+      const falloff = Math.pow(1 - t, 0.75);
+      const sweep = type === 'pierHand' ? 900 + t * 2600 : 1250 + Math.sin(t * Math.PI) * 2400;
+      const panic = Math.sin(t * 91) * 440 + (Math.random() * 2 - 1) * 280;
+      phase += (Math.max(260, sweep + panic) / ctx.sampleRate) * Math.PI * 2;
+      const tornVoice = Math.sin(phase) * 0.36 + Math.sin(phase * 1.97) * 0.18;
+      screamData[i] = (tornVoice + (Math.random() * 2 - 1) * 0.32) * attack * falloff;
+    }
+    rawScream.buffer = screamBuffer;
 
-    const shriek = ctx.createOscillator();
-    const shriekTwo = ctx.createOscillator();
-    const shriekGain = ctx.createGain();
-    const shriekTwoGain = ctx.createGain();
     const noiseGain = ctx.createGain();
+    const screamGain = ctx.createGain();
     const filter = ctx.createBiquadFilter();
+    const formant = ctx.createBiquadFilter();
+    const shred = ctx.createWaveShaper();
     const sub = ctx.createOscillator();
     const subGain = ctx.createGain();
 
-    shriek.type = 'sawtooth';
-    shriekTwo.type = 'square';
-    shriek.frequency.setValueAtTime(type === 'glass' ? 1900 : 1250, now);
-    shriek.frequency.exponentialRampToValueAtTime(type === 'pierHand' ? 3100 : 3600, now + 0.11);
-    shriek.frequency.exponentialRampToValueAtTime(410, now + 0.48);
-    shriekTwo.frequency.setValueAtTime(type === 'glass' ? 2630 : 1740, now);
-    shriekTwo.frequency.exponentialRampToValueAtTime(type === 'pierHand' ? 520 : 690, now + 0.32);
-    shriekGain.gain.setValueAtTime(0.0001, now);
-    shriekGain.gain.exponentialRampToValueAtTime(0.34, now + 0.022);
-    shriekGain.gain.exponentialRampToValueAtTime(0.0001, now + 0.56);
-    shriekTwoGain.gain.setValueAtTime(0.0001, now);
-    shriekTwoGain.gain.exponentialRampToValueAtTime(0.18, now + 0.035);
-    shriekTwoGain.gain.exponentialRampToValueAtTime(0.0001, now + 0.42);
-
     filter.type = 'highpass';
-    filter.frequency.value = type === 'knock' ? 1100 : 1600;
+    filter.frequency.value = type === 'knock' ? 1250 : 1850;
+    filter.Q.value = 5;
+    formant.type = 'bandpass';
+    formant.frequency.setValueAtTime(type === 'glass' ? 4100 : 2850, now);
+    formant.frequency.exponentialRampToValueAtTime(type === 'pierHand' ? 5200 : 3700, now + 0.12);
+    formant.frequency.exponentialRampToValueAtTime(type === 'glass' ? 1900 : 1700, now + duration);
+    formant.Q.value = 9.5;
+    shred.curve = new Float32Array(512).map((_, i) => {
+      const x = i / 255.5 - 1;
+      return Math.tanh(x * 5.8);
+    });
+    shred.oversample = '4x';
     noiseGain.gain.setValueAtTime(0.0001, now);
-    noiseGain.gain.exponentialRampToValueAtTime(type === 'glass' ? 0.34 : 0.42, now + 0.012);
-    noiseGain.gain.exponentialRampToValueAtTime(0.0001, now + 0.48);
+    noiseGain.gain.exponentialRampToValueAtTime(type === 'glass' ? 0.42 : 0.56, now + 0.009);
+    noiseGain.gain.exponentialRampToValueAtTime(0.0001, now + duration);
+    screamGain.gain.setValueAtTime(0.0001, now);
+    screamGain.gain.exponentialRampToValueAtTime(type === 'glass' ? 0.2 : 0.28, now + 0.016);
+    screamGain.gain.exponentialRampToValueAtTime(0.0001, now + duration);
 
     sub.type = 'sine';
-    sub.frequency.setValueAtTime(56, now);
-    sub.frequency.exponentialRampToValueAtTime(23, now + 0.38);
-    subGain.gain.setValueAtTime(0.34, now);
-    subGain.gain.exponentialRampToValueAtTime(0.0001, now + 0.44);
+    sub.frequency.setValueAtTime(50, now);
+    sub.frequency.exponentialRampToValueAtTime(19, now + 0.34);
+    subGain.gain.setValueAtTime(0.42, now);
+    subGain.gain.exponentialRampToValueAtTime(0.0001, now + 0.5);
 
-    shriek.connect(shriekGain).connect(this.master);
-    shriekTwo.connect(shriekTwoGain).connect(this.master);
     noise.connect(filter).connect(noiseGain).connect(this.master);
+    rawScream.connect(formant).connect(shred).connect(screamGain).connect(this.master);
     sub.connect(subGain).connect(this.master);
-    shriek.start(now);
-    shriekTwo.start(now);
     noise.start(now);
+    rawScream.start(now + 0.006);
     sub.start(now);
-    shriek.stop(now + 0.72);
-    shriekTwo.stop(now + 0.52);
-    noise.stop(now + 0.52);
-    sub.stop(now + 0.46);
+    noise.stop(now + duration + 0.04);
+    rawScream.stop(now + duration + 0.04);
+    sub.stop(now + 0.52);
   }
 
   destroy() {
