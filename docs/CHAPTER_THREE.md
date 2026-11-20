@@ -4,11 +4,11 @@ The end of **The Heart of the Works** leads directly into five Chapter 3 areas. 
 
 | Area | Visual direction | Main interaction |
 | --- | --- | --- |
-| Moonbreak Reef | Moonlit sea, spray, jagged reef markers | Learn one-lens reflection and open the first gate. |
-| Glass Tide | Teal submerged glass spires | Push an ordinary wooden weight, then reflect a beam farther along the shore. |
-| Ash Orchard | Warm ash, dead branching trees, absent sun | Build a two-lens chain and cross a pulsing beam hazard. |
-| Hollow Observatory | Violet domes, old telescopes, cold glass | Use Grasp on a pale relic, then reflect light through the observatory. |
-| Black Lens | Amber-black arches and a giant dark lens | Combine Grasp, three captured reflections, and a machinery lever. |
+| Moonbreak Reef | Moonlit sea, spray, jagged reef markers | Learn one-lens reflection, then escape across three collapsing reef shelves. |
+| Glass Tide | Teal submerged glass spires | Cross moving tide platforms and capture a beam to freeze the water into glass. |
+| Ash Orchard | Warm ash, dead branching trees, absent sun | Grow branch bridges with reflected light; each new bridge causes the previous one to wither. |
+| Hollow Observatory | Violet domes, old telescopes, cold glass | Move the Shadow inside a rotating spotlight and anchor it safely when the beam passes. |
+| Black Lens | Amber-black arches and a giant dark lens | Evade a hostile reflection that repeats the Keeper's movement two seconds later, then strike it with three reflected beams. |
 
 The stages use the same 4096 × 900 coordinate system as the first two chapters. SVG art is generated from the platform coordinates, so visible ledges follow collision ledges. `scripts/generate_chapter_three_art.mjs` regenerates the chapter backgrounds.
 
