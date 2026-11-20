@@ -4,9 +4,20 @@ import { ensureFxTextures } from '../effects/textures.js';
 export class Cinematics {
   constructor(scene) { this.scene = scene; ensureFxTextures(scene); }
 
+  clearPulse() {
+    this.pulseTimer?.remove();
+    this.pulseTimer = null;
+    if (!this.pulseLayer) return;
+    for (const part of this.pulseParts) this.scene.tweens.killTweensOf(part);
+    this.pulseLayer.destroy(true);
+    this.pulseLayer = null;
+    this.pulseParts = null;
+  }
+
   // Title card: area names, abilities and story beats. Centred serif title,
   // an ornamental divider and one line of text, then it fades away.
   pulse(title, subtitle, color = 0xaee4e1, duration = 1900) {
+    this.clearPulse();
     const scene = this.scene;
     const w = scene.viewportWidth, h = scene.viewportHeight;
     const offset = fixedLayerOffset(w, h);
@@ -29,13 +40,20 @@ export class Cinematics {
       color: '#d3dcd8', align: 'center', wordWrap: { width: Math.min(w - 80, 760) },
     }).setOrigin(.5, 0).setShadow(0, 1, '#000000', 6, false, true);
     layer.add([shade, heading, ornament, line]);
+    this.pulseLayer = layer;
+    this.pulseParts = [layer, heading, ornament, line, shade];
     layer.setAlpha(0);
     ornament.setScale(0, 1);
     heading.y += 10;
     scene.tweens.add({ targets: layer, alpha: 1, duration: 500, ease: 'Sine.easeOut' });
     scene.tweens.add({ targets: heading, y: heading.y - 10, duration: 900, ease: 'Sine.easeOut' });
     scene.tweens.add({ targets: ornament, scaleX: 1, duration: 900, delay: 150, ease: 'Cubic.easeOut' });
-    scene.time.delayedCall(duration, () => scene.tweens.add({ targets: layer, alpha: 0, duration: 800, onComplete: () => layer.destroy(true) }));
+    this.pulseTimer = scene.time.delayedCall(duration, () => {
+      this.pulseTimer = null;
+      scene.tweens.add({ targets: layer, alpha: 0, duration: 800, onComplete: () => {
+        if (this.pulseLayer === layer) this.clearPulse();
+      } });
+    });
     sharpenText(scene);
   }
 
