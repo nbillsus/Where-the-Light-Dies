@@ -121,6 +121,11 @@ export class Lighting {
       const radius = size * 5.6 * flicker;
       lights.push({ x: player.x, y: player.y - size * .1, width: radius, height: radius * .86, color: this.theme.lantern ?? 0xffd9a0, strength: 1.05, bloom: .4, glowW: radius * .45, glowH: radius * .4 });
       lights.push({ x: player.x, y: player.y - size * .1, width: size * 2.4, height: size * 2.4, color: 0xfff0d4, strength: .55 * flicker, bloom: 0 });
+      // The lantern itself, at his hip: a steady warm glow (no flicker, so it
+      // never reads as flashing) plus a small bright core.
+      const hipX = player.x + (player.flipX ? -1 : 1) * size * .08, hipY = player.y + size * .05;
+      lights.push({ x: hipX, y: hipY, width: 0, height: 0, color: 0xffc977, strength: .85, bloom: 1, glowW: size * 2.6, glowH: size * 2.1 });
+      lights.push({ x: hipX, y: hipY, width: 0, height: 0, color: 0xffe9b8, strength: 1, bloom: 1, glowW: size * .75, glowH: size * .85 });
     }
     const shadow = scene.shadow;
     if (shadow?.detached && shadow.actor?.active) {
@@ -166,6 +171,7 @@ export class Lighting {
       tint: this.theme.rim, alpha: this.theme.sky ?? .2, blendMode: ADD, skipBatch: true,
     });
     for (const light of lights) {
+      if (!light.width) continue; // glow-only entries
       this.map.stamp('fx-light', null, (light.x - ox) * RES, (light.y - oy) * RES, {
         scaleX: light.width * RES / LIGHT_SIZE, scaleY: light.height * RES / LIGHT_SIZE,
         tint: light.color, alpha: Math.min(1, light.strength), blendMode: ADD, skipBatch: true,
