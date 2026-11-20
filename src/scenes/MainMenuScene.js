@@ -3,6 +3,7 @@ import lighthouseUrl from '../../assets/environment/menu_lighthouse.png?url';
 import { logicalSize, renderScale, sharpenText } from '../rendering.js';
 import { CHAPTER_STAGES } from '../levels/chapterData.js';
 import { getSlots, saveSlot } from '../saveSlots.js';
+import { installGameMusicUnlock } from '../audio/GameMusic.js';
 import { SETTING_ROWS, readSettings, writeSettings } from '../settings.js';
 
 const entries = ['New Game', 'Continue Game', 'Settings', 'Credits'];
@@ -18,6 +19,7 @@ export class MainMenuScene extends Phaser.Scene {
     this.settings = readSettings();
     this.selected = 0;
     this.panel = null;
+    this.removeMusicUnlock = installGameMusicUnlock(this, 0.42);
     this.renderMenu();
     this.scale.on('resize', this.renderMenu, this);
     this.input.keyboard.on('keydown-UP', this.up, this);
@@ -27,6 +29,8 @@ export class MainMenuScene extends Phaser.Scene {
     this.input.keyboard.on('keydown-ESC', this.closePanel, this);
     this.events.once('shutdown', () => {
       this.scale.off('resize', this.renderMenu, this);
+      this.removeMusicUnlock?.();
+      this.removeMusicUnlock = null;
       for (const [key, fn] of [['UP', this.up], ['DOWN', this.down], ['ENTER', this.activate], ['SPACE', this.activate], ['ESC', this.closePanel]])
         this.input.keyboard.off(`keydown-${key}`, fn, this);
     });
