@@ -7,14 +7,14 @@ import { Lighting } from './Lighting.js';
 import { Ledges } from './Ledges.js';
 import { fixedLayerOffset } from '../rendering.js';
 
-// Depth and mood for a level: fog banks, drifting particles, weather, a dark
-// foreground ink layer that scrolls faster than the camera, decorated ledges,
-// and a soft vignette. Owner: Lucas (graphics).
+// Depth and mood for a level: drifting particles, weather, a dark foreground
+// ink layer that scrolls faster than the camera, decorated ledges, lighting,
+// grain and a soft vignette. Owner: Lucas (graphics).
 //
 // Depth order used across the game:
-//   -14…-10 backdrop layers · -6 far fog · 1–3 ledge decoration · 2 boy · 3 cables
-//   5–7 puzzle objects · 9 ground fog · 10 particles · 20 foreground ink
-//   24 lightning · 25 rain · 28 key prompts · 30 HUD · 80 title cards
+//   -14…-10 backdrop layers · 1–3 ledge decoration · 2 boy · 3 cables
+//   5–7 puzzle objects · 10 particles · 19.5 light map · 20 foreground ink
+//   25 rain · 26 grain · 28 key prompts · 30 HUD · 80 title cards
 const FOREGROUND_PARALLAX = 1.35;
 
 export class Atmosphere {
@@ -27,9 +27,7 @@ export class Atmosphere {
     this.rand = seededRandom(scene.stage.id);
     ensureFxTextures(scene);
     drawArenaBackdrop(scene);
-    this.addFarFog();
     this.addLedges();
-    this.addGroundFog();
     this.addParticles();
     this.addForeground();
     const settings = readSettings();
@@ -42,32 +40,6 @@ export class Atmosphere {
 
   r(min, max) { return min + this.rand() * (max - min); }
   pick(list) { return list[Math.floor(this.rand() * list.length)]; }
-
-  fogPuff(x, y, w, h, alpha, depth, scroll) {
-    const puff = this.scene.add.image(x, y, 'fx-fog').setDisplaySize(w, h).setTint(this.theme.fog)
-      .setAlpha(alpha).setDepth(depth).setScrollFactor(scroll);
-    this.scene.tweens.add({
-      targets: puff, x: x + this.r(60, 160) * this.s, alpha: alpha * this.r(.6, 1),
-      duration: this.r(9000, 17000), yoyo: true, repeat: -1, ease: 'Sine.easeInOut',
-    });
-    return puff;
-  }
-
-  addFarFog() {
-    const { s, W, H } = this;
-    for (let x = -200 * s; x < W * .9 + 600 * s; x += this.r(380, 640) * s) {
-      this.fogPuff(x, this.r(.3, .78) * H, this.r(800, 1400) * s, this.r(220, 400) * s,
-        this.theme.fogAlpha * this.r(1, 1.8), -6, .85);
-    }
-  }
-
-  addGroundFog() {
-    const { s, W, H } = this;
-    for (let x = -200 * s; x < W + 400 * s; x += this.r(420, 620) * s) {
-      this.fogPuff(x, H * this.r(.93, 1), this.r(900, 1300) * s, this.r(170, 260) * s,
-        this.theme.fogAlpha * 2.2, 9, 1);
-    }
-  }
 
   // Ledge dressing lives in Ledges.js: material lips, shading, lit rims and
   // falling drips or dust.
@@ -219,7 +191,7 @@ export class Atmosphere {
   }
 
   // Rain falls around the camera only, so it stays cheap on long levels.
-  // Turn rain and lightning on or off (Settings > Rain effects).
+  // Turn rain on or off (Settings > Rain effects).
   setRain(on) {
     if (!this.rain) return;
     this.rainOn = on;
@@ -238,28 +210,11 @@ export class Atmosphere {
     }).setDepth(25);
     this.rain = rain;
     if (!on) { rain.stop(); rain.setVisible(false); }
-    // The light map reads this flash to light up the whole world.
-    const flash = this.scene.add.rectangle(0, 0, 10, 10, 0x9fb8d8, 0).setOrigin(0)
-      .setDepth(24).setBlendMode(Phaser.BlendModes.ADD);
-    this.lightning = flash;
     const onUpdate = () => {
       rain.setPosition(cam.worldView.x, cam.worldView.y - 40);
-      // A margin all round, so the flash still covers the view while the
-      // camera eases or shakes.
-      const pad = 120;
-      flash.setPosition(cam.worldView.x - pad, cam.worldView.y - pad).setSize(cam.worldView.width + pad * 2, cam.worldView.height + pad * 2);
     };
     this.scene.events.on('postupdate', onUpdate);
     this.scene.events.once('shutdown', () => this.scene.events.off('postupdate', onUpdate));
-    const strike = () => {
-      if (!this.rainOn) { this.scene.time.delayedCall(4000, strike); return; }
-      this.scene.tweens.chain({ targets: flash, tweens: [
-        { fillAlpha: .22, duration: 60 }, { fillAlpha: .02, duration: 90 },
-        { fillAlpha: .14, duration: 50 }, { fillAlpha: 0, duration: 600 },
-      ] });
-      this.scene.time.delayedCall(Phaser.Math.Between(6000, 13000), strike);
-    };
-    this.scene.time.delayedCall(Phaser.Math.Between(3000, 7000), strike);
   }
 
   // Film grain: fine speckle over the whole screen, re-shuffled every frame.

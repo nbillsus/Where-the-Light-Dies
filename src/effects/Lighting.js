@@ -35,12 +35,6 @@ const GLOW_SIZE = 128;   // fx-glow texture size
 const ADD = Phaser.BlendModes.ADD;
 const SHAPES = new Set(['Arc', 'Ellipse', 'Rectangle']);
 
-function mixColor(a, b, t) {
-  const ar = a >> 16 & 255, ag = a >> 8 & 255, ab = a & 255;
-  const br = b >> 16 & 255, bg = b >> 8 & 255, bb = b & 255;
-  return Math.round(ar + (br - ar) * t) << 16 | Math.round(ag + (bg - ag) * t) << 8 | Math.round(ab + (bb - ab) * t);
-}
-
 export class Lighting {
   constructor(scene, theme) {
     this.scene = scene;
@@ -141,10 +135,7 @@ export class Lighting {
   // --- Drawing ------------------------------------------------------------
 
   ambientColor() {
-    // Lightning briefly lights the whole world.
-    const base = this.theme.ambient ?? 0x34405a; // areas without their own ambient colour
-    const flash = this.scene.atmosphere?.lightning?.fillAlpha ?? 0;
-    return flash > 0 ? mixColor(base, 0xc6d6f2, Math.min(1, flash * 3.6)) : base;
+    return this.theme.ambient ?? 0x34405a; // areas without their own ambient colour
   }
 
   render() {
