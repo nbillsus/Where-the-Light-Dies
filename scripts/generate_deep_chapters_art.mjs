@@ -41,7 +41,9 @@ for (const [index, stage] of CHAPTER_STAGES.slice(15).entries()) {
     const a = i * Math.PI * 2 / 9, x = featureX + Math.cos(a) * 235, y = 280 + Math.sin(a) * 235;
     pieces.push(`<circle cx="${x.toFixed(0)}" cy="${y.toFixed(0)}" r="5" fill="${light}" opacity=".65"/>`);
   }
-  for (const [left, right, top] of stage.platforms) {
+  // Boss levels run on past the painted 4096 (the arena is drawn in code).
+  const artWidth = stage.artWidth ?? stage.width;
+  for (const [left, right, top] of stage.platforms.filter(([start]) => start < artWidth).map(([start, end, top]) => [start, Math.min(end, artWidth), top])) {
     pieces.push(`<path d="M${left} ${top} H${right} L${right-24} 900 H${left+20}Z" fill="url(#rock)" stroke="${light}" stroke-opacity=".45" stroke-width="5"/>`);
     for (let x = left + 45; x < right; x += 90) pieces.push(`<path d="M${x} ${top+12} l-12 94 18 -34" fill="none" stroke="${light}" stroke-opacity=".13" stroke-width="3"/>`);
   }

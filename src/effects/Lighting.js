@@ -1,5 +1,6 @@
 import Phaser from 'phaser';
 import { ensureFxTextures } from './textures.js';
+import { afterCameraMoves } from './cameraSync.js';
 
 // Real darkness for every level. Owner: Lucas (graphics).
 //
@@ -60,9 +61,8 @@ export class Lighting {
     this.lights = [];
     this.matrix = new Phaser.GameObjects.Components.TransformMatrix();
     this.parentMatrix = new Phaser.GameObjects.Components.TransformMatrix();
-    this.onPreRender = () => this.render();
-    scene.events.on('prerender', this.onPreRender);
-    scene.events.once('shutdown', () => scene.events.off('prerender', this.onPreRender));
+    // Paint the map in step with the camera, so it always covers the view.
+    afterCameraMoves(scene, () => this.render());
   }
 
   /** A short burst of light, e.g. a hit or an explosion. */
@@ -116,8 +116,8 @@ export class Lighting {
     const scene = this.scene, now = scene.time.now, size = scene.spriteHeight ?? 150;
     const player = scene.player;
     if (player?.active) {
-      // Two slow, unrelated sines make an uneven, flame-like flicker.
-      const flicker = .9 + Math.sin(now * .0071) * .05 + Math.sin(now * .0173 + 1.3) * .04;
+      // A slow, gentle sway in brightness (kept subtle: no flicker or flashing).
+      const flicker = .97 + Math.sin(now * .0021) * .02 + Math.sin(now * .0047 + 1.3) * .01;
       const radius = size * 5.6 * flicker;
       lights.push({ x: player.x, y: player.y - size * .1, width: radius, height: radius * .86, color: this.theme.lantern ?? 0xffd9a0, strength: 1.05, bloom: .4, glowW: radius * .45, glowH: radius * .4 });
       lights.push({ x: player.x, y: player.y - size * .1, width: size * 2.4, height: size * 2.4, color: 0xfff0d4, strength: .55 * flicker, bloom: 0 });

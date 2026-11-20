@@ -97,6 +97,9 @@ export const CHAPTER_STAGES = [
     id, title, phase, subtitle, chapter: 4, width: 4096, height: 900, shadow: true,
     grasp: [1, 3, 4].includes(index), reflection: true,
     platforms: [[0,760,735],[890,1400,690],[1530,2010,650],[2140,2620,700],[2750,3200,650],[3330,3740,625],[3870,4096,675]],
+    // The last area runs on into a boss arena (art beyond 4096 is drawn in code).
+    ...(index === 4 ? { width: 5900, artWidth: 4096, arena: { start: 4300, boss: 'carrier' },
+      platforms: [[0,760,735],[890,1400,690],[1530,2010,650],[2140,2620,700],[2750,3200,650],[3330,3740,625],[3870,5900,675]] } : {}),
   })),
   ...[
     ['last-shore', 'THE LAST SHORE', 'THE RETURN', 'The sea has learned to speak in your voice.'],
@@ -108,5 +111,8 @@ export const CHAPTER_STAGES = [
     id, title, phase, subtitle, chapter: 5, width: 4096, height: 900, shadow: true,
     grasp: true, reflection: true, finalTrial: index === 4,
     platforms: [[0,760,735],[890,1400,690],[1530,2010,650],[2140,2620,700],[2750,3200,650],[3330,3740,625],[3870,4096,675]],
+    // The final area runs on into the last boss arena.
+    ...(index === 4 ? { width: 5900, artWidth: 4096, arena: { start: 4300, boss: 'other-light' },
+      platforms: [[0,760,735],[890,1400,690],[1530,2010,650],[2140,2620,700],[2750,3200,650],[3330,3740,625],[3870,5900,675]] } : {}),
   })),
 ];

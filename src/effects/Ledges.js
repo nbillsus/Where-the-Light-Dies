@@ -1,5 +1,6 @@
 import Phaser from 'phaser';
 import { ensureFxTextures, seededRandom } from './textures.js';
+import { afterCameraMoves } from './cameraSync.js';
 
 // Dresses every platform so it looks like part of its place, not a flat
 // cut-out. Owner: Lucas (graphics).
@@ -51,9 +52,7 @@ export class Ledges {
     for (const platform of scene.platforms) this.dress(platform);
     this.addFallingBits();
     this.glow = scene.add.graphics().setDepth(19.57).setBlendMode(Phaser.BlendModes.ADD);
-    this.onPreRender = () => this.drawLanternRims();
-    scene.events.on('prerender', this.onPreRender);
-    scene.events.once('shutdown', () => scene.events.off('prerender', this.onPreRender));
+    afterCameraMoves(scene, () => this.drawLanternRims());
   }
 
   r(min, max) { return min + this.rand() * (max - min); }
