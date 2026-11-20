@@ -120,7 +120,7 @@ function platforms(stage, look) {
 const motifs = [reef, tide, orchard, observatory, blackLens];
 for (const [index, stage] of CHAPTER_STAGES.slice(10).entries()) {
   const look = looks[index];
-  const svg = `<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 4096 900" width="4096" height="900">
+  const defs = `
     <defs>
       <linearGradient id="sky" x2="0" y2="1"><stop stop-color="${look.sky}"/><stop offset=".66" stop-color="${look.horizon}"/><stop offset="1" stop-color="${look.sky}"/></linearGradient>
       <radialGradient id="moon"><stop stop-color="#fffef1"/><stop offset=".6" stop-color="#c9e2ed"/><stop offset="1" stop-color="#7ea8c2" stop-opacity=".2"/></radialGradient>
@@ -128,15 +128,23 @@ for (const [index, stage] of CHAPTER_STAGES.slice(10).entries()) {
       <linearGradient id="glass" x2="1" y2="1"><stop stop-color="${look.sky}"/><stop offset=".48" stop-color="${look.horizon}"/><stop offset="1" stop-color="${look.light}" stop-opacity=".35"/></linearGradient>
       <radialGradient id="lens"><stop stop-color="#e7c79a" stop-opacity=".85"/><stop offset=".45" stop-color="#664f66"/><stop offset=".78" stop-color="#222337"/><stop offset="1" stop-color="#090c16"/></radialGradient>
       <linearGradient id="fog" x2="0" y2="1"><stop stop-color="${look.mist}" stop-opacity="0"/><stop offset="1" stop-color="${look.mist}" stop-opacity=".38"/></linearGradient>
-    </defs>
-    <rect width="4096" height="900" fill="url(#sky)"/>
+    </defs>`;
+  // Four parallax layers (see src/effects/Parallax.js); the ground layer holds
+  // the platforms and must line up with their collision.
+  const layers = {
+    sky: `<rect width="4096" height="900" fill="url(#sky)"/>
     ${skyTexture(index, look)}
-    <path d="M0 550 Q900 450 1900 565 T4096 510 V900 H0Z" fill="url(#fog)"/>
-    ${distantCliffs(index, look)}
-    ${motifs[index](look)}
-    <path d="M0 730 Q1100 650 2200 730 T4096 700 V900 H0Z" fill="url(#fog)" opacity=".6"/>
+    <path d="M0 550 Q900 450 1900 565 T4096 510 V900 H0Z" fill="url(#fog)"/>`,
+    far: distantCliffs(index, look),
+    near: motifs[index](look),
+    ground: `<path d="M0 730 Q1100 650 2200 730 T4096 700 V900 H0Z" fill="url(#fog)" opacity=".6"/>
     ${platforms(stage, look)}
-    <text x="3890" y="92" text-anchor="end" font-family="Georgia,serif" font-size="25" letter-spacing="8" fill="${look.light}" opacity=".4">${look.name}</text>
-  </svg>`;
-  writeFileSync(new URL(`${stage.id}.svg`, out), svg);
+    <text x="3890" y="92" text-anchor="end" font-family="Georgia,serif" font-size="25" letter-spacing="8" fill="${look.light}" opacity=".4">${look.name}</text>`,
+  };
+  for (const [layer, content] of Object.entries(layers)) {
+    const name = layer === 'ground' ? stage.id : `${stage.id}-${layer}`;
+    writeFileSync(new URL(`${name}.svg`, out), `<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 4096 900" width="4096" height="900">${defs}
+    ${content}
+  </svg>`);
+  }
 }

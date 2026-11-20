@@ -148,11 +148,17 @@ export class Lighting {
     this.map.setPosition(ox, oy);
     const lights = this.collect();
 
-    // `fill` draws with whatever blend mode the renderer used last (ADD,
-    // after our own stamps), so reset it or the fill piles up frame by frame.
-    if (this.scene.renderer.setBlendMode) this.scene.renderer.setBlendMode(Phaser.BlendModes.NORMAL);
-    this.map.fill(this.ambientColor(), 1);
+    // Everything is painted in one batch, starting with a solid ambient base.
+    // (Phaser's ADD blend also scales what is underneath by its alpha, so
+    // lights added onto a transparent texture leave square seams where they
+    // overlap. On a solid base they add up cleanly.)
+    const white = this.scene.textures.getFrame('__WHITE');
+    this.map.clear();
     this.map.beginDraw();
+    this.map.stamp('__WHITE', null, 0, 0, {
+      originX: 0, originY: 0, scaleX: this.map.width / white.width, scaleY: this.map.height / white.height,
+      tint: this.ambientColor(), alpha: 1, blendMode: Phaser.BlendModes.NORMAL, skipBatch: true,
+    });
     // Moonlight from above: the sky and far background stay faintly visible,
     // which keeps the depth of the painted backdrop.
     this.map.stamp('fx-vfade', null, 0, 0, {
@@ -165,6 +171,9 @@ export class Lighting {
         tint: light.color, alpha: Math.min(1, light.strength), blendMode: ADD, skipBatch: true,
       });
     }
+    // The finished batch is copied onto the (cleared) texture with the
+    // renderer's current blend mode; make that a plain copy.
+    this.scene.renderer.setBlendMode?.(Phaser.BlendModes.NORMAL);
     this.map.endDraw();
 
     let used = 0;

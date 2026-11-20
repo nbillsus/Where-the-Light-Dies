@@ -26,7 +26,6 @@ function detail(theme, index) {
     if (theme.motif === 'glass') result += `<path d="M${x - 78} ${height - 35} l130 -25 43 275 -153 40Z" fill="url(#glass)" stroke="#d18091" stroke-width="5" opacity=".58"/>`;
     if (theme.motif === 'arches') result += `<path d="M${x - 34} ${height + 40} v220 m68 -220 v220" stroke="#f07969" stroke-width="7" opacity=".25"/><circle cx="${x}" cy="${height + 95}" r="27" fill="#a9233b" opacity=".5"/>`;
   }
-  if (index === 4) result += `<circle cx="3650" cy="420" r="240" fill="url(#core)"/><circle cx="3650" cy="420" r="175" fill="none" stroke="#ffb080" stroke-width="22" opacity=".56"/><circle cx="3650" cy="420" r="95" fill="#a71335" stroke="#ffd49b" stroke-width="9" opacity=".72"/>`;
   return result;
 }
 
@@ -35,6 +34,11 @@ function platformShapes(stage, theme) {
     <path d="M${start} ${top} H${end}" stroke="${theme.edge}" stroke-width="9" opacity=".75"/>
     <path d="M${start} ${top + 14} H${end}" stroke="${theme.glow}" stroke-width="2" opacity=".42"/>
     ${Array.from({ length: Math.floor((end - start) / 75) }, (_, n) => `<path d="M${start + 35 + n * 75} ${top + 18} v${40 + (n % 3) * 20}" stroke="${theme.edge}" stroke-width="3" opacity=".45"/>`).join('')}`).join('');
+}
+
+function heartCore(index) {
+  if (index !== 4) return '';
+  return `<circle cx="3650" cy="420" r="240" fill="url(#core)"/><circle cx="3650" cy="420" r="175" fill="none" stroke="#ffb080" stroke-width="22" opacity=".56"/><circle cx="3650" cy="420" r="95" fill="#a71335" stroke="#ffd49b" stroke-width="9" opacity=".72"/>`;
 }
 
 function landmark(index) {
@@ -56,27 +60,40 @@ function landmark(index) {
 
 for (const [index, stage] of CHAPTER_STAGES.slice(5, 10).entries()) {
   const theme = themes[index];
-  const svg = `<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 4096 900" width="4096" height="900">
-  <defs>
+  // Boss levels run on past the painted 4096 (the arena is drawn in code), so
+  // the art only covers the first 4096 and its ledges are clipped there.
+  const artWidth = stage.artWidth ?? stage.width;
+  const artStage = { ...stage, platforms: stage.platforms.filter(([start]) => start < artWidth).map(([start, end, top]) => [start, Math.min(end, artWidth), top]) };
+  const defs = `<defs>
     <radialGradient id="haze"><stop stop-color="${theme.haze}" stop-opacity=".65"/><stop offset="1" stop-color="${theme.haze}" stop-opacity="0"/></radialGradient>
     <radialGradient id="core"><stop stop-color="#ffca95" stop-opacity=".7"/><stop offset=".35" stop-color="#a81036" stop-opacity=".5"/><stop offset="1" stop-color="#a81036" stop-opacity="0"/></radialGradient>
     <linearGradient id="glass"><stop stop-color="#e77d9a" stop-opacity=".13"/><stop offset=".5" stop-color="#f4baba" stop-opacity=".4"/><stop offset="1" stop-color="#4a2b5e" stop-opacity=".12"/></linearGradient>
     <radialGradient id="lens"><stop stop-color="#ed4358" stop-opacity=".58"/><stop offset="1" stop-color="#431c32" stop-opacity=".1"/></radialGradient>
     <pattern id="grain" width="89" height="71" patternUnits="userSpaceOnUse"><circle cx="12" cy="15" r="1.2" fill="#ffd4bf" opacity=".16"/><circle cx="68" cy="47" r="1.8" fill="#ffd4bf" opacity=".11"/></pattern>
-  </defs>
-  <rect width="4096" height="900" fill="${theme.sky}"/>
+  </defs>`;
+  // Four parallax layers (see src/effects/Parallax.js). Landmarks stay in the
+  // ground layer so they are always seen where they were placed.
+  const layers = {
+    sky: `<rect width="4096" height="900" fill="${theme.sky}"/>
   <path d="M0 0 H4096 V400 Q3500 270 3000 390 T2000 350 T900 400 T0 300Z" fill="#090a12" opacity=".95"/>
   <ellipse cx="850" cy="480" rx="950" ry="510" fill="url(#haze)"/>
-  <ellipse cx="2700" cy="370" rx="950" ry="490" fill="url(#haze)"/>
-  <path d="M0 570 Q500 460 950 585 T1900 520 T2900 590 T4096 510 V900 H0Z" fill="${theme.stone}" opacity=".48"/>
-  <path d="M0 660 Q470 590 980 690 T1900 630 T3000 680 T4096 610 V900 H0Z" fill="#11111c" opacity=".58"/>
-  ${detail(theme, index)}
-  ${landmark(index)}
+  <ellipse cx="2700" cy="370" rx="950" ry="490" fill="url(#haze)"/>`,
+    far: `<path d="M0 570 Q500 460 950 585 T1900 520 T2900 590 T4096 510 V900 H0Z" fill="${theme.stone}" opacity=".48"/>
+  <path d="M0 660 Q470 590 980 690 T1900 630 T3000 680 T4096 610 V900 H0Z" fill="#11111c" opacity=".58"/>`,
+    near: `${detail(theme, index)}
   <g stroke="${theme.glow}" stroke-width="3" opacity=".4"><path d="M0 190 H4096 M0 206 H4096"/><path d="M0 240 H4096" stroke-dasharray="18 30"/></g>
-  <g fill="${theme.glow}" opacity=".23">${Array.from({ length: 35 }, (_, i) => `<circle cx="${(i * 233 + index * 91) % 4096}" cy="${100 + i * 79 % 480}" r="${2 + i % 4}"/>`).join('')}</g>
-  ${platformShapes(stage, theme)}
+  <g fill="${theme.glow}" opacity=".23">${Array.from({ length: 35 }, (_, i) => `<circle cx="${(i * 233 + index * 91) % 4096}" cy="${100 + i * 79 % 480}" r="${2 + i % 4}"/>`).join('')}</g>`,
+    ground: `${heartCore(index)}
+  ${landmark(index)}
+  ${platformShapes(artStage, theme)}
   <rect width="4096" height="900" fill="url(#grain)"/>
-  <text x="3900" y="95" text-anchor="end" font-family="Georgia, serif" font-size="23" letter-spacing="8" fill="${theme.edge}" opacity=".34">${theme.name.toUpperCase()}</text>
-</svg>`;
-  writeFileSync(new URL(`${stage.id}.svg`, out), svg);
+  <text x="3900" y="95" text-anchor="end" font-family="Georgia, serif" font-size="23" letter-spacing="8" fill="${theme.edge}" opacity=".34">${theme.name.toUpperCase()}</text>`,
+  };
+  for (const [layer, content] of Object.entries(layers)) {
+    const name = layer === 'ground' ? stage.id : `${stage.id}-${layer}`;
+    writeFileSync(new URL(`${name}.svg`, out), `<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 4096 900" width="4096" height="900">
+  ${defs}
+  ${content}
+</svg>`);
+  }
 }

@@ -1,19 +1,4 @@
 import Phaser from 'phaser';
-import coastUrl from '../../assets/environment/parkour/storm-coast.svg?url';
-import facilityUrl from '../../assets/environment/parkour/abandoned-facility.svg?url';
-import thornwoodUrl from '../../assets/environment/parkour/thornwood.svg?url';
-import cavernUrl from '../../assets/environment/parkour/drowned-cavern.svg?url';
-import vaultUrl from '../../assets/environment/parkour/lantern-vault.svg?url';
-import descentUrl from '../../assets/environment/chapter-two/red-descent.svg?url';
-import worksUrl from '../../assets/environment/chapter-two/ossuary-works.svg?url';
-import arrayUrl from '../../assets/environment/chapter-two/crimson-array.svg?url';
-import chamberUrl from '../../assets/environment/chapter-two/bloodglass-chamber.svg?url';
-import heartUrl from '../../assets/environment/chapter-two/heart-of-works.svg?url';
-import reefUrl from '../../assets/environment/chapter-three/moonbreak-reef.svg?url';
-import tideUrl from '../../assets/environment/chapter-three/glass-tide.svg?url';
-import orchardUrl from '../../assets/environment/chapter-three/ash-orchard.svg?url';
-import observatoryUrl from '../../assets/environment/chapter-three/hollow-observatory.svg?url';
-import lensUrl from '../../assets/environment/chapter-three/black-lens.svg?url';
 import boyUpperUrl from '../../assets/characters/boy_upper.png?url';
 import { BoyAnimator } from '../animation/BoyAnimator.js';
 import { CHAPTER_STAGES } from '../levels/chapterData.js';
@@ -24,6 +9,7 @@ import { ChapterThreeMechanics } from '../gameplay/ChapterThreeMechanics.js';
 import { Cinematics } from '../gameplay/Cinematics.js';
 import { HorrorPresentation } from '../gameplay/HorrorPresentation.js';
 import { Atmosphere } from '../effects/Atmosphere.js';
+import { createParallax, preloadParallax } from '../effects/Parallax.js';
 import { Hud } from '../ui/Hud.js';
 import { KeyPrompt } from '../ui/KeyPrompt.js';
 import { SETTING_ROWS, readSettings, writeSettings } from '../settings.js';
@@ -33,8 +19,6 @@ import { BossArena } from '../enemies/bosses/BossArena.js';
 import { fixedLayerOffset, logicalSize, renderScale, sharpenText } from '../rendering.js';
 import { saveSlot } from '../saveSlots.js';
 
-const ART_URLS = [coastUrl, facilityUrl, thornwoodUrl, cavernUrl, vaultUrl, descentUrl, worksUrl, arrayUrl, chamberUrl, heartUrl,
-  reefUrl, tideUrl, orchardUrl, observatoryUrl, lensUrl];
 const RUN_SPEED = 320;
 const JUMP_SPEED = -525;
 
@@ -49,8 +33,7 @@ export class ChapterScene extends Phaser.Scene {
 
   preload() {
     const stage = CHAPTER_STAGES[this.levelIndex];
-    this.backdropKey = `chapter-${stage.id}`;
-    if (!this.textures.exists(this.backdropKey)) this.load.svg(this.backdropKey, ART_URLS[this.levelIndex]);
+    preloadParallax(this, stage);
     if (!this.textures.exists('boy-upper')) this.load.image('boy-upper', boyUpperUrl);
   }
 
@@ -62,10 +45,10 @@ export class ChapterScene extends Phaser.Scene {
     this.artScale = h / this.stage.height;
     this.worldWidth = this.stage.width * this.artScale;
     this.cameras.main.setZoom(renderScale).setBounds(0, 0, this.worldWidth, h);
-    // The painted backdrop covers the original 4096-wide area; boss arenas
-    // beyond it are drawn in code (src/effects/ArenaBackdrop.js).
-    const artWidth = (this.stage.artWidth ?? this.stage.width) * this.artScale;
-    this.add.image(artWidth / 2, h / 2, this.backdropKey).setDisplaySize(artWidth, h).setDepth(-10);
+    // The painted backdrop, in parallax layers. It covers the original
+    // 4096-wide area; boss arenas beyond it are drawn in code
+    // (src/effects/ArenaBackdrop.js).
+    createParallax(this);
 
     this.platforms = this.stage.platforms.map(([start, end, top]) => {
       const left = start * this.artScale;

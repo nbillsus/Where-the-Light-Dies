@@ -162,6 +162,21 @@ export class Atmosphere {
       for (let x = this.r(0, 300) * s; x < end; x += this.r(380, 900) * s) this.topShape(g, this.pick(theme.top), x);
     }
     this.foreground = g;
+    this.addNearVeils();
+  }
+
+  // Big, soft, near-black shapes right in front of the camera. They sweep
+  // past faster than anything else, which gives the closest layer of depth.
+  addNearVeils() {
+    const { s, W, H, theme } = this;
+    const scroll = 1.75;
+    const end = W * scroll + 600 * s;
+    for (let x = this.r(200, 600) * s; x < end; x += this.r(900, 1500) * s) {
+      const top = this.rand() < .3;
+      const w = this.r(520, 900) * s, h = this.r(260, 420) * s;
+      this.scene.add.image(x, top ? -h * .12 : H + h * .12, 'fx-fog').setDisplaySize(w, h)
+        .setTint(theme.ink).setAlpha(this.r(.75, .95)).setDepth(21).setScrollFactor(scroll, 1);
+    }
   }
 
   bottomShape(g, kind, x) {
