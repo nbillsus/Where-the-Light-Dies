@@ -1,0 +1,48 @@
+// Per-area look: ink colour, rim light, fog, particles and decoration sets.
+// Owner: Lucas (graphics). Colours follow the PRD: warm amber means safety
+// and interaction, cold slate-blue is the storm, near-black is threat.
+
+const CHAPTER_ONE = {
+  'storm-coast': {
+    ink: 0x040a14, rim: 0x9fd4e6, drip: 0x7fb6cc, fog: 0x8fb2d6, fogAlpha: .16,
+    motes: { kind: 'spray', color: 0xcfe6f2 }, weather: 'rain',
+    hang: 'moss', bottom: ['grass', 'rocks'], top: [],
+    accent: 0xf6c874, saturate: -.12,
+  },
+  'abandoned-facility': {
+    ink: 0x030d0e, rim: 0x8fd0c8, drip: 0x9a6a3c, fog: 0x7fb3ad, fogAlpha: .13,
+    motes: { kind: 'dust', color: 0xd8e6dc }, weather: null,
+    hang: 'rust', bottom: ['rubble', 'grass'], top: ['pipes', 'cables'],
+    accent: 0xf6c874, saturate: -.18,
+  },
+  thornwood: {
+    ink: 0x0a0510, rim: 0xc6b0e6, drip: 0x7d6a94, fog: 0x9d86c4, fogAlpha: .15,
+    motes: { kind: 'spores', color: 0xd9c8ff }, weather: null,
+    hang: 'roots', bottom: ['thorns', 'grass'], top: ['branches'],
+    accent: 0xc9b2ff, saturate: -.1,
+  },
+  'drowned-cavern': {
+    ink: 0x020c0e, rim: 0x9de3dc, drip: 0x8fe0d8, fog: 0x77c4bf, fogAlpha: .14,
+    motes: { kind: 'drips', color: 0xb8f2ec }, weather: null,
+    hang: 'moss', bottom: ['rocks', 'grass'], top: ['stalactites', 'roots'],
+    accent: 0x9ce6e0, saturate: -.1,
+  },
+  'lantern-vault': {
+    ink: 0x0d0804, rim: 0xf0cf96, drip: 0xb98a52, fog: 0xd9b07a, fogAlpha: .12,
+    motes: { kind: 'embers', color: 0xffc77a }, weather: null,
+    hang: 'roots', bottom: ['rubble', 'candles'], top: ['chains', 'stalactites'],
+    accent: 0xf6c874, saturate: -.08,
+  },
+};
+
+const CHAPTER_TWO = {
+  ink: 0x0c0306, rim: 0xe8a39a, drip: 0xb8343a, fog: 0xa83a44, fogAlpha: .12,
+  motes: { kind: 'ash', color: 0xff9a7c }, weather: null,
+  hang: 'rust', bottom: ['spikes', 'rubble'], top: ['ribs', 'chains'],
+  accent: 0xffc984, danger: 0xf36a65, saturate: -.15,
+};
+
+export function themeFor(stage) {
+  if (stage.chapter === 2) return { ...CHAPTER_TWO };
+  return { ...(CHAPTER_ONE[stage.id] ?? CHAPTER_ONE['storm-coast']) };
+}

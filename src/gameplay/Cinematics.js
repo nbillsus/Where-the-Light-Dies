@@ -1,31 +1,41 @@
 import { fixedLayerOffset, sharpenText } from '../rendering.js';
+import { ensureFxTextures } from '../effects/textures.js';
 
 export class Cinematics {
-  constructor(scene) { this.scene = scene; }
+  constructor(scene) { this.scene = scene; ensureFxTextures(scene); }
 
+  // Title card: area names, abilities and story beats. Centred serif title,
+  // an ornamental divider and one line of text, then it fades away.
   pulse(title, subtitle, color = 0xaee4e1, duration = 1900) {
     const scene = this.scene;
     const w = scene.viewportWidth, h = scene.viewportHeight;
     const offset = fixedLayerOffset(w, h);
     const layer = scene.add.container(offset.x, offset.y).setScrollFactor(0).setDepth(80);
-    const veil = scene.add.rectangle(w / 2, h / 2, w, h, 0x030812, .62);
-    const beam = scene.add.graphics();
-    beam.fillStyle(color, .11).fillTriangle(w * .1, h, w * .49, h * .46, w * .9, h);
-    beam.lineStyle(2, color, .55).strokeCircle(w / 2, h * .48, 80);
-    beam.lineStyle(1, color, .32).strokeCircle(w / 2, h * .48, 110);
-    const heading = scene.add.text(w / 2, h * .43, title, {
-      fontFamily: 'Georgia, serif', fontSize: `${Math.round(Math.max(24, Math.min(42, w * .034)))}px`,
-      color: '#f7eed9', align: 'center', wordWrap: { width: w - 60 },
-    }).setOrigin(.5);
-    const line = scene.add.text(w / 2, h * .57, subtitle, {
-      fontFamily: 'Arial, sans-serif', fontSize: `${Math.round(Math.max(13, Math.min(17, w * .015)))}px`,
-      color: '#c8e0dd', align: 'center', wordWrap: { width: w - 70 },
-    }).setOrigin(.5);
-    layer.add([veil, beam, heading, line]);
+    const cy = h * .36;
+    const shade = scene.add.image(w / 2, cy + 14, 'fx-glow').setTint(0x000000).setAlpha(.6)
+      .setDisplaySize(Math.min(w * .9, 980), 230);
+    const heading = scene.add.text(w / 2, cy - 14, title, {
+      fontFamily: 'Georgia, serif', fontSize: `${Math.round(Math.max(26, Math.min(48, w * .038)))}px`,
+      color: '#f4ead6', align: 'center', letterSpacing: 7, wordWrap: { width: w - 60 },
+    }).setOrigin(.5).setShadow(0, 2, '#000000', 8, false, true);
+    const span = Math.min(w * .2, 230);
+    const ornament = scene.add.graphics().setPosition(w / 2, cy + 26);
+    ornament.fillStyle(color, .85)
+      .fillTriangle(-14, 0, -span, -1.2, -span, 1.2).fillTriangle(14, 0, span, -1.2, span, 1.2)
+      .fillPoints([{ x: 0, y: -7 }, { x: 7, y: 0 }, { x: 0, y: 7 }, { x: -7, y: 0 }], true);
+    ornament.lineStyle(1.5, color, .8).strokeCircle(-span - 5, 0, 4).strokeCircle(span + 5, 0, 4);
+    const line = scene.add.text(w / 2, cy + 54, subtitle, {
+      fontFamily: 'Georgia, serif', fontStyle: 'italic', fontSize: `${Math.round(Math.max(14, Math.min(19, w * .016)))}px`,
+      color: '#d3dcd8', align: 'center', wordWrap: { width: Math.min(w - 80, 760) },
+    }).setOrigin(.5, 0).setShadow(0, 1, '#000000', 6, false, true);
+    layer.add([shade, heading, ornament, line]);
     layer.setAlpha(0);
-    scene.tweens.add({ targets: layer, alpha: 1, duration: 230, ease: 'Sine.easeOut' });
-    scene.tweens.add({ targets: beam, angle: 15, scale: 1.12, duration, ease: 'Sine.easeInOut' });
-    scene.time.delayedCall(duration, () => scene.tweens.add({ targets: layer, alpha: 0, duration: 480, onComplete: () => layer.destroy(true) }));
+    ornament.setScale(0, 1);
+    heading.y += 10;
+    scene.tweens.add({ targets: layer, alpha: 1, duration: 500, ease: 'Sine.easeOut' });
+    scene.tweens.add({ targets: heading, y: heading.y - 10, duration: 900, ease: 'Sine.easeOut' });
+    scene.tweens.add({ targets: ornament, scaleX: 1, duration: 900, delay: 150, ease: 'Cubic.easeOut' });
+    scene.time.delayedCall(duration, () => scene.tweens.add({ targets: layer, alpha: 0, duration: 800, onComplete: () => layer.destroy(true) }));
     sharpenText(scene);
   }
 
