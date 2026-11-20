@@ -3,6 +3,7 @@ import lighthouseUrl from '../../assets/environment/menu_lighthouse.png?url';
 import { logicalSize, renderScale, sharpenText } from '../rendering.js';
 import { CHAPTER_STAGES } from '../levels/chapterData.js';
 import { getSlots, saveSlot } from '../saveSlots.js';
+import { SETTING_ROWS, readSettings, writeSettings } from '../settings.js';
 
 const entries = ['New Game', 'Continue Game', 'Settings', 'Credits'];
 const gold = 0xd8af69;
@@ -14,8 +15,7 @@ export class MainMenuScene extends Phaser.Scene {
   preload() { this.load.image('menu-lighthouse', lighthouseUrl); }
 
   create() {
-    try { this.settings = { rain: true, shake: true, ...JSON.parse(localStorage.getItem('wtld-settings') || '{}') }; }
-    catch { this.settings = { rain: true, shake: true }; }
+    this.settings = readSettings();
     this.selected = 0;
     this.panel = null;
     this.renderMenu();
@@ -172,14 +172,14 @@ export class MainMenuScene extends Phaser.Scene {
     this.panel.add(this.add.text(w / 2 + pw / 2 - 26 * s, h / 2 - ph / 2 + 25 * s, '✕', { fontSize: `${Math.round(22 * s)}px`, color: ivory }).setOrigin(1, 0).setInteractive({ useHandCursor: true }).on('pointerup', () => this.closePanel()));
     const style = { fontFamily: 'Arial, sans-serif', fontSize: `${Math.round(17 * s)}px`, color: '#d8e1dc', lineSpacing: 12 };
     if (name === 'Settings') {
-      for (const [i, key, label] of [[0, 'rain', 'Rain effects'], [1, 'shake', 'Screen shake']]) {
-        const line = this.add.text(x, y + i * 62 * s, '', style).setInteractive({ useHandCursor: true });
+      SETTING_ROWS.forEach(([key, label], i) => {
+        const line = this.add.text(x, y + i * 46 * s, '', style).setInteractive({ useHandCursor: true });
         const refresh = () => line.setText(`${label}     ${this.settings[key] ? 'ON' : 'OFF'}`);
         refresh();
-        line.on('pointerup', () => { this.settings[key] = !this.settings[key]; localStorage.setItem('wtld-settings', JSON.stringify(this.settings)); refresh(); });
+        line.on('pointerup', () => { this.settings[key] = !this.settings[key]; writeSettings(this.settings); refresh(); });
         this.panel.add(line);
-      }
-      this.panel.add(this.add.text(x, y + 150 * s, 'Settings are saved in this browser.', { ...style, color: '#9eafb0' }));
+      });
+      this.panel.add(this.add.text(x, y + 196 * s, 'Settings are saved in this browser.', { ...style, color: '#9eafb0' }));
     } else this.panel.add(this.add.text(x, y, 'WHERE THE LIGHT DIES\n\nA three-person game project\nLucas  ·  Neel  ·  Axel\n\nPrototype in progress.', style));
     this.panel.add(this.add.text(w / 2, h / 2 + ph / 2 - 31 * s, 'ESC TO CLOSE', { fontFamily: 'Arial, sans-serif', fontSize: `${Math.round(11 * s)}px`, color: '#9eafb0', letterSpacing: 2 }).setOrigin(0.5));
     sharpenText(this);

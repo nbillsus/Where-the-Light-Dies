@@ -20,7 +20,7 @@ import { HorrorPresentation } from '../gameplay/HorrorPresentation.js';
 import { Atmosphere } from '../effects/Atmosphere.js';
 import { Hud } from '../ui/Hud.js';
 import { KeyPrompt } from '../ui/KeyPrompt.js';
-import { readSettings } from '../settings.js';
+import { SETTING_ROWS, readSettings, writeSettings } from '../settings.js';
 import { Combat } from '../combat/Combat.js';
 import { EnemyDirector } from '../enemies/EnemyDirector.js';
 import { BossArena } from '../enemies/bosses/BossArena.js';
@@ -224,7 +224,7 @@ export class ChapterScene extends Phaser.Scene {
     if (Math.abs(x - midX) > Math.min(270, (this.viewportWidth - 32) / 2)) return;
     if (this.pauseSettings) {
       if (Math.abs(y - (midY + 140)) < 30) { this.pauseSettings.destroy(true); this.pauseSettings = null; return; }
-      const index = [midY - 50, midY + 24].findIndex(rowY => Math.abs(y - rowY) < 30);
+      const index = SETTING_ROWS.findIndex((row, i) => Math.abs(y - (midY - 98 + i * 54)) < 26);
       if (index >= 0) this.pauseSettingToggles[index]();
       return;
     }
@@ -253,20 +253,23 @@ export class ChapterScene extends Phaser.Scene {
       fontFamily: 'Georgia, serif', fontSize: '30px', color: '#f5eddb',
     }).setOrigin(.5));
     this.pauseSettingToggles = [];
-    for (const [index, key, label] of [[0, 'rain', 'Rain effects'], [1, 'shake', 'Screen shake']]) {
-      const row = this.add.text(w / 2, h / 2 - 50 + index * 74, '', {
+    SETTING_ROWS.forEach(([key, label], index) => {
+      const row = this.add.text(w / 2, h / 2 - 98 + index * 54, '', {
         fontFamily: 'Arial, sans-serif', fontSize: '19px', color: '#d8e1dc',
       }).setOrigin(.5);
       const refresh = () => row.setText(`${label}     ${settings[key] ? 'ON' : 'OFF'}`);
       refresh();
       this.pauseSettingToggles[index] = () => {
         settings[key] = !settings[key];
-        localStorage.setItem('wtld-settings', JSON.stringify(settings));
+        writeSettings(settings);
         if (key === 'rain') this.atmosphere.setRain(settings.rain);
         refresh();
       };
       this.pauseSettings.add(row);
-    }
+    });
+    this.pauseSettings.add(this.add.text(w / 2, h / 2 + 108, 'Lighting and grain changes apply when the level restarts.', {
+      fontFamily: 'Arial, sans-serif', fontSize: '12px', color: '#9eafb0',
+    }).setOrigin(.5));
     this.pauseSettings.add(this.add.text(w / 2, h / 2 + 140, 'BACK', { fontFamily: 'Georgia, serif', fontSize: '21px', color: '#f5d499' })
       .setOrigin(.5));
   }

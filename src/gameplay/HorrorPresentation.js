@@ -189,7 +189,9 @@ export class HorrorPresentation {
     const h = scene.viewportHeight;
     ensureFxTextures(scene);
     // Lighter than before: these stack with the atmosphere's fog and vignette.
-    this.moonDimmer = scene.add.rectangle(scene.worldWidth / 2, h / 2, scene.worldWidth, h, 0x020713, 0.5)
+    // With dynamic lighting on, the light map does most of the darkening.
+    const dim = scene.atmosphere?.lighting ? 0.28 : 0.5;
+    this.moonDimmer = scene.add.rectangle(scene.worldWidth / 2, h / 2, scene.worldWidth, h, 0x020713, dim)
       .setDepth(-8);
     this.deepFog = scene.add.rectangle(scene.worldWidth / 2, h / 2, scene.worldWidth, h, 0x02050a, 0.14)
       .setDepth(1);
