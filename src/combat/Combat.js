@@ -209,7 +209,6 @@ export class Combat {
     scene.cameras.main.once(Phaser.Cameras.Scene2D.Events.FADE_OUT_COMPLETE, () => {
       scene.respawn();
       scene.enemies?.reset();
-      scene.arena?.afterDeath();
       this.health = TUNING.maxHealth;
       this.invulnerableUntil = scene.time.now + 1200;
       this.dying = false;

@@ -104,6 +104,7 @@ export class ChapterScene extends Phaser.Scene {
     this.paused = false;
     this.dead = false;
     this.respawning = false;
+    this.respawnAtBoss = false;
     this.deathPanel = null;
     this.pausePanel = null;
     this.pauseSelection = 0;
@@ -350,6 +351,9 @@ export class ChapterScene extends Phaser.Scene {
 
   respawn() {
     if (this.dead) return;
+    // Remember whether the death happened during a boss fight so the eventual
+    // respawn uses the arena entrance rather than the start of the stage.
+    this.respawnAtBoss = this.arena?.state === 'fighting';
     this.showDeathScreen();
   }
 
@@ -431,18 +435,28 @@ export class ChapterScene extends Phaser.Scene {
     this.deathRespawnArea = null;
     this.dead = false;
     this.respawning = true;
-    this.checkpoint = 0;
-    this.placePlayerOnPlatform(0, 145 * this.artScale);
+    if (this.respawnAtBoss) {
+      this.arena?.afterDeath();
+    } else {
+      this.checkpoint = 0;
+      this.placePlayerOnPlatform(0, 145 * this.artScale);
+    }
     if (this.shadow?.detached) this.shadow.toggleDetach();
+    // The physics sprite is intentionally always hidden by BoyAnimator. The
+    // respawn effect must hide the animated visual instead; showing the sprite
+    // here creates a second boy directly behind the animated one.
     this.player.setVisible(false).setVelocity(0, 0).setAcceleration(0, 0);
+    this.animator.visual.setVisible(false);
     this.jumpQueued = -1000;
     this.lastGrounded = this.time.now;
     this.followActor(this.player);
     this.cameras.main.centerOn(this.player.x, this.player.y);
     this.playRespawnLightning(() => {
-      this.player.setVisible(true);
+      this.player.setVisible(false);
+      this.animator.visual.setVisible(true);
       this.physics.world.resume();
       this.respawning = false;
+      this.respawnAtBoss = false;
       this.cameras.main.flash(260, 244, 226, 210);
       this.cameras.main.shake(170, 0.006);
     });
