@@ -13,10 +13,10 @@ import { sfx } from '../../combat/sfx.js';
 // - Below half health: faster, rolls dark WAVES along the floor (1, jump or
 //   dodge), and calls Skitterers.
 const T = {
-  health: 26,
-  walk: 55, slamTelegraph: 820, slamTelegraph2: 600, stuck: 1500, stuck2: 1150,
+  health: 22,
+  walk: 55, slamTelegraph: 820, slamTelegraph2: 700, stuck: 1650, stuck2: 1350,
   sweepTelegraph: 560, sweepTime: 320, waveSpeed: 400,
-  restBetween: 1300, restBetween2: 850, flareStun: 1800, flareImmunity: 7000,
+  restBetween: 1400, restBetween2: 1050, flareStun: 2000, flareImmunity: 6500,
 };
 
 export class TheHollow extends Boss {
