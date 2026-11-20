@@ -29,8 +29,6 @@ const mix = (a, b, t) => a + (b - a) * t;
 // The lantern-blade: a slim sword whose edge carries the lantern's light.
 function buildSword(scene) {
   const sword = scene.add.container(0, 0);
-  const glow = scene.add.image(130, 0, 'fx-glow').setTint(0xffc977).setBlendMode(Phaser.BlendModes.ADD)
-    .setDisplaySize(330, 70).setAlpha(.18);
   const g = scene.add.graphics();
   const blade = [{ x: 8, y: -13 }, { x: 228, y: -8 }, { x: 262, y: 0 }, { x: 228, y: 8 }, { x: 8, y: 13 }];
   g.fillStyle(0x2a1d14, 1).fillRect(-40, -8, 40, 16);                       // grip
@@ -41,8 +39,7 @@ function buildSword(scene) {
   g.lineStyle(4, 0x05070d, 1).strokePoints(blade, true);
   g.lineStyle(4, 0xffd38a, .9).lineBetween(18, -3, 236, -2);               // lit edge
   g.fillStyle(0x05070d, 1).fillCircle(-18, 0, 19);                         // fist
-  sword.add([glow, g]);
-  sword.glow = glow;
+  sword.add(g);
   return sword;
 }
 
@@ -142,7 +139,6 @@ export class BoyAnimator {
         handY = mix(handY, 236 + bob, attackWeight);
       }
       this.sword.setPosition(handX - PIVOT_X, handY - PIVOT_Y).setAngle(angle);
-      this.sword.glow.setAlpha(attackT < 1.2 ? .65 : .18 + Math.sin(time * .004) * .04);
     }
 
     const flutter = (Math.sin(this.phase - 0.7) * 9 * this.runBlend) + Math.sin(time * 0.003) * 2 + (dodging ? 14 : 0);
