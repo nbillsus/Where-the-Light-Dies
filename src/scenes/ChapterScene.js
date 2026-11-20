@@ -16,6 +16,7 @@ import { ShadowController } from '../gameplay/ShadowController.js';
 import { ChapterMechanics } from '../gameplay/ChapterMechanics.js';
 import { ChapterTwoMechanics } from '../gameplay/ChapterTwoMechanics.js';
 import { Cinematics } from '../gameplay/Cinematics.js';
+import { HorrorPresentation } from '../gameplay/HorrorPresentation.js';
 import { Atmosphere } from '../effects/Atmosphere.js';
 import { Hud } from '../ui/Hud.js';
 import { KeyPrompt } from '../ui/KeyPrompt.js';
@@ -72,6 +73,7 @@ export class ChapterScene extends Phaser.Scene {
     this.shadow = this.stage.shadow ? new ShadowController(this, this.player, this.spriteHeight) : null;
     this.cinematics = new Cinematics(this);
     this.mechanics = this.stage.chapter === 2 ? new ChapterTwoMechanics(this) : new ChapterMechanics(this);
+    this.horror = new HorrorPresentation(this);
     this.checkpoint = 0;
     this.lastGrounded = 0;
     this.jumpQueued = -1000;
@@ -92,6 +94,7 @@ export class ChapterScene extends Phaser.Scene {
     this.events.once('shutdown', () => {
       this.input.keyboard.off('keydown-ESC', this.returnToMenu, this);
       this.scale.off('resize', this.onResize, this);
+      this.horror?.destroy();
     });
 
     this.cameras.main.setDeadzone(Math.min(w * .3, 360), h * .42);
@@ -222,6 +225,7 @@ export class ChapterScene extends Phaser.Scene {
     this.animator.update(time, delta, grounded);
     this.shadow?.update(time, delta, { left, right, jumpPressed, jumpHeld });
     this.mechanics.update(time);
+    this.horror?.update(time);
     this.hud.update();
     this.keyPrompt.update(this.mechanics.hints ?? [], time);
     if (this.player.y > this.viewportHeight + 110) this.respawn();
