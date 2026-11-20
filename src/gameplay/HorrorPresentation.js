@@ -1,5 +1,4 @@
 import Phaser from 'phaser';
-import scarySoundUrl from '../../audio/scarysound.mp3?url';
 import { ensureFxTextures } from '../effects/textures.js';
 import { fixedLayerOffset } from '../rendering.js';
 
@@ -148,8 +147,6 @@ export class HorrorPresentation {
     this.audioContext = null;
     this.master = null;
     this.music = null;
-    this.scarySoundBuffer = null;
-    this.scarySoundPromise = null;
     this.isScaring = false;
     this.createAmbience();
     this.createLighting();
@@ -172,7 +169,6 @@ export class HorrorPresentation {
       this.master.gain.value = 0.26;
       this.master.connect(this.audioContext.destination);
       this.startSuspenseMusic();
-      this.loadScarySound(this.audioContext);
     }
     if (this.audioContext.state === 'suspended') this.audioContext.resume();
     return this.audioContext;
@@ -370,11 +366,11 @@ export class HorrorPresentation {
     this.isScaring = true;
     this.radioPanel(beat.title, beat.message, 'signal pressure rising...', beat.color, 2600);
     this.linkedCrescendo(2400, 82);
-    this.playScarySoundCrescendo(2200, beat.scare);
+    this.playHorrorCrescendo(2200, beat.scare);
     this.scene.time.delayedCall(520, () => this.playHelpCry(beat.scare === 'pierHand' ? 'near' : 'falseKeeper'));
     this.scene.time.delayedCall(1350, () => this.playHelpCry('panic'));
     this.scene.time.delayedCall(2150, () => {
-      this.playScarySoundHit(beat.scare);
+      this.playHorrorHit(beat.scare);
       this.playImpact(beat.scare);
       this.playScream(beat.scare);
       this.flash(beat.color);
@@ -603,126 +599,178 @@ export class HorrorPresentation {
     this.music.whisperFilter.frequency.linearRampToValueAtTime(3800, now + duration / 1000);
   }
 
-  loadScarySound(ctx) {
-    if (this.scarySoundBuffer) return Promise.resolve(this.scarySoundBuffer);
-    if (!this.scarySoundPromise) {
-      this.scarySoundPromise = fetch(scarySoundUrl)
-        .then(response => response.arrayBuffer())
-        .then(data => ctx.decodeAudioData(data))
-        .then(buffer => {
-          this.scarySoundBuffer = buffer;
-          return buffer;
-        })
-        .catch(() => null);
-    }
-    return this.scarySoundPromise;
+  distortionCurve(amount = 5) {
+    return new Float32Array(512).map((_, i) => {
+      const x = i / 255.5 - 1;
+      return Math.tanh(x * amount);
+    });
   }
 
-  playProcessedScarySound({
-    when = 0,
-    offset = 0,
-    duration = null,
-    rate = 1,
-    gain = 0.24,
-    pan = 0,
-    filterStart = 700,
-    filterEnd = 2500,
-    distortion = 4.5,
-    fadeIn = 0.04,
-    fadeOut = 0.18,
-  } = {}) {
+  noiseBuffer(ctx, duration, shaping = 'rise') {
+    const buffer = ctx.createBuffer(1, Math.floor(ctx.sampleRate * duration), ctx.sampleRate);
+    const data = buffer.getChannelData(0);
+    let last = 0;
+    for (let i = 0; i < data.length; i++) {
+      const t = i / data.length;
+      const attack = shaping === 'hit' ? Math.min(1, t / 0.015) : Math.pow(t, 1.6);
+      const decay = shaping === 'hit' ? Math.pow(1 - t, 0.62) : 0.35 + t * 0.65;
+      const tremble = 0.55 + Math.sin(t * 113) * 0.22 + Math.sin(t * 307) * 0.14;
+      const teeth = Math.random() > 0.9 ? (Math.random() * 2 - 1) * 0.95 : 0;
+      last = last * 0.54 + (Math.random() * 2 - 1) * 0.46;
+      data[i] = (last + teeth) * attack * decay * tremble;
+    }
+    return buffer;
+  }
+
+  startNoiseLayer({ when, duration, gain, filterType, filterStart, filterEnd, q = 8, drive = 5, pan = 0, shape = 'rise' }) {
     const ctx = this.ensureAudio();
     if (!ctx || !this.master) return;
-    const scheduledStart = ctx.currentTime + when;
-    this.loadScarySound(ctx).then(buffer => {
-      if (!buffer || !this.master || ctx.state === 'closed') return;
-      const start = Math.max(scheduledStart, ctx.currentTime + 0.01);
-      const source = ctx.createBufferSource();
-      const filter = ctx.createBiquadFilter();
-      const shaper = ctx.createWaveShaper();
-      const volume = ctx.createGain();
-      const panner = ctx.createStereoPanner ? ctx.createStereoPanner() : null;
-      const playDuration = Math.min(duration ?? buffer.duration, Math.max(0.05, buffer.duration - offset));
-      const stopTime = start + playDuration;
-      source.buffer = buffer;
-      source.playbackRate.setValueAtTime(rate, start);
-      filter.type = 'bandpass';
-      filter.frequency.setValueAtTime(filterStart, start);
-      filter.frequency.exponentialRampToValueAtTime(filterEnd, stopTime);
-      filter.Q.value = 8;
-      shaper.curve = new Float32Array(512).map((_, i) => {
-        const x = i / 255.5 - 1;
-        return Math.tanh(x * distortion);
-      });
-      shaper.oversample = '4x';
-      volume.gain.setValueAtTime(0.0001, start);
-      volume.gain.exponentialRampToValueAtTime(gain, start + fadeIn);
-      volume.gain.setValueAtTime(gain, Math.max(start + fadeIn, stopTime - fadeOut));
-      volume.gain.exponentialRampToValueAtTime(0.0001, stopTime);
-      if (panner) {
-        panner.pan.setValueAtTime(pan, start);
-        panner.pan.linearRampToValueAtTime(-pan, stopTime);
-        source.connect(filter).connect(shaper).connect(volume).connect(panner).connect(this.master);
-      } else {
-        source.connect(filter).connect(shaper).connect(volume).connect(this.master);
-      }
-      source.start(start, offset, playDuration);
-      source.stop(stopTime + 0.02);
-    });
+    const start = ctx.currentTime + when;
+    const end = start + duration;
+    const source = ctx.createBufferSource();
+    const filter = ctx.createBiquadFilter();
+    const shaper = ctx.createWaveShaper();
+    const volume = ctx.createGain();
+    const panner = ctx.createStereoPanner ? ctx.createStereoPanner() : null;
+    source.buffer = this.noiseBuffer(ctx, duration, shape);
+    filter.type = filterType;
+    filter.frequency.setValueAtTime(filterStart, start);
+    filter.frequency.exponentialRampToValueAtTime(filterEnd, end);
+    filter.Q.value = q;
+    shaper.curve = this.distortionCurve(drive);
+    shaper.oversample = '4x';
+    volume.gain.setValueAtTime(0.0001, start);
+    volume.gain.exponentialRampToValueAtTime(gain, start + (shape === 'hit' ? 0.012 : 0.18));
+    volume.gain.linearRampToValueAtTime(gain * 0.84, Math.max(start + 0.04, end - 0.09));
+    volume.gain.exponentialRampToValueAtTime(0.0001, end);
+    if (panner) {
+      panner.pan.setValueAtTime(pan, start);
+      panner.pan.linearRampToValueAtTime(-pan, end);
+      source.connect(filter).connect(shaper).connect(volume).connect(panner).connect(this.master);
+    } else {
+      source.connect(filter).connect(shaper).connect(volume).connect(this.master);
+    }
+    source.start(start);
+    source.stop(end + 0.02);
   }
 
-  playScarySoundCrescendo(duration = 2200, type = 'behind') {
+  startScreamLayer({ when, duration, gain, startFreq, peakFreq, endFreq, drive = 6, pan = 0 }) {
+    const ctx = this.ensureAudio();
+    if (!ctx || !this.master) return;
+    const start = ctx.currentTime + when;
+    const end = start + duration;
+    const voice = ctx.createBufferSource();
+    const formant = ctx.createBiquadFilter();
+    const shaper = ctx.createWaveShaper();
+    const volume = ctx.createGain();
+    const panner = ctx.createStereoPanner ? ctx.createStereoPanner() : null;
+    const buffer = ctx.createBuffer(1, Math.floor(ctx.sampleRate * duration), ctx.sampleRate);
+    const data = buffer.getChannelData(0);
+    let phase = 0;
+    for (let i = 0; i < data.length; i++) {
+      const t = i / data.length;
+      const attack = Math.min(1, t / 0.02);
+      const falloff = Math.pow(1 - t, 0.72);
+      const sweep = t < 0.35
+        ? Phaser.Math.Linear(startFreq, peakFreq, t / 0.35)
+        : Phaser.Math.Linear(peakFreq, endFreq, (t - 0.35) / 0.65);
+      const panic = Math.sin(t * 97) * 520 + Math.sin(t * 241) * 170 + (Math.random() * 2 - 1) * 360;
+      phase += (Math.max(180, sweep + panic) / ctx.sampleRate) * Math.PI * 2;
+      data[i] = (Math.sin(phase) * 0.42 + Math.sin(phase * 1.91) * 0.24 + (Math.random() * 2 - 1) * 0.25) * attack * falloff;
+    }
+    voice.buffer = buffer;
+    formant.type = 'bandpass';
+    formant.frequency.setValueAtTime(startFreq * 1.6, start);
+    formant.frequency.exponentialRampToValueAtTime(peakFreq * 1.35, start + duration * 0.35);
+    formant.frequency.exponentialRampToValueAtTime(Math.max(900, endFreq * 1.55), end);
+    formant.Q.value = 10;
+    shaper.curve = this.distortionCurve(drive);
+    shaper.oversample = '4x';
+    volume.gain.setValueAtTime(0.0001, start);
+    volume.gain.exponentialRampToValueAtTime(gain, start + 0.016);
+    volume.gain.exponentialRampToValueAtTime(0.0001, end);
+    if (panner) {
+      panner.pan.setValueAtTime(pan, start);
+      panner.pan.linearRampToValueAtTime(-pan * 0.7, end);
+      voice.connect(formant).connect(shaper).connect(volume).connect(panner).connect(this.master);
+    } else {
+      voice.connect(formant).connect(shaper).connect(volume).connect(this.master);
+    }
+    voice.start(start);
+    voice.stop(end + 0.02);
+  }
+
+  playHorrorCrescendo(duration = 2200, type = 'behind') {
     const seconds = duration / 1000;
-    this.playProcessedScarySound({
+    this.startNoiseLayer({
+      when: 0,
       duration: seconds,
-      rate: type === 'glass' ? 0.74 : 0.66,
-      gain: type === 'pierHand' ? 0.21 : 0.18,
-      pan: type === 'knock' ? -0.28 : 0.24,
-      filterStart: 180,
-      filterEnd: type === 'glass' ? 2100 : 1450,
-      distortion: 3.2,
-      fadeIn: 0.32,
-      fadeOut: 0.08,
+      gain: type === 'pierHand' ? 0.19 : 0.16,
+      filterType: 'bandpass',
+      filterStart: 80,
+      filterEnd: type === 'glass' ? 2400 : 1500,
+      q: 12,
+      drive: 3.6,
+      pan: 0.28,
     });
-    this.playProcessedScarySound({
-      when: Math.max(0, seconds - 0.74),
-      offset: 0.9,
-      duration: 0.72,
-      rate: type === 'glass' ? 1.15 : 0.92,
-      gain: 0.14,
-      pan: -0.18,
-      filterStart: 900,
-      filterEnd: 3600,
-      distortion: 6.2,
-      fadeIn: 0.05,
-      fadeOut: 0.06,
+    this.startNoiseLayer({
+      when: Math.max(0, seconds - 0.7),
+      duration: 0.68,
+      gain: 0.22,
+      filterType: 'highpass',
+      filterStart: 850,
+      filterEnd: 4200,
+      q: 6,
+      drive: 7.5,
+      pan: -0.22,
+      shape: 'hit',
+    });
+    this.startScreamLayer({
+      when: Math.max(0, seconds - 0.38),
+      duration: 0.42,
+      gain: 0.16,
+      startFreq: 480,
+      peakFreq: type === 'glass' ? 3600 : 2600,
+      endFreq: 620,
+      drive: 5.4,
+      pan: 0.18,
     });
   }
 
-  playScarySoundHit(type = 'behind') {
-    this.playProcessedScarySound({
-      offset: type === 'pierHand' ? 0.2 : 0.55,
-      duration: type === 'glass' ? 1.05 : 1.18,
-      rate: type === 'glass' ? 1.28 : type === 'knock' ? 0.82 : 1.04,
-      gain: type === 'glass' ? 0.36 : 0.46,
-      pan: type === 'pierHand' ? 0.34 : -0.26,
-      filterStart: type === 'glass' ? 1300 : 520,
-      filterEnd: type === 'glass' ? 5200 : 4100,
-      distortion: 8.5,
-      fadeIn: 0.008,
-      fadeOut: 0.2,
+  playHorrorHit(type = 'behind') {
+    this.startNoiseLayer({
+      when: 0,
+      duration: type === 'glass' ? 0.78 : 0.9,
+      gain: type === 'glass' ? 0.5 : 0.64,
+      filterType: 'bandpass',
+      filterStart: type === 'glass' ? 1600 : 520,
+      filterEnd: type === 'glass' ? 6200 : 3900,
+      q: 11,
+      drive: 11,
+      pan: type === 'pierHand' ? 0.42 : -0.34,
+      shape: 'hit',
     });
-    this.playProcessedScarySound({
-      offset: 1.35,
-      duration: 0.42,
-      rate: 0.58,
-      gain: 0.28,
-      pan: 0.12,
-      filterStart: 120,
-      filterEnd: 760,
-      distortion: 10,
-      fadeIn: 0.004,
-      fadeOut: 0.08,
+    this.startScreamLayer({
+      when: 0.018,
+      duration: type === 'glass' ? 0.82 : 1.05,
+      gain: type === 'glass' ? 0.34 : 0.43,
+      startFreq: type === 'knock' ? 380 : 760,
+      peakFreq: type === 'glass' ? 5600 : 4300,
+      endFreq: type === 'pierHand' ? 420 : 680,
+      drive: 9,
+      pan: type === 'pierHand' ? -0.25 : 0.31,
+    });
+    this.startNoiseLayer({
+      when: 0.03,
+      duration: 0.36,
+      gain: 0.34,
+      filterType: 'lowpass',
+      filterStart: 180,
+      filterEnd: 44,
+      q: 3,
+      drive: 8,
+      pan: 0,
+      shape: 'hit',
     });
   }
 
