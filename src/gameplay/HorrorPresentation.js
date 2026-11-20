@@ -228,12 +228,6 @@ export class HorrorPresentation {
     const scene = this.scene;
     const h = scene.viewportHeight;
     ensureFxTextures(scene);
-    // Lighter than before: these stack with the atmosphere's fog and vignette.
-    this.moonDimmer = scene.add.rectangle(scene.worldWidth / 2, h / 2, scene.worldWidth, h, 0x020713, scene.stage.chapter === 3 ? 0.25 : 0.5)
-      .setDepth(-8);
-    this.deepFog = scene.add.rectangle(scene.worldWidth / 2, h / 2, scene.worldWidth, h, 0x02050a, scene.stage.chapter === 3 ? 0.08 : 0.14)
-      .setDepth(1);
-
     this.watcherEyes = [];
     const eyePositions = [
       [0.2, 0.48], [0.34, 0.36], [0.54, 0.44], [0.72, 0.38], [0.89, 0.51],
