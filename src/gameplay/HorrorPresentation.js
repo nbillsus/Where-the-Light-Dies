@@ -6,6 +6,7 @@ const AMBER = 0xf4c16b;
 const CYAN = 0x9ce6e0;
 const BLOOD = 0xe96756;
 const DARK = 0x02060c;
+const SCARE_HIT_MS = 2150;
 
 const STORY_BEATS = {
   'storm-coast': [
@@ -148,6 +149,8 @@ export class HorrorPresentation {
     this.master = null;
     this.music = null;
     this.isScaring = false;
+    this.audioUnlocked = false;
+    this.unlockHandlers = [];
     this.createAmbience();
     this.createLighting();
     this.installAudioUnlock();
@@ -155,23 +158,57 @@ export class HorrorPresentation {
   }
 
   installAudioUnlock() {
-    const unlock = () => this.ensureAudio();
-    this.scene.input.keyboard.once('keydown', unlock);
-    this.scene.input.once('pointerdown', unlock);
+    const unlock = () => this.ensureAudio(true);
+    this.scene.input.keyboard.on('keydown', unlock);
+    this.scene.input.on('pointerdown', unlock);
+    this.unlockHandlers.push(['scene-keyboard', unlock], ['scene-pointer', unlock]);
+    for (const event of ['keydown', 'pointerdown', 'mousedown', 'touchstart']) {
+      window.addEventListener(event, unlock, { passive: true });
+      this.unlockHandlers.push([event, unlock]);
+    }
   }
 
-  ensureAudio() {
+  ensureAudio(fromGesture = false) {
     const AudioContextClass = window.AudioContext || window.webkitAudioContext;
     if (!AudioContextClass) return null;
     if (!this.audioContext) {
       this.audioContext = new AudioContextClass();
       this.master = this.audioContext.createGain();
-      this.master.gain.value = 0.26;
+      this.master.gain.value = 0.42;
       this.master.connect(this.audioContext.destination);
       this.startSuspenseMusic();
     }
-    if (this.audioContext.state === 'suspended') this.audioContext.resume();
+    if (this.audioContext.state === 'suspended') {
+      this.audioContext.resume().then(() => {
+        if (fromGesture) this.confirmAudioUnlocked();
+      }).catch(() => {});
+    } else if (fromGesture) {
+      this.confirmAudioUnlocked();
+    }
     return this.audioContext;
+  }
+
+  confirmAudioUnlocked() {
+    if (this.audioUnlocked || !this.audioContext || !this.master || this.audioContext.state !== 'running') return;
+    this.audioUnlocked = true;
+    this.playUnlockThump();
+  }
+
+  playUnlockThump() {
+    const ctx = this.audioContext;
+    if (!ctx || !this.master) return;
+    const now = ctx.currentTime;
+    const thump = ctx.createOscillator();
+    const gain = ctx.createGain();
+    thump.type = 'sine';
+    thump.frequency.setValueAtTime(46, now);
+    thump.frequency.exponentialRampToValueAtTime(24, now + 0.18);
+    gain.gain.setValueAtTime(0.0001, now);
+    gain.gain.exponentialRampToValueAtTime(0.16, now + 0.012);
+    gain.gain.exponentialRampToValueAtTime(0.0001, now + 0.22);
+    thump.connect(gain).connect(this.master);
+    thump.start(now);
+    thump.stop(now + 0.24);
   }
 
   createAmbience() {
@@ -365,11 +402,10 @@ export class HorrorPresentation {
     if (this.isScaring) return;
     this.isScaring = true;
     this.radioPanel(beat.title, beat.message, 'signal pressure rising...', beat.color, 2600);
-    this.linkedCrescendo(2400, 82);
-    this.playHorrorCrescendo(2200, beat.scare);
+    this.scoreJumpScare(SCARE_HIT_MS, beat.scare);
     this.scene.time.delayedCall(520, () => this.playHelpCry(beat.scare === 'pierHand' ? 'near' : 'falseKeeper'));
     this.scene.time.delayedCall(1350, () => this.playHelpCry('panic'));
-    this.scene.time.delayedCall(2150, () => {
+    this.scene.time.delayedCall(SCARE_HIT_MS, () => {
       this.playHorrorHit(beat.scare);
       this.playImpact(beat.scare);
       this.playScream(beat.scare);
@@ -597,6 +633,113 @@ export class HorrorPresentation {
     this.music.filter.frequency.linearRampToValueAtTime(920, now + duration / 1000);
     this.music.growlFilter.frequency.linearRampToValueAtTime(320, now + duration / 1000);
     this.music.whisperFilter.frequency.linearRampToValueAtTime(3800, now + duration / 1000);
+  }
+
+  scoreJumpScare(hitMs = SCARE_HIT_MS, type = 'behind') {
+    this.linkedCrescendo(hitMs, type === 'glass' ? 92 : 58);
+    this.playHorrorCrescendo(hitMs, type);
+    this.playHeartbeatPulse(0.28, 0.18);
+    this.playHeartbeatPulse(0.84, 0.24);
+    this.playHeartbeatPulse(1.36, 0.31);
+    this.playHeartbeatPulse(Math.max(0.1, hitMs / 1000 - 0.36), 0.42);
+    this.playDissonantMusicStab(Math.max(0.1, hitMs / 1000 - 0.82), 0.62, type);
+    this.playPreHitSilence(hitMs);
+    this.playHitMusicDrop(hitMs, type);
+  }
+
+  playHeartbeatPulse(when, gain = 0.25) {
+    const ctx = this.ensureAudio();
+    if (!ctx || !this.master) return;
+    const start = ctx.currentTime + when;
+    const end = start + 0.34;
+    const thump = ctx.createOscillator();
+    const body = ctx.createOscillator();
+    const volume = ctx.createGain();
+    const filter = ctx.createBiquadFilter();
+    thump.type = 'sine';
+    body.type = 'triangle';
+    thump.frequency.setValueAtTime(68, start);
+    thump.frequency.exponentialRampToValueAtTime(24, start + 0.24);
+    body.frequency.setValueAtTime(35, start);
+    body.frequency.exponentialRampToValueAtTime(19, start + 0.32);
+    filter.type = 'lowpass';
+    filter.frequency.setValueAtTime(140, start);
+    filter.frequency.exponentialRampToValueAtTime(55, end);
+    volume.gain.setValueAtTime(0.0001, start);
+    volume.gain.exponentialRampToValueAtTime(gain, start + 0.014);
+    volume.gain.exponentialRampToValueAtTime(0.0001, end);
+    thump.connect(filter);
+    body.connect(filter);
+    filter.connect(volume).connect(this.master);
+    thump.start(start);
+    body.start(start);
+    thump.stop(end + 0.02);
+    body.stop(end + 0.02);
+  }
+
+  playDissonantMusicStab(when, duration, type = 'behind') {
+    const ctx = this.ensureAudio();
+    if (!ctx || !this.master) return;
+    const start = ctx.currentTime + when;
+    const end = start + duration;
+    const intervals = type === 'glass' ? [277, 293, 587] : [185, 196, 415];
+    const filter = ctx.createBiquadFilter();
+    const shaper = ctx.createWaveShaper();
+    const volume = ctx.createGain();
+    filter.type = 'bandpass';
+    filter.frequency.setValueAtTime(type === 'glass' ? 900 : 430, start);
+    filter.frequency.exponentialRampToValueAtTime(type === 'glass' ? 3600 : 1900, end);
+    filter.Q.value = 13;
+    shaper.curve = this.distortionCurve(3.8);
+    shaper.oversample = '4x';
+    volume.gain.setValueAtTime(0.0001, start);
+    volume.gain.exponentialRampToValueAtTime(0.17, start + 0.04);
+    volume.gain.linearRampToValueAtTime(0.24, end - 0.08);
+    volume.gain.exponentialRampToValueAtTime(0.0001, end);
+    filter.connect(shaper).connect(volume).connect(this.master);
+    for (const [index, freq] of intervals.entries()) {
+      const osc = ctx.createOscillator();
+      osc.type = index === 2 ? 'triangle' : 'sawtooth';
+      osc.frequency.setValueAtTime(freq, start);
+      osc.frequency.exponentialRampToValueAtTime(freq * (type === 'glass' ? 1.75 : 1.32), end);
+      osc.connect(filter);
+      osc.start(start);
+      osc.stop(end + 0.02);
+    }
+  }
+
+  playPreHitSilence(hitMs) {
+    const ctx = this.audioContext;
+    if (!ctx || !this.music) return;
+    const hit = ctx.currentTime + hitMs / 1000;
+    const dipStart = Math.max(ctx.currentTime + 0.05, hit - 0.16);
+    this.music.bed.gain.cancelScheduledValues(dipStart);
+    this.music.tension.gain.cancelScheduledValues(dipStart);
+    this.music.whisper.gain.cancelScheduledValues(dipStart);
+    this.music.bed.gain.setValueAtTime(this.music.bed.gain.value, dipStart);
+    this.music.tension.gain.setValueAtTime(this.music.tension.gain.value, dipStart);
+    this.music.whisper.gain.setValueAtTime(this.music.whisper.gain.value, dipStart);
+    this.music.bed.gain.linearRampToValueAtTime(0.018, hit - 0.035);
+    this.music.tension.gain.linearRampToValueAtTime(0.006, hit - 0.035);
+    this.music.whisper.gain.linearRampToValueAtTime(0.01, hit - 0.035);
+  }
+
+  playHitMusicDrop(hitMs, type = 'behind') {
+    const ctx = this.audioContext;
+    if (!ctx || !this.music) return;
+    const hit = ctx.currentTime + hitMs / 1000;
+    this.music.bed.gain.setValueAtTime(0.2, hit);
+    this.music.tension.gain.setValueAtTime(type === 'glass' ? 0.14 : 0.18, hit);
+    this.music.whisper.gain.setValueAtTime(0.25, hit);
+    this.music.filter.frequency.setValueAtTime(type === 'glass' ? 2100 : 1600, hit);
+    this.music.growlFilter.frequency.setValueAtTime(type === 'glass' ? 420 : 280, hit);
+    this.music.whisperFilter.frequency.setValueAtTime(5200, hit);
+    this.music.bed.gain.exponentialRampToValueAtTime(0.045, hit + 0.5);
+    this.music.tension.gain.exponentialRampToValueAtTime(0.018, hit + 0.58);
+    this.music.whisper.gain.exponentialRampToValueAtTime(0.02, hit + 0.62);
+    this.music.filter.frequency.exponentialRampToValueAtTime(310, hit + 0.7);
+    this.music.growlFilter.frequency.exponentialRampToValueAtTime(92, hit + 0.7);
+    this.music.whisperFilter.frequency.exponentialRampToValueAtTime(980, hit + 0.7);
   }
 
   distortionCurve(amount = 5) {
@@ -996,6 +1139,12 @@ export class HorrorPresentation {
   }
 
   destroy() {
+    for (const [target, handler] of this.unlockHandlers) {
+      if (target === 'scene-keyboard') this.scene.input.keyboard.off('keydown', handler);
+      else if (target === 'scene-pointer') this.scene.input.off('pointerdown', handler);
+      else window.removeEventListener(target, handler);
+    }
+    this.unlockHandlers = [];
     if (this.vignette) this.vignette.destroy();
     if (this.audioContext) this.audioContext.close();
   }
