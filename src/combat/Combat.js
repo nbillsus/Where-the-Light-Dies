@@ -155,6 +155,8 @@ export class Combat {
     const glow = scene.add.image(player.x + dir * r * .7, player.y, 'fx-glow').setTint(0xffc977)
       .setBlendMode(Phaser.BlendModes.ADD).setDisplaySize(r * 1.6, r * 1.3).setAlpha(.5).setDepth(11);
     scene.tweens.add({ targets: [g, glow], alpha: 0, duration: 170, onComplete: () => { g.destroy(); glow.destroy(); } });
+    // Each swing briefly lights the ground around it.
+    scene.atmosphere?.lighting?.pulse(player.x + dir * r * .6, player.y, r * (step === 3 ? 2.6 : 2), 0xffd38a, 220, .7);
   }
 
   flare(time) {
@@ -168,6 +170,8 @@ export class Combat {
     const ring = scene.add.circle(player.x, player.y, radius * .2).setStrokeStyle(4, 0xfff1c8, .9).setDepth(12);
     scene.tweens.add({ targets: glow, displayWidth: radius * 2.8, displayHeight: radius * 2.8, alpha: 0, duration: 520, ease: 'Cubic.easeOut', onComplete: () => glow.destroy() });
     scene.tweens.add({ targets: ring, radius, alpha: 0, duration: 420, ease: 'Cubic.easeOut', onComplete: () => ring.destroy() });
+    // The flare throws light across the whole area for a moment.
+    scene.atmosphere?.lighting?.pulse(player.x, player.y, radius * 3.2, 0xffe8b8, 700, 1.2);
     sfx.flare(scene);
     scene.events.emit('combat:flare', player.x, player.y);
   }
