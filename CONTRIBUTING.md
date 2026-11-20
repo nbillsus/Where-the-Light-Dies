@@ -42,7 +42,7 @@ Both are generated, so they are ignored by Git. **Never commit them.**
 
 | Member | Owns |
 | --- | --- |
-| Lucas | Game rules and core systems: `src/player/`, `src/shadow/`, `src/puzzles/` (reusable building blocks), `src/core/` (events, rendering), `src/effects/` (lighting, VFX), `package.json`, `vite` config, `.gitattributes`, `.gitignore` |
+| Lucas | Game rules and core systems: `src/player/`, `src/shadow/`, `src/puzzles/` (reusable building blocks), `src/core/` (events, rendering), `src/effects/` (lighting, VFX), `src/combat/` (player combat and health), `package.json`, `vite` config, `.gitattributes`, `.gitignore` |
 | Neel | Levels and characters: `src/levels/`, `src/scenes/ChapterScene.js` (level flow), `src/gameplay/ChapterMechanics.js` (level-specific puzzles), `src/animation/`, `src/enemies/`, `assets/characters/`, `scripts/generate_parkour_art.mjs` |
 | Axel | Story, audio and UI: `src/scenes/MainMenuScene.js`, `src/ui/`, `src/audio/`, `src/radio/`, `src/gameplay/Cinematics.js`, `audio/`, `assets/fonts/`, `assets/presentation/`, `docs/lore/`, `docs/STORY.md`, `docs/AUDIO_DESIGN.md`, `docs/ART_PRESENTATION.md` |
 

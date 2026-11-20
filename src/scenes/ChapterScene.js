@@ -21,6 +21,8 @@ import { Atmosphere } from '../effects/Atmosphere.js';
 import { Hud } from '../ui/Hud.js';
 import { KeyPrompt } from '../ui/KeyPrompt.js';
 import { readSettings } from '../settings.js';
+import { Combat } from '../combat/Combat.js';
+import { EnemyDirector } from '../enemies/EnemyDirector.js';
 import { fixedLayerOffset, logicalSize, renderScale, sharpenText } from '../rendering.js';
 import { saveSlot } from '../saveSlots.js';
 
@@ -80,6 +82,8 @@ export class ChapterScene extends Phaser.Scene {
     this.cinematics = new Cinematics(this);
     this.mechanics = this.stage.chapter === 2 ? new ChapterTwoMechanics(this) : new ChapterMechanics(this);
     this.horror = new HorrorPresentation(this);
+    this.enemies = new EnemyDirector(this);
+    this.combat = new Combat(this);
     this.checkpoint = 0;
     this.lastGrounded = 0;
     this.jumpQueued = -1000;
@@ -404,8 +408,10 @@ export class ChapterScene extends Phaser.Scene {
     this.shadow?.update(time, delta, { left, right, jumpPressed, jumpHeld });
     this.mechanics.update(time);
     this.horror?.update(time);
+    this.enemies.update(time, delta);
+    this.combat.update(time);
     this.hud.update();
-    this.keyPrompt.update(this.mechanics.hints ?? [], time);
+    this.keyPrompt.update([...(this.mechanics.hints ?? []), ...this.combat.hints], time);
     if (this.player.y > this.viewportHeight + 110) this.respawn();
     if (grounded && this.player.x > this.worldWidth - this.spriteHeight * .43) this.finishStage();
   }
