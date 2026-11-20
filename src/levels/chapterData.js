@@ -84,5 +84,29 @@ export const CHAPTER_STAGES = [
   ].map(([id, title, phase, subtitle, platforms], index) => ({
     id, title, phase, subtitle, platforms, width: 4096, height: 900,
     shadow: true, grasp: [3, 4].includes(index), reflection: true, chapter: 3,
+    ...(index === 4 ? { width: 5900, artWidth: 4096, arena: { start: 4300, boss: 'undertow' },
+      platforms: [...platforms.slice(0, -1), [3780, 5900, 675]] } : {}),
+  })),
+  ...[
+    ['sunken-archive', 'THE SUNKEN ARCHIVE', 'THE ARCHIVE', 'The walls remember a voice you have not spoken.'],
+    ['bone-conduit', 'THE BONE CONDUIT', 'THE CONDUIT', 'A pulse passes through every hollow chamber.'],
+    ['mirror-well', 'THE MIRROR WELL', 'THE WELL', 'You can hold the signal still, but only for a moment.'],
+    ['silent-engine', 'THE SILENT ENGINE', 'THE ENGINE', 'The machine counts everything that moves.'],
+    ['deep-transmitter', 'THE DEEP TRANSMITTER', 'THE TRANSMITTER', 'Send the warning back to its source.'],
+  ].map(([id, title, phase, subtitle], index) => ({
+    id, title, phase, subtitle, chapter: 4, width: 4096, height: 900, shadow: true,
+    grasp: [1, 3, 4].includes(index), reflection: true,
+    platforms: [[0,760,735],[890,1400,690],[1530,2010,650],[2140,2620,700],[2750,3200,650],[3330,3740,625],[3870,4096,675]],
+  })),
+  ...[
+    ['last-shore', 'THE LAST SHORE', 'THE RETURN', 'The sea has learned to speak in your voice.'],
+    ['split-signal', 'THE SPLIT SIGNAL', 'THE FRACTURE', 'Two routes. One shadow. No second chance.'],
+    ['red-cathedral', 'THE RED CATHEDRAL', 'THE CATHEDRAL', 'The old keepers left their prayers inside the machinery.'],
+    ['night-array', 'THE NIGHT ARRAY', 'THE ARRAY', 'Every light you save darkens another room.'],
+    ['threshold', 'THE THRESHOLD', 'THE THRESHOLD', 'Everything you have learned leads here.'],
+  ].map(([id, title, phase, subtitle], index) => ({
+    id, title, phase, subtitle, chapter: 5, width: 4096, height: 900, shadow: true,
+    grasp: true, reflection: true, finalTrial: index === 4,
+    platforms: [[0,760,735],[890,1400,690],[1530,2010,650],[2140,2620,700],[2750,3200,650],[3330,3740,625],[3870,4096,675]],
   })),
 ];
