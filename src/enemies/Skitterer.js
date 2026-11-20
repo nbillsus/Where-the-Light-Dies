@@ -2,15 +2,17 @@ import Phaser from 'phaser';
 import { Enemy } from './Enemy.js';
 
 // Skitterer: a small, fast shadow bug that hunts in groups.
-// - Fears the lantern: if the boy faces it up close, it backs off.
-// - Bites from behind or the side the lantern isn't pointing at.
-// - Dies to one Light Strike; a Flare Pulse destroys it outright.
+// - Fears the lantern: facing it makes it hang back and circle, but every
+//   second or so it darts in anyway (a lunge you can see coming).
+// - From behind it rushes straight in and bites.
+// - Touching it hurts. Dies to one Light Strike; a Flare Pulse destroys it.
 const T = {
-  aggro: 3.2,      // × boy height: starts hunting
-  lightRange: 1.6, // × boy height: lantern scares it away
-  biteRange: .42,  // × boy height
-  chaseSpeed: 205, fleeSpeed: 250, wanderSpeed: 45,
-  biteCooldown: 900,
+  aggro: 3.4,      // × boy height: starts hunting
+  lightRange: 1.7, // × boy height: inside this, facing it makes it hesitate
+  biteRange: .5,   // × boy height
+  chaseSpeed: 215, hesitateSpeed: 70, lungeSpeed: 520, wanderSpeed: 45,
+  biteCooldown: 800, lungeTime: 320,
+  lungeEvery: [900, 1600], // ms between lunges while lit
 };
 
 export class Skitterer extends Enemy {
@@ -27,7 +29,8 @@ export class Skitterer extends Enemy {
     this.art.add([this.eyeGlow, this.legs, this.shell, this.eyes]);
     this.wanderFlip = 0;
     this.nextBite = 0;
-    this.fleeUntil = 0;
+    this.lungeUntil = 0;
+    this.nextLunge = 0;
     this.phase = Math.random() * 10;
   }
 
@@ -46,23 +49,37 @@ export class Skitterer extends Enemy {
     const { dx, dist, sameLevel, lit } = this.playerInfo();
     const H = this.H;
     const toward = Math.sign(dx) || 1;
-    if (sameLevel && lit && dist < H * T.lightRange) this.fleeUntil = time + 450;
-    if (time < this.fleeUntil) {
-      this.state = 'flee';
-      this.facing = -toward;
-      body.setVelocityX(-toward * T.fleeSpeed);
+    if (time < this.lungeUntil) {
+      this.state = 'lunge';
+      body.setVelocityX(this.lungeDir * T.lungeSpeed);
     } else if (sameLevel && dist < H * T.aggro) {
-      this.state = 'chase';
       this.facing = toward;
-      body.setVelocityX(dist > H * T.biteRange * .7 ? toward * T.chaseSpeed : 0);
-      if (dist < H * T.biteRange && time > this.nextBite) {
-        this.nextBite = time + T.biteCooldown;
-        if (this.scene.combat?.hurt(1, this.x)) body.setVelocity(-toward * 160, -180);
+      if (lit && dist < H * T.lightRange) {
+        // Hesitate at the edge of the light, then dart in.
+        this.state = 'hesitate';
+        body.setVelocityX(dist < H * T.lightRange * .7 ? -toward * T.hesitateSpeed : toward * T.hesitateSpeed * .5);
+        if (!this.nextLunge) this.nextLunge = time + Phaser.Math.Between(...T.lungeEvery);
+        if (time > this.nextLunge && body.blocked.down) {
+          this.lungeUntil = time + T.lungeTime;
+          this.lungeDir = toward;
+          this.nextLunge = time + T.lungeTime + Phaser.Math.Between(...T.lungeEvery);
+          body.setVelocity(toward * T.lungeSpeed, -200);
+        }
+      } else {
+        this.state = 'chase';
+        this.nextLunge = 0;
+        body.setVelocityX(dist > H * T.biteRange * .6 ? toward * T.chaseSpeed : 0);
       }
     } else {
       this.state = 'idle';
+      this.nextLunge = 0;
       if (time > this.wanderFlip) { this.wanderFlip = time + Phaser.Math.Between(900, 2200); this.facing = Math.random() < .5 ? -1 : 1; }
       body.setVelocityX(this.facing * T.wanderSpeed);
+    }
+    // Bite on contact (lunging or close behind).
+    if (sameLevel && dist < H * T.biteRange && time > this.nextBite) {
+      this.nextBite = time + T.biteCooldown;
+      if (this.scene.combat?.hurt(1, this.x)) { this.lungeUntil = 0; body.setVelocity(-toward * 180, -180); }
     }
     if (this.clampToLedge() !== 0 && this.state === 'idle') this.facing *= -1;
   }
@@ -79,7 +96,7 @@ export class Skitterer extends Enemy {
     }
     this.art.setScale(this.facing, 1 + Math.sin(this.phase * 9) * .05);
     if (this.stunned) this.art.setAngle(Math.sin(time * .03) * 6); else this.art.setAngle(0);
-    this.eyeGlow.setAlpha(this.state === 'chase' ? .7 : this.stunned ? .1 : .4);
+    this.eyeGlow.setAlpha(this.state === 'chase' || this.state === 'lunge' ? .8 : this.stunned ? .1 : .4);
   }
 
   flareHit() { this.health = 0; this.flash(); this.die(); }

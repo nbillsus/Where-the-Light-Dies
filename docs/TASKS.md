@@ -38,6 +38,9 @@ Each step below ends with one commit.
       and death; Skitterers (fear the lantern) and Shroud Wardens (armoured
       front) placed in all 10 areas. Enemy AI lives in `src/enemies/` for
       Neel to take over.
+- [x] Lantern-blade sword and attack/hurt/dodge animations; enemies made
+      dangerous (Skitterer lunges, contact damage); boss arenas at the end of
+      each chapter: The Hollow and The Heart of the Works.
 
 - [ ] Combat: Light Strike 3-hit combo, Flare Pulse, dodge, hit detection, health.
 - [ ] Path Anchor ability.

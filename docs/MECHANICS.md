@@ -76,8 +76,20 @@ Enemies stay on the ledge they spawn on.
 
 | Enemy | Health | Behaviour | How to beat it |
 | --- | --- | --- | --- |
-| Skitterer | 1 | Hunts within 3.2 × boy height; bites (1 damage, 0.9 s cooldown). **Backs off from the lantern**: if the boy faces it within 1.6 × his height, it flees. | Face it and strike, or Flare Pulse a group. |
-| Shroud Warden | 4 | Patrols; walks up and swings when you're in front (0.65 s wind-up with raised blade and red eyes, 1 damage). **Front is armoured**: strikes there spark and push you back. Takes 0.48 s to turn round and stands still 0.7 s after each swing. | Dodge through it during the wind-up and strike its back, or stun it with a Flare Pulse (armour goes dark) and hit from any side. |
+| Skitterer | 1 | Hunts within 3.4 × boy height. Facing it with the lantern makes it **hesitate** at the edge of the light, but every 0.9–1.6 s it **lunges** in anyway. From behind it rushes straight in. Touching it hurts (1 damage, 0.8 s cooldown). | Strike it as it lunges, or Flare Pulse a group. |
+| Shroud Warden | 4 | Patrols; walks up and swings when you're in front (0.65 s wind-up with raised blade and red eyes, 1 damage). **Front is armoured**: strikes there spark and push you back. Takes 0.48 s to turn round and stands still 0.7 s after each swing. Walking into it hurts (1). | Dodge through it during the wind-up and strike its back, or stun it with a Flare Pulse (armour goes dark) and hit from any side. |
+
+### Bosses
+
+The last area of each chapter ends in a boss arena (the level was lengthened
+to 5900 art units for it). Walking in locks the entrance; the exit opens only
+when the boss dies. Dying in the arena returns you to its entrance with full
+health and resets the boss. Code: `src/enemies/bosses/`.
+
+| Boss | Where | Health | Attacks | Weak point |
+| --- | --- | --- | --- | --- |
+| **The Hollow** | Ch. 1, Lantern Vault | 26 | **Slam** (red mark on the floor, 0.82 s): crush 2, floor shock 1 (jump it). **Sweep** (arm pulled back, 0.56 s): rakes the floor, 1 (jump it). Below half health: faster, rolling dark **waves** (1, jump or dodge), summons Skitterers. Touching it hurts. | Its chest **core** is caged in ribs. It opens only while the Hollow slumps: for 1.5 s after a slam (its hand is stuck in the floor), or for 1.8 s after a Flare Pulse (once per 7 s). |
+| **The Heart of the Works** | Ch. 2, Heart of the Works | 24 | **Hand slam** (red mark tracks the boy, 0.9 s): 2. **Beam sweep** (red line flickers, 0.65 s): a beam crosses the arena floor, 1 — dodge through it or stand on a ledge. Below half health: two hands at once, the beam sweeps back, summons Skitterers. A Flare Pulse stalls its attacks for 1.5 s. | The core is **shielded**. Anchor the Shadow in one of the two receptors above the arena ledges (Q, move, F): the shield drops for 5.2 s. Each receptor then recharges for 9 s. The boy is defenceless while you steer the Shadow. |
 
 ### Combat events
 
