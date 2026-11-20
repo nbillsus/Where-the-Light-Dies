@@ -55,7 +55,25 @@ const CHAPTER_THREE = {
     motes: { kind: 'embers', color: 0xffdb91 }, weather: null, hang: 'roots', bottom: ['rubble', 'candles'], top: ['chains'], accent: 0xf4d199, saturate: -.05 },
 };
 
+const DEEP_THEMES = {
+  'sunken-archive': [0x071822, 0x8edbe4, 0x659eaa, 'drips', 'rust'],
+  'bone-conduit': [0x1a100c, 0xf0ba83, 0x986e4b, 'ash', 'roots'],
+  'mirror-well': [0x111329, 0xb5adf3, 0x686baf, 'dust', 'chains'],
+  'silent-engine': [0x101b19, 0xbdd6a5, 0x658d78, 'dust', 'rust'],
+  'deep-transmitter': [0x071d23, 0x9ce7e0, 0x498f8b, 'drips', 'cables'],
+  'last-shore': [0x09192d, 0xc0e0f5, 0x688db6, 'spray', 'moss'],
+  'split-signal': [0x1a0e23, 0xecb1da, 0x9b5e91, 'dust', 'chains'],
+  'red-cathedral': [0x1c0d0d, 0xf0c093, 0x9b584a, 'embers', 'roots'],
+  'night-array': [0x11112b, 0xb7c1fa, 0x6b6fae, 'dust', 'cables'],
+  threshold: [0x090e19, 0xf3d7ab, 0xa5886d, 'embers', 'chains'],
+};
+
 export function themeFor(stage) {
+  if (stage.chapter >= 4) {
+    const [ink, rim, fog, kind, hang] = DEEP_THEMES[stage.id];
+    return { ink, rim, drip: fog, fog, fogAlpha: .12, motes: { kind, color: rim }, weather: null,
+      hang, bottom: ['rocks', 'rubble'], top: ['cables'], accent: rim, saturate: -.06 };
+  }
   if (stage.chapter === 3) return { ...CHAPTER_THREE[stage.id] };
   if (stage.chapter === 2) return { ...CHAPTER_TWO };
   return { ...(CHAPTER_ONE[stage.id] ?? CHAPTER_ONE['storm-coast']) };

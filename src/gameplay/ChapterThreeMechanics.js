@@ -167,11 +167,6 @@ export class ChapterThreeMechanics extends ChapterTwoMechanics {
     this.tideFrozen = false;
     this.tideWater = this.scene.add.rectangle(2630 * s, 645 * s, 2220 * s, 255 * s, 0x143f4b, .58)
       .setOrigin(.5, 0).setDepth(1).setBlendMode(Phaser.BlendModes.ADD);
-    this.tidePlatforms = [
-      this.makeTidePlatform(2180, 665, 175, 0),
-      this.makeTidePlatform(2670, 625, 190, 2.1),
-      this.makeTidePlatform(3180, 650, 170, 4.2),
-    ];
     const left = 3190 * s, right = 3340 * s, top = 638 * s;
     this.glassBridge = hideShape(this.scene.add.rectangle((left + right) / 2, top + 8 * s, right - left, 18 * s, 0, 0));
     this.scene.physics.add.existing(this.glassBridge, true);
@@ -181,25 +176,11 @@ export class ChapterThreeMechanics extends ChapterTwoMechanics {
       .setStrokeStyle(2 * s, 0xeaffff, .35).setDepth(4);
   }
 
-  makeTidePlatform(x, y, width, phase) {
-    const s = this.scale;
-    const surface = this.scene.add.rectangle(x * s, y * s, width * s, 18 * s, 0x6bd0cd, .42)
-      .setStrokeStyle(3 * s, 0xdffff8, .8).setDepth(4);
-    this.scene.physics.add.existing(surface);
-    surface.body.setAllowGravity(false).setImmovable(true);
-    this.addSurfaceCollider(surface);
-    return { surface, baseY: y * s, phase };
-  }
-
   freezeTide() {
     if (this.tideFrozen) return;
     this.tideFrozen = true;
     this.glassBridge.body.enable = true;
     this.scene.tweens.add({ targets: [this.tideWater, this.glassBridgeArt], alpha: .78, duration: 480 });
-    for (const platform of this.tidePlatforms) {
-      platform.surface.body.setVelocityY(0);
-      platform.surface.setFillStyle(0xb9fff5, .72).setStrokeStyle(3 * this.scale, 0xffffff, .95);
-    }
     if (!this.restoring) this.scene.cinematics.pulse('TIDE LOCKED', 'The remembered light turns the sea to glass.', 0x8bdbcb, 1700);
   }
 
@@ -207,10 +188,6 @@ export class ChapterThreeMechanics extends ChapterTwoMechanics {
     if (this.tideFrozen) return;
     const wave = Math.sin(time * .0011) * 22 * this.scale;
     this.tideWater.y = 645 * this.scale + wave;
-    for (const platform of this.tidePlatforms) {
-      const target = platform.baseY + Math.sin(time * .00135 + platform.phase) * 48 * this.scale;
-      platform.surface.body.setVelocityY((target - platform.surface.y) * 5.5);
-    }
   }
 
   // --- Ash Orchard: one living bridge at a time -----------------------------------

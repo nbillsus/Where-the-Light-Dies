@@ -58,11 +58,15 @@ export class Cinematics {
     machine.setPosition(w / 2, h * .43);
     const ray = scene.add.graphics();
     ray.fillStyle(0xd7f7e5, .15).fillTriangle(w / 2, h * .43, 0, h, w, h);
-    const title = scene.add.text(w / 2, h * .72, chapter === 3 ? 'THE DARK HAS SEEN ITS OWN REFLECTION' : chapter === 2 ? 'THE MACHINE HAS LEARNED YOUR SHAPE' : 'THE SIGNAL CAME FROM BELOW', {
+    const title = scene.add.text(w / 2, h * .72, chapter === 5 ? 'THE THRESHOLD IS OPEN' : chapter === 4 ? 'THE WARNING HAS BEEN SENT' : chapter === 3 ? 'THE DARK HAS SEEN ITS OWN REFLECTION' : chapter === 2 ? 'THE MACHINE HAS LEARNED YOUR SHAPE' : 'THE SIGNAL CAME FROM BELOW', {
       fontFamily: 'Georgia, serif', fontSize: `${Math.round(Math.max(24, Math.min(37, w * .03)))}px`, color: '#f9e4bc',
       align: 'center', wordWrap: { width: w - 48 },
     }).setOrigin(.5);
-    const message = scene.add.text(w / 2, h * .82, chapter === 3
+    const message = scene.add.text(w / 2, h * .82, chapter === 5
+      ? '“Something waits on the other side.”\n\nCHAPTER V COMPLETE  ·  FINAL BOSS TO COME  ·  R RESTART  ·  ESC MENU'
+      : chapter === 4
+      ? '“If the warning came from us, who was it for?”\n\nCHAPTER IV COMPLETE  ·  R RESTART  ·  ESC MENU'
+      : chapter === 3
       ? '“It does not fear the light. It fears what the light remembers.”\n\nCHAPTER III COMPLETE  ·  R RESTART  ·  ESC MENU'
       : chapter === 2
       ? '“It held the weight for you. What will it hold next?”\n\nCHAPTER II COMPLETE  ·  R RESTART  ·  ESC MENU'

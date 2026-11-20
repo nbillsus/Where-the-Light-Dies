@@ -44,4 +44,21 @@ export const PLACEMENTS = {
     { type: 'warden', platform: 2, at: .55 },
     { type: 'skitterer', platform: 6, x: 3850 }, { type: 'skitterer', platform: 6, x: 3950 }, { type: 'skitterer', platform: 6, x: 4050 },
   ],
+  // Chapter 3 — patrols avoid the collapsing shelves and lens fixtures.
+  'moonbreak-reef': [{ type: 'skitterer', platform: 1, at: .45 }, { type: 'warden', platform: 4, at: .65 }],
+  'glass-tide': [{ type: 'skitterer', platform: 2, at: .55 }, { type: 'warden', platform: 5, at: .6 }],
+  'ash-orchard': [{ type: 'skitterer', platform: 3, at: .7 }, { type: 'warden', platform: 5, at: .55 }],
+  'hollow-observatory': [{ type: 'skitterer', platform: 1, at: .45 }, { type: 'warden', platform: 5, at: .55 }],
+  'black-lens': [{ type: 'skitterer', platform: 5, at: .5 }, { type: 'warden', platform: 6, x: 3920 }],
+  // Chapters 4 and 5 ramp up the same enemy families between mechanisms.
+  'sunken-archive': [{ type: 'skitterer', platform: 2, at: .45 }, { type: 'warden', platform: 4, at: .5 }],
+  'bone-conduit': [{ type: 'warden', platform: 2, at: .65 }, { type: 'skitterer', platform: 5, at: .65 }],
+  'mirror-well': [{ type: 'skitterer', platform: 3, at: .65 }, { type: 'warden', platform: 5, at: .5 }],
+  'silent-engine': [{ type: 'warden', platform: 2, at: .55 }, { type: 'skitterer', platform: 5, at: .65 }],
+  'deep-transmitter': [{ type: 'skitterer', platform: 2, at: .65 }, { type: 'warden', platform: 5, at: .55 }],
+  'last-shore': [{ type: 'skitterer', platform: 2, at: .65 }, { type: 'warden', platform: 5, at: .55 }],
+  'split-signal': [{ type: 'warden', platform: 2, at: .6 }, { type: 'skitterer', platform: 5, at: .55 }],
+  'red-cathedral': [{ type: 'skitterer', platform: 2, at: .65 }, { type: 'warden', platform: 5, at: .55 }],
+  'night-array': [{ type: 'warden', platform: 2, at: .55 }, { type: 'skitterer', platform: 5, at: .6 }],
+  'threshold': [{ type: 'skitterer', platform: 2, at: .65 }, { type: 'warden', platform: 5, at: .55 }],
 };
