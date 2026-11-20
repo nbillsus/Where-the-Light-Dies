@@ -1,6 +1,7 @@
 import './styles.css';
 import Phaser from 'phaser';
 import { MainMenuScene } from './scenes/MainMenuScene.js';
+import { IntroScene } from './scenes/IntroScene.js';
 import { ChapterScene } from './scenes/ChapterScene.js';
 import { renderScale } from './rendering.js';
 
@@ -22,7 +23,7 @@ const game = new Phaser.Game({
     mode: Phaser.Scale.FIT,
     autoCenter: Phaser.Scale.CENTER_BOTH,
   },
-  scene: [MainMenuScene, ChapterScene],
+  scene: [MainMenuScene, IntroScene, ChapterScene],
 });
 
 // Dev-only handle for automated play-tests and debugging (not in production builds).

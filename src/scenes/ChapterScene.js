@@ -29,7 +29,7 @@ import { saveSlot } from '../saveSlots.js';
 
 const ART_URLS = [coastUrl, facilityUrl, thornwoodUrl, cavernUrl, vaultUrl, descentUrl, worksUrl, arrayUrl, chamberUrl, heartUrl];
 const RUN_SPEED = 320;
-const JUMP_SPEED = -490;
+const JUMP_SPEED = -525;
 
 export class ChapterScene extends Phaser.Scene {
   constructor() { super('Chapter'); }
