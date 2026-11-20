@@ -429,17 +429,47 @@ export class HorrorPresentation {
     const ctx = this.ensureAudio();
     if (!ctx || !this.master) return;
     const now = ctx.currentTime;
-    const osc = ctx.createOscillator();
+    const seconds = duration / 1000;
+    const pressure = ctx.createBufferSource();
+    const filter = ctx.createBiquadFilter();
+    const shiver = ctx.createBiquadFilter();
     const gain = ctx.createGain();
-    osc.type = 'sawtooth';
-    osc.frequency.setValueAtTime(pitch, now);
-    osc.frequency.exponentialRampToValueAtTime(pitch * 1.75, now + duration / 1000);
+    const sub = ctx.createOscillator();
+    const subGain = ctx.createGain();
+    const buffer = ctx.createBuffer(1, Math.floor(ctx.sampleRate * seconds), ctx.sampleRate);
+    const data = buffer.getChannelData(0);
+    let rumble = 0;
+    for (let i = 0; i < data.length; i++) {
+      const t = i / data.length;
+      const rise = Math.pow(t, 1.7);
+      const tremble = 0.55 + Math.sin(t * 73) * 0.22 + Math.sin(t * 191) * 0.12;
+      rumble = rumble * 0.8 + (Math.random() * 2 - 1) * 0.2;
+      data[i] = rumble * rise * tremble;
+    }
+    pressure.buffer = buffer;
+    filter.type = 'bandpass';
+    filter.frequency.setValueAtTime(160, now);
+    filter.frequency.exponentialRampToValueAtTime(1100, now + seconds);
+    filter.Q.value = 9;
+    shiver.type = 'highpass';
+    shiver.frequency.value = 700;
+    shiver.Q.value = 2.8;
     gain.gain.setValueAtTime(0.0001, now);
-    gain.gain.exponentialRampToValueAtTime(0.11, now + 0.2);
-    gain.gain.exponentialRampToValueAtTime(0.0001, now + duration / 1000);
-    osc.connect(gain).connect(this.master);
-    osc.start(now);
-    osc.stop(now + duration / 1000 + 0.05);
+    gain.gain.exponentialRampToValueAtTime(0.16, now + Math.min(0.36, seconds * 0.35));
+    gain.gain.linearRampToValueAtTime(0.28, now + seconds * 0.88);
+    gain.gain.exponentialRampToValueAtTime(0.0001, now + seconds);
+    sub.type = 'sine';
+    sub.frequency.setValueAtTime(Math.max(28, pitch * 0.38), now);
+    sub.frequency.exponentialRampToValueAtTime(18, now + seconds);
+    subGain.gain.setValueAtTime(0.0001, now);
+    subGain.gain.exponentialRampToValueAtTime(0.22, now + 0.12);
+    subGain.gain.exponentialRampToValueAtTime(0.0001, now + seconds);
+    pressure.connect(filter).connect(shiver).connect(gain).connect(this.master);
+    sub.connect(subGain).connect(this.master);
+    pressure.start(now);
+    sub.start(now);
+    pressure.stop(now + seconds + 0.04);
+    sub.stop(now + seconds + 0.04);
   }
 
   startSuspenseMusic() {
@@ -448,36 +478,77 @@ export class HorrorPresentation {
 
     const bed = ctx.createGain();
     const tension = ctx.createGain();
+    const whisper = ctx.createGain();
     const filter = ctx.createBiquadFilter();
+    const whisperFilter = ctx.createBiquadFilter();
+    const movement = ctx.createGain();
+    const lfo = ctx.createOscillator();
     const bass = ctx.createOscillator();
-    const fifth = ctx.createOscillator();
-    const scrape = ctx.createOscillator();
+    const underBass = ctx.createOscillator();
+    const growl = ctx.createBufferSource();
+    const growlFilter = ctx.createBiquadFilter();
+    const scrape = ctx.createBufferSource();
+    const growlBuffer = ctx.createBuffer(1, ctx.sampleRate * 2, ctx.sampleRate);
+    const growlData = growlBuffer.getChannelData(0);
+    let growlLast = 0;
+    for (let i = 0; i < growlData.length; i++) {
+      const t = i / growlData.length;
+      const unevenBreath = 0.48 + Math.sin(t * Math.PI * 9) * 0.24 + Math.sin(t * Math.PI * 23) * 0.1;
+      growlLast = growlLast * 0.9 + (Math.random() * 2 - 1) * 0.1;
+      growlData[i] = growlLast * unevenBreath;
+    }
+    growl.buffer = growlBuffer;
+    growl.loop = true;
+    const scrapeBuffer = ctx.createBuffer(1, ctx.sampleRate * 2, ctx.sampleRate);
+    const scrapeData = scrapeBuffer.getChannelData(0);
+    let scrapeLast = 0;
+    for (let i = 0; i < scrapeData.length; i++) {
+      const t = i / scrapeData.length;
+      const scrapePulse = Math.sin(t * Math.PI * 12) > 0.35 ? 1 : 0.24;
+      scrapeLast = scrapeLast * 0.66 + (Math.random() * 2 - 1) * 0.34;
+      scrapeData[i] = scrapeLast * scrapePulse;
+    }
+    scrape.buffer = scrapeBuffer;
+    scrape.loop = true;
 
-    bed.gain.value = 0.038;
-    tension.gain.value = 0.014;
+    bed.gain.value = 0.028;
+    tension.gain.value = 0.01;
+    whisper.gain.value = 0.006;
     filter.type = 'lowpass';
-    filter.frequency.value = 420;
-    filter.Q.value = 8;
+    filter.frequency.value = 260;
+    filter.Q.value = 12;
+    growlFilter.type = 'bandpass';
+    growlFilter.frequency.value = 95;
+    growlFilter.Q.value = 8;
+    whisperFilter.type = 'bandpass';
+    whisperFilter.frequency.value = 1180;
+    whisperFilter.Q.value = 14;
 
     bass.type = 'sine';
-    fifth.type = 'sawtooth';
-    scrape.type = 'triangle';
-    bass.frequency.value = 43.65;
-    fifth.frequency.value = 65.4;
-    scrape.frequency.value = 116.5;
+    underBass.type = 'sine';
+    bass.frequency.value = 36.7;
+    underBass.frequency.value = 34.9;
+    lfo.type = 'sine';
+    lfo.frequency.value = 0.68;
+    movement.gain.value = 0.018;
 
     bass.connect(bed);
-    fifth.connect(tension);
-    scrape.connect(tension);
+    underBass.connect(bed);
+    growl.connect(growlFilter).connect(tension);
+    scrape.connect(whisperFilter).connect(whisper);
+    lfo.connect(movement.gain);
     tension.connect(filter);
-    bed.connect(this.master);
+    whisper.connect(filter);
+    bed.connect(movement).connect(this.master);
     filter.connect(this.master);
 
     const now = ctx.currentTime;
     bass.start(now);
-    fifth.start(now);
+    underBass.start(now);
+    growl.start(now);
     scrape.start(now);
-    this.music = { bed, tension, filter, bass, fifth, scrape, level: 0 };
+    lfo.start(now);
+    this.music = { bed, tension, whisper, filter, growlFilter, whisperFilter, movement, bass, underBass, growl, scrape, lfo, level: 0 };
     this.setMusicIntensity(0.18);
   }
 
@@ -489,10 +560,16 @@ export class HorrorPresentation {
     this.music.level = amount;
     this.music.bed.gain.cancelScheduledValues(now);
     this.music.tension.gain.cancelScheduledValues(now);
+    this.music.whisper.gain.cancelScheduledValues(now);
     this.music.filter.frequency.cancelScheduledValues(now);
-    this.music.bed.gain.linearRampToValueAtTime(0.035 + amount * 0.045, now + 0.28);
-    this.music.tension.gain.linearRampToValueAtTime(0.012 + amount * 0.15, now + 0.28);
-    this.music.filter.frequency.linearRampToValueAtTime(320 + amount * 1350, now + 0.28);
+    this.music.growlFilter.frequency.cancelScheduledValues(now);
+    this.music.whisperFilter.frequency.cancelScheduledValues(now);
+    this.music.bed.gain.linearRampToValueAtTime(0.03 + amount * 0.055, now + 0.38);
+    this.music.tension.gain.linearRampToValueAtTime(0.006 + amount * 0.055, now + 0.38);
+    this.music.whisper.gain.linearRampToValueAtTime(0.004 + amount * 0.105, now + 0.38);
+    this.music.filter.frequency.linearRampToValueAtTime(210 + amount * 780, now + 0.38);
+    this.music.growlFilter.frequency.linearRampToValueAtTime(70 + amount * 210, now + 0.38);
+    this.music.whisperFilter.frequency.linearRampToValueAtTime(820 + amount * 2400, now + 0.38);
   }
 
   linkedCrescendo(duration = 2400, pitch = 82) {
@@ -502,13 +579,22 @@ export class HorrorPresentation {
     const now = ctx.currentTime;
     this.music.bed.gain.cancelScheduledValues(now);
     this.music.tension.gain.cancelScheduledValues(now);
+    this.music.whisper.gain.cancelScheduledValues(now);
     this.music.filter.frequency.cancelScheduledValues(now);
+    this.music.growlFilter.frequency.cancelScheduledValues(now);
+    this.music.whisperFilter.frequency.cancelScheduledValues(now);
     this.music.bed.gain.setValueAtTime(this.music.bed.gain.value, now);
     this.music.tension.gain.setValueAtTime(this.music.tension.gain.value, now);
+    this.music.whisper.gain.setValueAtTime(this.music.whisper.gain.value, now);
     this.music.filter.frequency.setValueAtTime(this.music.filter.frequency.value, now);
-    this.music.bed.gain.linearRampToValueAtTime(0.11, now + duration / 1000);
-    this.music.tension.gain.linearRampToValueAtTime(0.24, now + duration / 1000);
-    this.music.filter.frequency.linearRampToValueAtTime(2100, now + duration / 1000);
+    this.music.growlFilter.frequency.setValueAtTime(this.music.growlFilter.frequency.value, now);
+    this.music.whisperFilter.frequency.setValueAtTime(this.music.whisperFilter.frequency.value, now);
+    this.music.bed.gain.linearRampToValueAtTime(0.13, now + duration / 1000);
+    this.music.tension.gain.linearRampToValueAtTime(0.08, now + duration / 1000);
+    this.music.whisper.gain.linearRampToValueAtTime(0.22, now + duration / 1000);
+    this.music.filter.frequency.linearRampToValueAtTime(920, now + duration / 1000);
+    this.music.growlFilter.frequency.linearRampToValueAtTime(320, now + duration / 1000);
+    this.music.whisperFilter.frequency.linearRampToValueAtTime(3800, now + duration / 1000);
   }
 
   playRadioNoise() {
