@@ -9,12 +9,18 @@ import worksUrl from '../../assets/environment/chapter-two/ossuary-works.svg?url
 import arrayUrl from '../../assets/environment/chapter-two/crimson-array.svg?url';
 import chamberUrl from '../../assets/environment/chapter-two/bloodglass-chamber.svg?url';
 import heartUrl from '../../assets/environment/chapter-two/heart-of-works.svg?url';
+import reefUrl from '../../assets/environment/chapter-three/moonbreak-reef.svg?url';
+import tideUrl from '../../assets/environment/chapter-three/glass-tide.svg?url';
+import orchardUrl from '../../assets/environment/chapter-three/ash-orchard.svg?url';
+import observatoryUrl from '../../assets/environment/chapter-three/hollow-observatory.svg?url';
+import lensUrl from '../../assets/environment/chapter-three/black-lens.svg?url';
 import boyUpperUrl from '../../assets/characters/boy_upper.png?url';
 import { BoyAnimator } from '../animation/BoyAnimator.js';
 import { CHAPTER_STAGES } from '../levels/chapterData.js';
 import { ShadowController } from '../gameplay/ShadowController.js';
 import { ChapterMechanics } from '../gameplay/ChapterMechanics.js';
 import { ChapterTwoMechanics } from '../gameplay/ChapterTwoMechanics.js';
+import { ChapterThreeMechanics } from '../gameplay/ChapterThreeMechanics.js';
 import { Cinematics } from '../gameplay/Cinematics.js';
 import { HorrorPresentation } from '../gameplay/HorrorPresentation.js';
 import { Atmosphere } from '../effects/Atmosphere.js';
@@ -23,7 +29,8 @@ import { KeyPrompt } from '../ui/KeyPrompt.js';
 import { fixedLayerOffset, logicalSize, renderScale, sharpenText } from '../rendering.js';
 import { saveSlot } from '../saveSlots.js';
 
-const ART_URLS = [coastUrl, facilityUrl, thornwoodUrl, cavernUrl, vaultUrl, descentUrl, worksUrl, arrayUrl, chamberUrl, heartUrl];
+const ART_URLS = [coastUrl, facilityUrl, thornwoodUrl, cavernUrl, vaultUrl, descentUrl, worksUrl, arrayUrl, chamberUrl, heartUrl,
+  reefUrl, tideUrl, orchardUrl, observatoryUrl, lensUrl];
 const RUN_SPEED = 320;
 const JUMP_SPEED = -525;
 
@@ -77,7 +84,8 @@ export class ChapterScene extends Phaser.Scene {
     this.animator = new BoyAnimator(this, this.player, this.spriteHeight);
     this.shadow = this.stage.shadow ? new ShadowController(this, this.player, this.spriteHeight) : null;
     this.cinematics = new Cinematics(this);
-    this.mechanics = this.stage.chapter === 2 ? new ChapterTwoMechanics(this) : new ChapterMechanics(this);
+    this.mechanics = this.stage.chapter === 3 ? new ChapterThreeMechanics(this)
+      : this.stage.chapter === 2 ? new ChapterTwoMechanics(this) : new ChapterMechanics(this);
     this.horror = new HorrorPresentation(this);
     this.checkpoint = 0;
     this.lastGrounded = 0;
@@ -121,8 +129,8 @@ export class ChapterScene extends Phaser.Scene {
     this.hud = new Hud(this);
     this.keyPrompt = new KeyPrompt(this);
     if (this.restoreData) this.applySave(this.restoreData);
-    else if (this.levelIndex !== 5) this.cinematics.pulse(this.stage.title, this.stage.subtitle,
-      this.stage.chapter === 2 ? 0xe96756 : this.stage.shadow ? 0xb79bdb : 0xa5dde3, 2600);
+    else if (![5, 10].includes(this.levelIndex)) this.cinematics.pulse(this.stage.title, this.stage.subtitle,
+      this.stage.chapter === 3 ? 0xb8e8eb : this.stage.chapter === 2 ? 0xe96756 : this.stage.shadow ? 0xb79bdb : 0xa5dde3, 2600);
     if (this.slotIndex !== null) this.time.addEvent({ delay: 5000, loop: true, callback: () => { if (!this.paused) this.saveProgress(); } });
     sharpenText(this);
   }
@@ -322,11 +330,12 @@ export class ChapterScene extends Phaser.Scene {
     this.player.setVelocity(0, 0).setAcceleration(0, 0);
     if (this.levelIndex === CHAPTER_STAGES.length - 1) {
       this.saveProgress();
-      this.cinematics.finale(2);
+      this.cinematics.finale(this.stage.chapter || 1);
       return;
     }
     if (this.levelIndex === 4) this.cinematics.pulse('CHAPTER II · THE FACILITY BELOW', 'The signal opens a path beneath the island. The shadow reaches for what the light left behind.', 0xe96756, 2400);
-    this.cameras.main.fadeOut(this.levelIndex === 4 ? 2500 : 600, 2, 7, 16);
+    if (this.levelIndex === 9) this.cinematics.pulse('CHAPTER III · THE REFLECTED COAST', 'The machine opens onto a coast that remembers every light it has swallowed.', 0xb8e8eb, 2400);
+    this.cameras.main.fadeOut([4, 9].includes(this.levelIndex) ? 2500 : 600, 2, 7, 16);
     this.cameras.main.once(Phaser.Cameras.Scene2D.Events.FADE_OUT_COMPLETE,
       () => {
         if (this.slotIndex !== null) saveSlot(this.slotIndex, { levelIndex: this.levelIndex + 1, x: 145, y: null, mechanics: null, shadow: null });
@@ -337,7 +346,7 @@ export class ChapterScene extends Phaser.Scene {
   update(time, delta) {
     if (this.paused) return;
     if (this.finished) {
-      if (Phaser.Input.Keyboard.JustDown(this.keys.R)) this.scene.start('Chapter', { levelIndex: this.stage.chapter === 2 ? 5 : 0, slotIndex: this.slotIndex });
+      if (Phaser.Input.Keyboard.JustDown(this.keys.R)) this.scene.start('Chapter', { levelIndex: this.stage.chapter === 3 ? 10 : this.stage.chapter === 2 ? 5 : 0, slotIndex: this.slotIndex });
       return;
     }
     if (Phaser.Input.Keyboard.JustDown(this.keys.R)) { this.scene.restart({ levelIndex: this.levelIndex, slotIndex: this.slotIndex }); return; }
