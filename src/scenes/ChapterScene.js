@@ -23,6 +23,7 @@ import { KeyPrompt } from '../ui/KeyPrompt.js';
 import { readSettings } from '../settings.js';
 import { Combat } from '../combat/Combat.js';
 import { EnemyDirector } from '../enemies/EnemyDirector.js';
+import { BossArena } from '../enemies/bosses/BossArena.js';
 import { fixedLayerOffset, logicalSize, renderScale, sharpenText } from '../rendering.js';
 import { saveSlot } from '../saveSlots.js';
 
@@ -54,7 +55,10 @@ export class ChapterScene extends Phaser.Scene {
     this.artScale = h / this.stage.height;
     this.worldWidth = this.stage.width * this.artScale;
     this.cameras.main.setZoom(renderScale).setBounds(0, 0, this.worldWidth, h);
-    this.add.image(this.worldWidth / 2, h / 2, this.backdropKey).setDisplaySize(this.worldWidth, h).setDepth(-10);
+    // The painted backdrop covers the original 4096-wide area; boss arenas
+    // beyond it are drawn in code (src/effects/ArenaBackdrop.js).
+    const artWidth = (this.stage.artWidth ?? this.stage.width) * this.artScale;
+    this.add.image(artWidth / 2, h / 2, this.backdropKey).setDisplaySize(artWidth, h).setDepth(-10);
 
     this.platforms = this.stage.platforms.map(([start, end, top]) => {
       const left = start * this.artScale;
@@ -83,6 +87,7 @@ export class ChapterScene extends Phaser.Scene {
     this.mechanics = this.stage.chapter === 2 ? new ChapterTwoMechanics(this) : new ChapterMechanics(this);
     this.horror = new HorrorPresentation(this);
     this.enemies = new EnemyDirector(this);
+    this.arena = this.stage.arena ? new BossArena(this) : null;
     this.combat = new Combat(this);
     this.checkpoint = 0;
     this.lastGrounded = 0;
@@ -409,9 +414,10 @@ export class ChapterScene extends Phaser.Scene {
     this.mechanics.update(time);
     this.horror?.update(time);
     this.enemies.update(time, delta);
+    this.arena?.update(time, delta);
     this.combat.update(time);
     this.hud.update();
-    this.keyPrompt.update([...(this.mechanics.hints ?? []), ...this.combat.hints], time);
+    this.keyPrompt.update([...(this.arena?.hints ?? []), ...(this.mechanics.hints ?? []), ...this.combat.hints], time);
     if (this.player.y > this.viewportHeight + 110) this.respawn();
     if (grounded && this.player.x > this.worldWidth - this.spriteHeight * .43) this.finishStage();
   }

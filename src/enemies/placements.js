@@ -1,5 +1,6 @@
 // Where enemies stand in each area: which platform (index into the area's
-// platform list in src/levels/chapterData.js) and how far along it (0–1).
+// platform list in src/levels/chapterData.js) and how far along it (`at`,
+// 0–1), or an exact `x` in art units.
 // Kept away from puzzle objects and timed runs. Neel: move freely.
 export const PLACEMENTS = {
   // Chapter 1 — Skitterers are introduced gently, Wardens from the Cavern on.
@@ -41,6 +42,6 @@ export const PLACEMENTS = {
   ],
   'heart-of-works': [
     { type: 'warden', platform: 2, at: .55 },
-    { type: 'skitterer', platform: 6, at: .3 }, { type: 'skitterer', platform: 6, at: .45 }, { type: 'skitterer', platform: 6, at: .6 },
+    { type: 'skitterer', platform: 6, x: 3850 }, { type: 'skitterer', platform: 6, x: 3950 }, { type: 'skitterer', platform: 6, x: 4050 },
   ],
 };

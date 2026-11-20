@@ -106,6 +106,8 @@ export class Combat {
     if (time - this.lastStrike < TUNING.strikeGap) return;
     this.combo = time - this.lastStrike < TUNING.comboWindow && this.combo < 3 ? this.combo + 1 : 1;
     this.lastStrike = time;
+    this.attackAt = time;
+    this.attackStep = this.combo;
     learned.strike = true;
     const player = this.scene.player, dir = this.facing, reach = this.height * TUNING.strikeRange;
     const box = {
@@ -161,6 +163,7 @@ export class Combat {
     // Dash the way you're pushing; with no direction held, step back from danger.
     this.dodgeDir = right && !left ? 1 : left && !right ? -1 : -this.facing;
     this.dodgeUntil = time + TUNING.dodgeTime;
+    this.dodgeAt = time;
     this.dodgeReadyAt = time + TUNING.dodgeCooldown;
     this.invulnerableUntil = Math.max(this.invulnerableUntil, time + TUNING.dodgeTime + 60);
     player.body.setMaxVelocityX(TUNING.dodgeSpeed);
@@ -183,9 +186,14 @@ export class Combat {
     const player = scene.player, dir = Math.sign(player.x - fromX) || -this.facing;
     player.body.setMaxVelocityX(TUNING.knockback);
     player.setVelocity(dir * TUNING.knockback, -260);
-    this.hurtVeil.setAlpha(.38);
-    scene.tweens.add({ targets: this.hurtVeil, alpha: 0, duration: 420 });
-    scene.shakeCamera(200, .008);
+    this.hurtAt = time;
+    this.hurtVeil.setAlpha(.5);
+    scene.tweens.add({ targets: this.hurtVeil, alpha: 0, duration: 520 });
+    scene.shakeCamera(240, .012);
+    scene.animator.hurtFlash?.();
+    // Hit-stop: a tiny freeze so the hit registers.
+    scene.physics.world.pause();
+    setTimeout(() => { if (!scene.paused && scene.sys.isActive()) scene.physics.world.resume(); }, 80);
     sfx.hurt(scene);
     scene.events.emit('combat:hurt', this.health);
     if (this.health === 0) this.die();
@@ -201,6 +209,7 @@ export class Combat {
     scene.cameras.main.once(Phaser.Cameras.Scene2D.Events.FADE_OUT_COMPLETE, () => {
       scene.respawn();
       scene.enemies?.reset();
+      scene.arena?.afterDeath();
       this.health = TUNING.maxHealth;
       this.invulnerableUntil = scene.time.now + 1200;
       this.dying = false;

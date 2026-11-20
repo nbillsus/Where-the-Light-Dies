@@ -67,6 +67,11 @@ export class ShroudWarden extends Enemy {
     const { dx, dist, sameLevel } = this.playerInfo();
     const H = this.H;
     if (this.stunned) { body.setVelocityX(0); return; }
+    // Walking into it hurts.
+    if (sameLevel && dist < this.width * .5 + H * .12 && time > (this.nextTouch ?? 0)) {
+      this.nextTouch = time + 900;
+      this.scene.combat?.hurt(1, this.x);
+    }
     if (this.state === 'windup') {
       body.setVelocityX(0);
       if (time >= this.strikeAt) this.swing(time);

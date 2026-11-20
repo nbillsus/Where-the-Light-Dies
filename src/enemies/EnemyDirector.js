@@ -8,10 +8,10 @@ import { TUNING } from '../combat/Combat.js';
 export class EnemyDirector {
   constructor(scene) {
     this.scene = scene;
-    this.list = (PLACEMENTS[scene.stage.id] ?? []).flatMap(({ type, platform, at }) => {
+    this.list = (PLACEMENTS[scene.stage.id] ?? []).flatMap(({ type, platform, at, x: artX }) => {
       const ledge = scene.platforms[platform];
       if (!ledge) return [];
-      const x = ledge.left + (ledge.right - ledge.left) * at;
+      const x = artX != null ? artX * scene.artScale : ledge.left + (ledge.right - ledge.left) * at;
       return [type === 'warden' ? new ShroudWarden(scene, x, ledge) : new Skitterer(scene, x, ledge)];
     });
   }
@@ -20,17 +20,26 @@ export class EnemyDirector {
     for (const enemy of this.list) enemy.update(time, delta);
   }
 
-  reset() { for (const enemy of this.list) enemy.reset(); }
+  reset() {
+    // Drop minions a boss summoned, then put everyone back.
+    this.list = this.list.filter(enemy => {
+      if (!enemy.summoned) return true;
+      enemy.art.destroy(); enemy.body.destroy();
+      return false;
+    });
+    for (const enemy of this.list) enemy.reset();
+  }
 
   /** Light Strike hit box: { left, right, top, bottom }. */
   strike(box, damage, dir, fromX, time, heavy) {
     let landed = 0;
     for (const enemy of this.list) {
       if (!enemy.alive) continue;
-      const overlaps = enemy.x + enemy.width / 2 > box.left && enemy.x - enemy.width / 2 < box.right
-        && enemy.y + enemy.height / 2 > box.top && enemy.y - enemy.height / 2 < box.bottom;
-      if (!overlaps) continue;
-      const hit = enemy.takeHit(damage, dir, time, heavy);
+      // Bosses report which part was struck (e.g. 'core' or 'body').
+      const part = enemy.hitTest ? enemy.hitTest(box) : (enemy.x + enemy.width / 2 > box.left && enemy.x - enemy.width / 2 < box.right
+        && enemy.y + enemy.height / 2 > box.top && enemy.y - enemy.height / 2 < box.bottom) ? 'body' : null;
+      if (!part) continue;
+      const hit = enemy.takeHit(damage, dir, time, heavy, part);
       this.scene.events.emit('combat:hit', enemy, !hit);
       if (hit) landed++;
     }

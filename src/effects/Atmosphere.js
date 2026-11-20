@@ -2,6 +2,7 @@ import Phaser from 'phaser';
 import { themeFor } from './theme.js';
 import { ensureFxTextures, seededRandom } from './textures.js';
 import { readSettings } from '../settings.js';
+import { drawArenaBackdrop } from './ArenaBackdrop.js';
 
 // Depth and mood for a level: fog banks, drifting particles, weather, a dark
 // foreground ink layer that scrolls faster than the camera, decorated ledges,
@@ -22,6 +23,7 @@ export class Atmosphere {
     this.H = scene.viewportHeight;
     this.rand = seededRandom(scene.stage.id);
     ensureFxTextures(scene);
+    drawArenaBackdrop(scene);
     this.addFarFog();
     this.addLedges();
     this.addGroundFog();

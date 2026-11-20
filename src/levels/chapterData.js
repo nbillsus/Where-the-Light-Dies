@@ -44,11 +44,14 @@ export const CHAPTER_STAGES = [
   {
     id: 'lantern-vault', title: 'THE LANTERN VAULT', phase: 'THE REVELATION',
     subtitle: 'One last relay. One impossible signal.',
-    width: 4096, height: 900, shadow: true,
+    // The last ledge runs on into a boss arena (art beyond 4096 is drawn in code).
+    width: 5900, artWidth: 4096, height: 900, shadow: true,
+    arena: { start: 4300, boss: 'hollow' },
     platforms: [
       [0, 620, 735], [755, 1135, 685], [1270, 1635, 635],
       [1770, 2135, 690], [2270, 2630, 620], [2765, 3115, 665],
-      [3250, 3610, 610], [3745, 4096, 660],
+      [3250, 3610, 610], [3745, 5900, 660],
+      [4560, 4800, 520], [5180, 5420, 520],
     ],
   },
   ...[
@@ -61,9 +64,12 @@ export const CHAPTER_STAGES = [
     ['bloodglass-chamber', 'THE BLOODGLASS CHAMBER', 'THE CHAMBER', 'In every pane, your shadow is a second too late.',
       [[0,720,735],[850,1310,690],[1440,1900,650],[2030,2490,700],[2620,3070,650],[3200,3650,625],[3780,4096,675]]],
     ['heart-of-works', 'THE HEART OF THE WORKS', 'THE HEART', 'The machine calls for two hands. One of them is yours.',
-      [[0,720,735],[850,1320,690],[1450,1900,650],[2030,2500,700],[2630,3090,650],[3220,3650,625],[3780,4096,675]]],
+      [[0,720,735],[850,1320,690],[1450,1900,650],[2030,2500,700],[2630,3090,650],[3220,3650,625],[3780,5900,675],
+        [4420,4660,525],[5000,5240,480]]],
   ].map(([id, title, phase, subtitle, platforms], index) => ({
     id, title, phase, subtitle, platforms, width: 4096, height: 900,
     shadow: true, grasp: [0, 3, 4].includes(index), chapter: 2,
+    // The final area runs on into a boss arena.
+    ...(index === 4 ? { width: 5900, artWidth: 4096, arena: { start: 4300, boss: 'heart' } } : {}),
   })),
 ];
