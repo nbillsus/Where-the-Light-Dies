@@ -9,10 +9,13 @@ import { sfx } from './sfx.js';
 // Scene events emitted for audio/UI (scene.events):
 //   'combat:strike' (step)            'combat:hit' (enemy, blocked)
 //   'combat:flare' (x, y)             'combat:hurt' (health)
-//   'combat:died'                     'combat:enemy-killed' (enemy)
+//   'combat:healed' (health)           'combat:died'
+//   'combat:enemy-killed' (enemy)
 
 export const TUNING = {
   maxHealth: 5,
+  // Regain one missing heart after five seconds without taking damage.
+  healthRegenInterval: 5000,
   // Light Strike: 3-hit combo. Presses closer than `strikeGap` are ignored;
   // a press within `comboWindow` of the last one continues the combo.
   strikeGap: 230, comboWindow: 560, strikeDamage: [1, 1, 2],
@@ -43,6 +46,7 @@ export class Combat {
     scene.input.on('pointerdown', this.onPointer);
     scene.events.once('shutdown', () => scene.input.off('pointerdown', this.onPointer));
     this.health = TUNING.maxHealth;
+    this.nextHealthRegenAt = scene.time.now + TUNING.healthRegenInterval;
     this.combo = 0;
     this.lastStrike = -1e9;
     this.flareReadyAt = 0;
@@ -79,6 +83,7 @@ export class Combat {
     const scene = this.scene;
     const player = scene.player;
     if (this.dying || scene.finished) return;
+    this.updateHealthRegen(time);
     const busy = !!scene.shadow?.controlling;
     const strike = Phaser.Input.Keyboard.JustDown(this.keys.J) || this.mouse.left;
     const flare = Phaser.Input.Keyboard.JustDown(this.keys.K) || this.mouse.right;
@@ -100,6 +105,17 @@ export class Combat {
     // Flicker while invulnerable after a hit.
     const visual = scene.animator.visual;
     visual.setAlpha(time < this.invulnerableUntil && time > this.dodgeUntil ? (Math.floor(time / 70) % 2 ? .35 : 1) : 1);
+  }
+
+  updateHealthRegen(time) {
+    if (this.health >= TUNING.maxHealth) {
+      this.nextHealthRegenAt = time + TUNING.healthRegenInterval;
+      return;
+    }
+    if (time < this.nextHealthRegenAt) return;
+    this.health = Math.min(TUNING.maxHealth, this.health + 1);
+    this.nextHealthRegenAt = time + TUNING.healthRegenInterval;
+    this.scene.events.emit('combat:healed', this.health);
   }
 
   strike(time) {
@@ -185,6 +201,7 @@ export class Combat {
     const scene = this.scene, time = scene.time.now;
     if (this.dying || scene.finished || time < this.invulnerableUntil) return false;
     this.health = Math.max(0, this.health - amount);
+    this.nextHealthRegenAt = time + TUNING.healthRegenInterval;
     this.invulnerableUntil = time + TUNING.hurtGrace;
     this.knockedUntil = time + 260;
     const player = scene.player, dir = Math.sign(player.x - fromX) || -this.facing;
@@ -213,8 +230,8 @@ export class Combat {
     scene.cameras.main.once(Phaser.Cameras.Scene2D.Events.FADE_OUT_COMPLETE, () => {
       scene.respawn();
       scene.enemies?.reset();
-      scene.arena?.afterDeath();
       this.health = TUNING.maxHealth;
+      this.nextHealthRegenAt = scene.time.now + TUNING.healthRegenInterval;
       this.invulnerableUntil = scene.time.now + 1200;
       this.dying = false;
       scene.cameras.main.fadeIn(500, 0, 0, 0);

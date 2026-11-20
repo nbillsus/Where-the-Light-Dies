@@ -137,8 +137,9 @@ export class Lighting {
 
   ambientColor() {
     // Lightning briefly lights the whole world.
+    const base = this.theme.ambient ?? 0x34405a; // areas without their own ambient colour
     const flash = this.scene.atmosphere?.lightning?.fillAlpha ?? 0;
-    return flash > 0 ? mixColor(this.theme.ambient, 0xc6d6f2, Math.min(1, flash * 3.6)) : this.theme.ambient;
+    return flash > 0 ? mixColor(base, 0xc6d6f2, Math.min(1, flash * 3.6)) : base;
   }
 
   render() {

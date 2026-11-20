@@ -119,7 +119,7 @@ export class MainMenuScene extends Phaser.Scene {
     const requested = Number(new URLSearchParams(window.location.search).get('stage'));
     const levelIndex = import.meta.env.DEV && Number.isInteger(requested) && requested >= 1 && requested <= CHAPTER_STAGES.length ? requested - 1 : 0;
     if (saveSlot(index, { levelIndex, x: 145, y: null, mechanics: null, shadow: null }))
-      this.scene.start('Chapter', { levelIndex, slotIndex: index });
+      this.scene.start('Intro', { levelIndex, slotIndex: index });
   }
 
   showSlots(mode, replace = null) {

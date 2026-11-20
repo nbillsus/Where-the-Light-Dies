@@ -6,6 +6,7 @@ const AMBER = 0xf4c16b;
 const CYAN = 0x9ce6e0;
 const BLOOD = 0xe96756;
 const DARK = 0x02060c;
+const SCARE_HIT_MS = 2150;
 
 const STORY_BEATS = {
   'storm-coast': [
@@ -113,6 +114,31 @@ const STORY_BEATS = {
       color: AMBER,
     },
   ],
+  'moonbreak-reef': [{
+    key: 'first-reflection', x: 2200, kind: 'radio', title: 'THE RETURNING BEAM',
+    message: 'The lens gave back a light that had gone out decades ago. Someone carved a warning into its frame: reflections have memories.',
+    voice: '...not the lighthouse... something on the reef is answering...', color: CYAN,
+  }],
+  'glass-tide': [{
+    key: 'glass-tide-echo', x: 2100, kind: 'scare', title: 'UNDER THE GLASS',
+    message: 'A silhouette keeps pace beneath the transparent shore.',
+    after: 'It stops only when you stop. Its head turns one beat too late.', scare: 'glass', color: CYAN,
+  }],
+  'ash-orchard': [{
+    key: 'orchard-recording', x: 2050, kind: 'radio', title: 'ORCHARD RECORDING',
+    message: 'The trees grew around the old reflectors after the first blackout. Their roots follow the buried cables, not the water.',
+    voice: 'The station called this place a garden. No one remembers planting it.', color: AMBER,
+  }],
+  'hollow-observatory': [{
+    key: 'observatory-eye', x: 2500, kind: 'scare', title: 'THE EMPTY TELESCOPE',
+    message: 'The instrument points down, toward the floor beneath your feet.',
+    after: 'A pale handprint appears on the inside of the lens.', scare: 'glass', color: CYAN,
+  }],
+  'black-lens': [{
+    key: 'lens-message', x: 2650, kind: 'radio', title: 'THE ORIGINAL SIGNAL',
+    message: 'This is not a distress call. The first keeper sent it to keep the black lens closed. The signal has been repeating his warning ever since.',
+    voice: '...if it learns to carry light, do not let it find the lighthouse...', color: AMBER,
+  }],
 };
 
 // Soft round light (radial gradient) instead of a hard-edged ellipse. The
@@ -148,6 +174,8 @@ export class HorrorPresentation {
     this.master = null;
     this.music = null;
     this.isScaring = false;
+    this.audioUnlocked = false;
+    this.unlockHandlers = [];
     this.createAmbience();
     this.createLighting();
     this.installAudioUnlock();
@@ -155,23 +183,57 @@ export class HorrorPresentation {
   }
 
   installAudioUnlock() {
-    const unlock = () => this.ensureAudio();
-    this.scene.input.keyboard.once('keydown', unlock);
-    this.scene.input.once('pointerdown', unlock);
+    const unlock = () => this.ensureAudio(true);
+    this.scene.input.keyboard.on('keydown', unlock);
+    this.scene.input.on('pointerdown', unlock);
+    this.unlockHandlers.push(['scene-keyboard', unlock], ['scene-pointer', unlock]);
+    for (const event of ['keydown', 'pointerdown', 'mousedown', 'touchstart']) {
+      window.addEventListener(event, unlock, { passive: true });
+      this.unlockHandlers.push([event, unlock]);
+    }
   }
 
-  ensureAudio() {
+  ensureAudio(fromGesture = false) {
     const AudioContextClass = window.AudioContext || window.webkitAudioContext;
     if (!AudioContextClass) return null;
     if (!this.audioContext) {
       this.audioContext = new AudioContextClass();
       this.master = this.audioContext.createGain();
-      this.master.gain.value = 0.26;
+      this.master.gain.value = 0.42;
       this.master.connect(this.audioContext.destination);
       this.startSuspenseMusic();
     }
-    if (this.audioContext.state === 'suspended') this.audioContext.resume();
+    if (this.audioContext.state === 'suspended') {
+      this.audioContext.resume().then(() => {
+        if (fromGesture) this.confirmAudioUnlocked();
+      }).catch(() => {});
+    } else if (fromGesture) {
+      this.confirmAudioUnlocked();
+    }
     return this.audioContext;
+  }
+
+  confirmAudioUnlocked() {
+    if (this.audioUnlocked || !this.audioContext || !this.master || this.audioContext.state !== 'running') return;
+    this.audioUnlocked = true;
+    this.playUnlockThump();
+  }
+
+  playUnlockThump() {
+    const ctx = this.audioContext;
+    if (!ctx || !this.master) return;
+    const now = ctx.currentTime;
+    const thump = ctx.createOscillator();
+    const gain = ctx.createGain();
+    thump.type = 'sine';
+    thump.frequency.setValueAtTime(46, now);
+    thump.frequency.exponentialRampToValueAtTime(24, now + 0.18);
+    gain.gain.setValueAtTime(0.0001, now);
+    gain.gain.exponentialRampToValueAtTime(0.16, now + 0.012);
+    gain.gain.exponentialRampToValueAtTime(0.0001, now + 0.22);
+    thump.connect(gain).connect(this.master);
+    thump.start(now);
+    thump.stop(now + 0.24);
   }
 
   createAmbience() {
@@ -190,10 +252,12 @@ export class HorrorPresentation {
     ensureFxTextures(scene);
     // Lighter than before: these stack with the atmosphere's fog and vignette.
     // With dynamic lighting on, the light map does most of the darkening.
-    const dim = scene.atmosphere?.lighting ? 0.28 : 0.5;
+    // Chapter 3 is meant to read lighter than the first two chapters.
+    const lit = !!scene.atmosphere?.lighting, chapterThree = scene.stage.chapter === 3;
+    const dim = lit ? (chapterThree ? 0.14 : 0.28) : (chapterThree ? 0.25 : 0.5);
     this.moonDimmer = scene.add.rectangle(scene.worldWidth / 2, h / 2, scene.worldWidth, h, 0x020713, dim)
       .setDepth(-8);
-    this.deepFog = scene.add.rectangle(scene.worldWidth / 2, h / 2, scene.worldWidth, h, 0x02050a, 0.14)
+    this.deepFog = scene.add.rectangle(scene.worldWidth / 2, h / 2, scene.worldWidth, h, 0x02050a, scene.stage.chapter === 3 ? 0.08 : 0.14)
       .setDepth(1);
 
     this.torches = [];
@@ -367,10 +431,11 @@ export class HorrorPresentation {
     if (this.isScaring) return;
     this.isScaring = true;
     this.radioPanel(beat.title, beat.message, 'signal pressure rising...', beat.color, 2600);
-    this.linkedCrescendo(2400, 82);
+    this.scoreJumpScare(SCARE_HIT_MS, beat.scare);
     this.scene.time.delayedCall(520, () => this.playHelpCry(beat.scare === 'pierHand' ? 'near' : 'falseKeeper'));
     this.scene.time.delayedCall(1350, () => this.playHelpCry('panic'));
-    this.scene.time.delayedCall(2150, () => {
+    this.scene.time.delayedCall(SCARE_HIT_MS, () => {
+      this.playHorrorHit(beat.scare);
       this.playImpact(beat.scare);
       this.playScream(beat.scare);
       this.flash(beat.color);
@@ -431,17 +496,47 @@ export class HorrorPresentation {
     const ctx = this.ensureAudio();
     if (!ctx || !this.master) return;
     const now = ctx.currentTime;
-    const osc = ctx.createOscillator();
+    const seconds = duration / 1000;
+    const pressure = ctx.createBufferSource();
+    const filter = ctx.createBiquadFilter();
+    const shiver = ctx.createBiquadFilter();
     const gain = ctx.createGain();
-    osc.type = 'sawtooth';
-    osc.frequency.setValueAtTime(pitch, now);
-    osc.frequency.exponentialRampToValueAtTime(pitch * 1.75, now + duration / 1000);
+    const sub = ctx.createOscillator();
+    const subGain = ctx.createGain();
+    const buffer = ctx.createBuffer(1, Math.floor(ctx.sampleRate * seconds), ctx.sampleRate);
+    const data = buffer.getChannelData(0);
+    let rumble = 0;
+    for (let i = 0; i < data.length; i++) {
+      const t = i / data.length;
+      const rise = Math.pow(t, 1.7);
+      const tremble = 0.55 + Math.sin(t * 73) * 0.22 + Math.sin(t * 191) * 0.12;
+      rumble = rumble * 0.8 + (Math.random() * 2 - 1) * 0.2;
+      data[i] = rumble * rise * tremble;
+    }
+    pressure.buffer = buffer;
+    filter.type = 'bandpass';
+    filter.frequency.setValueAtTime(160, now);
+    filter.frequency.exponentialRampToValueAtTime(1100, now + seconds);
+    filter.Q.value = 9;
+    shiver.type = 'highpass';
+    shiver.frequency.value = 700;
+    shiver.Q.value = 2.8;
     gain.gain.setValueAtTime(0.0001, now);
-    gain.gain.exponentialRampToValueAtTime(0.11, now + 0.2);
-    gain.gain.exponentialRampToValueAtTime(0.0001, now + duration / 1000);
-    osc.connect(gain).connect(this.master);
-    osc.start(now);
-    osc.stop(now + duration / 1000 + 0.05);
+    gain.gain.exponentialRampToValueAtTime(0.16, now + Math.min(0.36, seconds * 0.35));
+    gain.gain.linearRampToValueAtTime(0.28, now + seconds * 0.88);
+    gain.gain.exponentialRampToValueAtTime(0.0001, now + seconds);
+    sub.type = 'sine';
+    sub.frequency.setValueAtTime(Math.max(28, pitch * 0.38), now);
+    sub.frequency.exponentialRampToValueAtTime(18, now + seconds);
+    subGain.gain.setValueAtTime(0.0001, now);
+    subGain.gain.exponentialRampToValueAtTime(0.22, now + 0.12);
+    subGain.gain.exponentialRampToValueAtTime(0.0001, now + seconds);
+    pressure.connect(filter).connect(shiver).connect(gain).connect(this.master);
+    sub.connect(subGain).connect(this.master);
+    pressure.start(now);
+    sub.start(now);
+    pressure.stop(now + seconds + 0.04);
+    sub.stop(now + seconds + 0.04);
   }
 
   startSuspenseMusic() {
@@ -450,36 +545,77 @@ export class HorrorPresentation {
 
     const bed = ctx.createGain();
     const tension = ctx.createGain();
+    const whisper = ctx.createGain();
     const filter = ctx.createBiquadFilter();
+    const whisperFilter = ctx.createBiquadFilter();
+    const movement = ctx.createGain();
+    const lfo = ctx.createOscillator();
     const bass = ctx.createOscillator();
-    const fifth = ctx.createOscillator();
-    const scrape = ctx.createOscillator();
+    const underBass = ctx.createOscillator();
+    const growl = ctx.createBufferSource();
+    const growlFilter = ctx.createBiquadFilter();
+    const scrape = ctx.createBufferSource();
+    const growlBuffer = ctx.createBuffer(1, ctx.sampleRate * 2, ctx.sampleRate);
+    const growlData = growlBuffer.getChannelData(0);
+    let growlLast = 0;
+    for (let i = 0; i < growlData.length; i++) {
+      const t = i / growlData.length;
+      const unevenBreath = 0.48 + Math.sin(t * Math.PI * 9) * 0.24 + Math.sin(t * Math.PI * 23) * 0.1;
+      growlLast = growlLast * 0.9 + (Math.random() * 2 - 1) * 0.1;
+      growlData[i] = growlLast * unevenBreath;
+    }
+    growl.buffer = growlBuffer;
+    growl.loop = true;
+    const scrapeBuffer = ctx.createBuffer(1, ctx.sampleRate * 2, ctx.sampleRate);
+    const scrapeData = scrapeBuffer.getChannelData(0);
+    let scrapeLast = 0;
+    for (let i = 0; i < scrapeData.length; i++) {
+      const t = i / scrapeData.length;
+      const scrapePulse = Math.sin(t * Math.PI * 12) > 0.35 ? 1 : 0.24;
+      scrapeLast = scrapeLast * 0.66 + (Math.random() * 2 - 1) * 0.34;
+      scrapeData[i] = scrapeLast * scrapePulse;
+    }
+    scrape.buffer = scrapeBuffer;
+    scrape.loop = true;
 
-    bed.gain.value = 0.038;
-    tension.gain.value = 0.014;
+    bed.gain.value = 0.028;
+    tension.gain.value = 0.01;
+    whisper.gain.value = 0.006;
     filter.type = 'lowpass';
-    filter.frequency.value = 420;
-    filter.Q.value = 8;
+    filter.frequency.value = 260;
+    filter.Q.value = 12;
+    growlFilter.type = 'bandpass';
+    growlFilter.frequency.value = 95;
+    growlFilter.Q.value = 8;
+    whisperFilter.type = 'bandpass';
+    whisperFilter.frequency.value = 1180;
+    whisperFilter.Q.value = 14;
 
     bass.type = 'sine';
-    fifth.type = 'sawtooth';
-    scrape.type = 'triangle';
-    bass.frequency.value = 43.65;
-    fifth.frequency.value = 65.4;
-    scrape.frequency.value = 116.5;
+    underBass.type = 'sine';
+    bass.frequency.value = 36.7;
+    underBass.frequency.value = 34.9;
+    lfo.type = 'sine';
+    lfo.frequency.value = 0.68;
+    movement.gain.value = 0.018;
 
     bass.connect(bed);
-    fifth.connect(tension);
-    scrape.connect(tension);
+    underBass.connect(bed);
+    growl.connect(growlFilter).connect(tension);
+    scrape.connect(whisperFilter).connect(whisper);
+    lfo.connect(movement.gain);
     tension.connect(filter);
-    bed.connect(this.master);
+    whisper.connect(filter);
+    bed.connect(movement).connect(this.master);
     filter.connect(this.master);
 
     const now = ctx.currentTime;
     bass.start(now);
-    fifth.start(now);
+    underBass.start(now);
+    growl.start(now);
     scrape.start(now);
-    this.music = { bed, tension, filter, bass, fifth, scrape, level: 0 };
+    lfo.start(now);
+    this.music = { bed, tension, whisper, filter, growlFilter, whisperFilter, movement, bass, underBass, growl, scrape, lfo, level: 0 };
     this.setMusicIntensity(0.18);
   }
 
@@ -491,10 +627,16 @@ export class HorrorPresentation {
     this.music.level = amount;
     this.music.bed.gain.cancelScheduledValues(now);
     this.music.tension.gain.cancelScheduledValues(now);
+    this.music.whisper.gain.cancelScheduledValues(now);
     this.music.filter.frequency.cancelScheduledValues(now);
-    this.music.bed.gain.linearRampToValueAtTime(0.035 + amount * 0.045, now + 0.28);
-    this.music.tension.gain.linearRampToValueAtTime(0.012 + amount * 0.15, now + 0.28);
-    this.music.filter.frequency.linearRampToValueAtTime(320 + amount * 1350, now + 0.28);
+    this.music.growlFilter.frequency.cancelScheduledValues(now);
+    this.music.whisperFilter.frequency.cancelScheduledValues(now);
+    this.music.bed.gain.linearRampToValueAtTime(0.03 + amount * 0.055, now + 0.38);
+    this.music.tension.gain.linearRampToValueAtTime(0.006 + amount * 0.055, now + 0.38);
+    this.music.whisper.gain.linearRampToValueAtTime(0.004 + amount * 0.105, now + 0.38);
+    this.music.filter.frequency.linearRampToValueAtTime(210 + amount * 780, now + 0.38);
+    this.music.growlFilter.frequency.linearRampToValueAtTime(70 + amount * 210, now + 0.38);
+    this.music.whisperFilter.frequency.linearRampToValueAtTime(820 + amount * 2400, now + 0.38);
   }
 
   linkedCrescendo(duration = 2400, pitch = 82) {
@@ -504,13 +646,304 @@ export class HorrorPresentation {
     const now = ctx.currentTime;
     this.music.bed.gain.cancelScheduledValues(now);
     this.music.tension.gain.cancelScheduledValues(now);
+    this.music.whisper.gain.cancelScheduledValues(now);
     this.music.filter.frequency.cancelScheduledValues(now);
+    this.music.growlFilter.frequency.cancelScheduledValues(now);
+    this.music.whisperFilter.frequency.cancelScheduledValues(now);
     this.music.bed.gain.setValueAtTime(this.music.bed.gain.value, now);
     this.music.tension.gain.setValueAtTime(this.music.tension.gain.value, now);
+    this.music.whisper.gain.setValueAtTime(this.music.whisper.gain.value, now);
     this.music.filter.frequency.setValueAtTime(this.music.filter.frequency.value, now);
-    this.music.bed.gain.linearRampToValueAtTime(0.11, now + duration / 1000);
-    this.music.tension.gain.linearRampToValueAtTime(0.24, now + duration / 1000);
-    this.music.filter.frequency.linearRampToValueAtTime(2100, now + duration / 1000);
+    this.music.growlFilter.frequency.setValueAtTime(this.music.growlFilter.frequency.value, now);
+    this.music.whisperFilter.frequency.setValueAtTime(this.music.whisperFilter.frequency.value, now);
+    this.music.bed.gain.linearRampToValueAtTime(0.13, now + duration / 1000);
+    this.music.tension.gain.linearRampToValueAtTime(0.08, now + duration / 1000);
+    this.music.whisper.gain.linearRampToValueAtTime(0.22, now + duration / 1000);
+    this.music.filter.frequency.linearRampToValueAtTime(920, now + duration / 1000);
+    this.music.growlFilter.frequency.linearRampToValueAtTime(320, now + duration / 1000);
+    this.music.whisperFilter.frequency.linearRampToValueAtTime(3800, now + duration / 1000);
+  }
+
+  scoreJumpScare(hitMs = SCARE_HIT_MS, type = 'behind') {
+    this.linkedCrescendo(hitMs, type === 'glass' ? 92 : 58);
+    this.playHorrorCrescendo(hitMs, type);
+    this.playHeartbeatPulse(0.28, 0.18);
+    this.playHeartbeatPulse(0.84, 0.24);
+    this.playHeartbeatPulse(1.36, 0.31);
+    this.playHeartbeatPulse(Math.max(0.1, hitMs / 1000 - 0.36), 0.42);
+    this.playDissonantMusicStab(Math.max(0.1, hitMs / 1000 - 0.82), 0.62, type);
+    this.playPreHitSilence(hitMs);
+    this.playHitMusicDrop(hitMs, type);
+  }
+
+  playHeartbeatPulse(when, gain = 0.25) {
+    const ctx = this.ensureAudio();
+    if (!ctx || !this.master) return;
+    const start = ctx.currentTime + when;
+    const end = start + 0.34;
+    const thump = ctx.createOscillator();
+    const body = ctx.createOscillator();
+    const volume = ctx.createGain();
+    const filter = ctx.createBiquadFilter();
+    thump.type = 'sine';
+    body.type = 'triangle';
+    thump.frequency.setValueAtTime(68, start);
+    thump.frequency.exponentialRampToValueAtTime(24, start + 0.24);
+    body.frequency.setValueAtTime(35, start);
+    body.frequency.exponentialRampToValueAtTime(19, start + 0.32);
+    filter.type = 'lowpass';
+    filter.frequency.setValueAtTime(140, start);
+    filter.frequency.exponentialRampToValueAtTime(55, end);
+    volume.gain.setValueAtTime(0.0001, start);
+    volume.gain.exponentialRampToValueAtTime(gain, start + 0.014);
+    volume.gain.exponentialRampToValueAtTime(0.0001, end);
+    thump.connect(filter);
+    body.connect(filter);
+    filter.connect(volume).connect(this.master);
+    thump.start(start);
+    body.start(start);
+    thump.stop(end + 0.02);
+    body.stop(end + 0.02);
+  }
+
+  playDissonantMusicStab(when, duration, type = 'behind') {
+    const ctx = this.ensureAudio();
+    if (!ctx || !this.master) return;
+    const start = ctx.currentTime + when;
+    const end = start + duration;
+    const intervals = type === 'glass' ? [277, 293, 587] : [185, 196, 415];
+    const filter = ctx.createBiquadFilter();
+    const shaper = ctx.createWaveShaper();
+    const volume = ctx.createGain();
+    filter.type = 'bandpass';
+    filter.frequency.setValueAtTime(type === 'glass' ? 900 : 430, start);
+    filter.frequency.exponentialRampToValueAtTime(type === 'glass' ? 3600 : 1900, end);
+    filter.Q.value = 13;
+    shaper.curve = this.distortionCurve(3.8);
+    shaper.oversample = '4x';
+    volume.gain.setValueAtTime(0.0001, start);
+    volume.gain.exponentialRampToValueAtTime(0.17, start + 0.04);
+    volume.gain.linearRampToValueAtTime(0.24, end - 0.08);
+    volume.gain.exponentialRampToValueAtTime(0.0001, end);
+    filter.connect(shaper).connect(volume).connect(this.master);
+    for (const [index, freq] of intervals.entries()) {
+      const osc = ctx.createOscillator();
+      osc.type = index === 2 ? 'triangle' : 'sawtooth';
+      osc.frequency.setValueAtTime(freq, start);
+      osc.frequency.exponentialRampToValueAtTime(freq * (type === 'glass' ? 1.75 : 1.32), end);
+      osc.connect(filter);
+      osc.start(start);
+      osc.stop(end + 0.02);
+    }
+  }
+
+  playPreHitSilence(hitMs) {
+    const ctx = this.audioContext;
+    if (!ctx || !this.music) return;
+    const hit = ctx.currentTime + hitMs / 1000;
+    const dipStart = Math.max(ctx.currentTime + 0.05, hit - 0.16);
+    this.music.bed.gain.cancelScheduledValues(dipStart);
+    this.music.tension.gain.cancelScheduledValues(dipStart);
+    this.music.whisper.gain.cancelScheduledValues(dipStart);
+    this.music.bed.gain.setValueAtTime(this.music.bed.gain.value, dipStart);
+    this.music.tension.gain.setValueAtTime(this.music.tension.gain.value, dipStart);
+    this.music.whisper.gain.setValueAtTime(this.music.whisper.gain.value, dipStart);
+    this.music.bed.gain.linearRampToValueAtTime(0.018, hit - 0.035);
+    this.music.tension.gain.linearRampToValueAtTime(0.006, hit - 0.035);
+    this.music.whisper.gain.linearRampToValueAtTime(0.01, hit - 0.035);
+  }
+
+  playHitMusicDrop(hitMs, type = 'behind') {
+    const ctx = this.audioContext;
+    if (!ctx || !this.music) return;
+    const hit = ctx.currentTime + hitMs / 1000;
+    this.music.bed.gain.setValueAtTime(0.2, hit);
+    this.music.tension.gain.setValueAtTime(type === 'glass' ? 0.14 : 0.18, hit);
+    this.music.whisper.gain.setValueAtTime(0.25, hit);
+    this.music.filter.frequency.setValueAtTime(type === 'glass' ? 2100 : 1600, hit);
+    this.music.growlFilter.frequency.setValueAtTime(type === 'glass' ? 420 : 280, hit);
+    this.music.whisperFilter.frequency.setValueAtTime(5200, hit);
+    this.music.bed.gain.exponentialRampToValueAtTime(0.045, hit + 0.5);
+    this.music.tension.gain.exponentialRampToValueAtTime(0.018, hit + 0.58);
+    this.music.whisper.gain.exponentialRampToValueAtTime(0.02, hit + 0.62);
+    this.music.filter.frequency.exponentialRampToValueAtTime(310, hit + 0.7);
+    this.music.growlFilter.frequency.exponentialRampToValueAtTime(92, hit + 0.7);
+    this.music.whisperFilter.frequency.exponentialRampToValueAtTime(980, hit + 0.7);
+  }
+
+  distortionCurve(amount = 5) {
+    return new Float32Array(512).map((_, i) => {
+      const x = i / 255.5 - 1;
+      return Math.tanh(x * amount);
+    });
+  }
+
+  noiseBuffer(ctx, duration, shaping = 'rise') {
+    const buffer = ctx.createBuffer(1, Math.floor(ctx.sampleRate * duration), ctx.sampleRate);
+    const data = buffer.getChannelData(0);
+    let last = 0;
+    for (let i = 0; i < data.length; i++) {
+      const t = i / data.length;
+      const attack = shaping === 'hit' ? Math.min(1, t / 0.015) : Math.pow(t, 1.6);
+      const decay = shaping === 'hit' ? Math.pow(1 - t, 0.62) : 0.35 + t * 0.65;
+      const tremble = 0.55 + Math.sin(t * 113) * 0.22 + Math.sin(t * 307) * 0.14;
+      const teeth = Math.random() > 0.9 ? (Math.random() * 2 - 1) * 0.95 : 0;
+      last = last * 0.54 + (Math.random() * 2 - 1) * 0.46;
+      data[i] = (last + teeth) * attack * decay * tremble;
+    }
+    return buffer;
+  }
+
+  startNoiseLayer({ when, duration, gain, filterType, filterStart, filterEnd, q = 8, drive = 5, pan = 0, shape = 'rise' }) {
+    const ctx = this.ensureAudio();
+    if (!ctx || !this.master) return;
+    const start = ctx.currentTime + when;
+    const end = start + duration;
+    const source = ctx.createBufferSource();
+    const filter = ctx.createBiquadFilter();
+    const shaper = ctx.createWaveShaper();
+    const volume = ctx.createGain();
+    const panner = ctx.createStereoPanner ? ctx.createStereoPanner() : null;
+    source.buffer = this.noiseBuffer(ctx, duration, shape);
+    filter.type = filterType;
+    filter.frequency.setValueAtTime(filterStart, start);
+    filter.frequency.exponentialRampToValueAtTime(filterEnd, end);
+    filter.Q.value = q;
+    shaper.curve = this.distortionCurve(drive);
+    shaper.oversample = '4x';
+    volume.gain.setValueAtTime(0.0001, start);
+    volume.gain.exponentialRampToValueAtTime(gain, start + (shape === 'hit' ? 0.012 : 0.18));
+    volume.gain.linearRampToValueAtTime(gain * 0.84, Math.max(start + 0.04, end - 0.09));
+    volume.gain.exponentialRampToValueAtTime(0.0001, end);
+    if (panner) {
+      panner.pan.setValueAtTime(pan, start);
+      panner.pan.linearRampToValueAtTime(-pan, end);
+      source.connect(filter).connect(shaper).connect(volume).connect(panner).connect(this.master);
+    } else {
+      source.connect(filter).connect(shaper).connect(volume).connect(this.master);
+    }
+    source.start(start);
+    source.stop(end + 0.02);
+  }
+
+  startScreamLayer({ when, duration, gain, startFreq, peakFreq, endFreq, drive = 6, pan = 0 }) {
+    const ctx = this.ensureAudio();
+    if (!ctx || !this.master) return;
+    const start = ctx.currentTime + when;
+    const end = start + duration;
+    const voice = ctx.createBufferSource();
+    const formant = ctx.createBiquadFilter();
+    const shaper = ctx.createWaveShaper();
+    const volume = ctx.createGain();
+    const panner = ctx.createStereoPanner ? ctx.createStereoPanner() : null;
+    const buffer = ctx.createBuffer(1, Math.floor(ctx.sampleRate * duration), ctx.sampleRate);
+    const data = buffer.getChannelData(0);
+    let phase = 0;
+    for (let i = 0; i < data.length; i++) {
+      const t = i / data.length;
+      const attack = Math.min(1, t / 0.02);
+      const falloff = Math.pow(1 - t, 0.72);
+      const sweep = t < 0.35
+        ? Phaser.Math.Linear(startFreq, peakFreq, t / 0.35)
+        : Phaser.Math.Linear(peakFreq, endFreq, (t - 0.35) / 0.65);
+      const panic = Math.sin(t * 97) * 520 + Math.sin(t * 241) * 170 + (Math.random() * 2 - 1) * 360;
+      phase += (Math.max(180, sweep + panic) / ctx.sampleRate) * Math.PI * 2;
+      data[i] = (Math.sin(phase) * 0.42 + Math.sin(phase * 1.91) * 0.24 + (Math.random() * 2 - 1) * 0.25) * attack * falloff;
+    }
+    voice.buffer = buffer;
+    formant.type = 'bandpass';
+    formant.frequency.setValueAtTime(startFreq * 1.6, start);
+    formant.frequency.exponentialRampToValueAtTime(peakFreq * 1.35, start + duration * 0.35);
+    formant.frequency.exponentialRampToValueAtTime(Math.max(900, endFreq * 1.55), end);
+    formant.Q.value = 10;
+    shaper.curve = this.distortionCurve(drive);
+    shaper.oversample = '4x';
+    volume.gain.setValueAtTime(0.0001, start);
+    volume.gain.exponentialRampToValueAtTime(gain, start + 0.016);
+    volume.gain.exponentialRampToValueAtTime(0.0001, end);
+    if (panner) {
+      panner.pan.setValueAtTime(pan, start);
+      panner.pan.linearRampToValueAtTime(-pan * 0.7, end);
+      voice.connect(formant).connect(shaper).connect(volume).connect(panner).connect(this.master);
+    } else {
+      voice.connect(formant).connect(shaper).connect(volume).connect(this.master);
+    }
+    voice.start(start);
+    voice.stop(end + 0.02);
+  }
+
+  playHorrorCrescendo(duration = 2200, type = 'behind') {
+    const seconds = duration / 1000;
+    this.startNoiseLayer({
+      when: 0,
+      duration: seconds,
+      gain: type === 'pierHand' ? 0.19 : 0.16,
+      filterType: 'bandpass',
+      filterStart: 80,
+      filterEnd: type === 'glass' ? 2400 : 1500,
+      q: 12,
+      drive: 3.6,
+      pan: 0.28,
+    });
+    this.startNoiseLayer({
+      when: Math.max(0, seconds - 0.7),
+      duration: 0.68,
+      gain: 0.22,
+      filterType: 'highpass',
+      filterStart: 850,
+      filterEnd: 4200,
+      q: 6,
+      drive: 7.5,
+      pan: -0.22,
+      shape: 'hit',
+    });
+    this.startScreamLayer({
+      when: Math.max(0, seconds - 0.38),
+      duration: 0.42,
+      gain: 0.16,
+      startFreq: 480,
+      peakFreq: type === 'glass' ? 3600 : 2600,
+      endFreq: 620,
+      drive: 5.4,
+      pan: 0.18,
+    });
+  }
+
+  playHorrorHit(type = 'behind') {
+    this.startNoiseLayer({
+      when: 0,
+      duration: type === 'glass' ? 0.78 : 0.9,
+      gain: type === 'glass' ? 0.5 : 0.64,
+      filterType: 'bandpass',
+      filterStart: type === 'glass' ? 1600 : 520,
+      filterEnd: type === 'glass' ? 6200 : 3900,
+      q: 11,
+      drive: 11,
+      pan: type === 'pierHand' ? 0.42 : -0.34,
+      shape: 'hit',
+    });
+    this.startScreamLayer({
+      when: 0.018,
+      duration: type === 'glass' ? 0.82 : 1.05,
+      gain: type === 'glass' ? 0.34 : 0.43,
+      startFreq: type === 'knock' ? 380 : 760,
+      peakFreq: type === 'glass' ? 5600 : 4300,
+      endFreq: type === 'pierHand' ? 420 : 680,
+      drive: 9,
+      pan: type === 'pierHand' ? -0.25 : 0.31,
+    });
+    this.startNoiseLayer({
+      when: 0.03,
+      duration: 0.36,
+      gain: 0.34,
+      filterType: 'lowpass',
+      filterStart: 180,
+      filterEnd: 44,
+      q: 3,
+      drive: 8,
+      pan: 0,
+      shape: 'hit',
+    });
   }
 
   playRadioNoise() {
@@ -534,58 +967,75 @@ export class HorrorPresentation {
     const ctx = this.ensureAudio();
     if (!ctx || !this.master) return;
     const now = ctx.currentTime;
+    const duration = type === 'glass' ? 0.66 : 0.9;
     const low = ctx.createOscillator();
     const lowGain = ctx.createGain();
     const inhale = ctx.createBufferSource();
     const throat = ctx.createBiquadFilter();
     const teeth = ctx.createBiquadFilter();
+    const snarl = ctx.createWaveShaper();
     const hissGain = ctx.createGain();
-    const bite = ctx.createOscillator();
-    const biteGain = ctx.createGain();
-    const buffer = ctx.createBuffer(1, Math.floor(ctx.sampleRate * 0.72), ctx.sampleRate);
+    const snap = ctx.createBufferSource();
+    const snapFilter = ctx.createBiquadFilter();
+    const snapGain = ctx.createGain();
+    const buffer = ctx.createBuffer(1, Math.floor(ctx.sampleRate * duration), ctx.sampleRate);
     const data = buffer.getChannelData(0);
     let last = 0;
     for (let i = 0; i < data.length; i++) {
       const t = i / data.length;
-      const attack = Math.min(1, t / 0.045);
-      const body = Math.sin(t * Math.PI);
-      const flutter = 0.58 + Math.sin(t * 95) * 0.26 + Math.sin(t * 217) * 0.16;
-      last = last * 0.72 + (Math.random() * 2 - 1) * 0.28;
-      data[i] = last * attack * body * flutter;
+      const attack = Math.min(1, t / 0.018);
+      const decay = Math.pow(1 - t, 0.7);
+      const choke = 0.62 + Math.sin(t * 148) * 0.28 + Math.sin(t * 411) * 0.1;
+      const spit = Math.random() > 0.86 ? (Math.random() * 2 - 1) * 0.9 : 0;
+      last = last * 0.55 + (Math.random() * 2 - 1) * 0.45;
+      data[i] = (last + spit) * attack * decay * choke;
     }
     inhale.buffer = buffer;
+    const snapBuffer = ctx.createBuffer(1, Math.floor(ctx.sampleRate * 0.11), ctx.sampleRate);
+    const snapData = snapBuffer.getChannelData(0);
+    for (let i = 0; i < snapData.length; i++) {
+      const t = i / snapData.length;
+      const envelope = Math.pow(1 - t, 3.1);
+      snapData[i] = (Math.random() * 2 - 1) * envelope;
+    }
+    snap.buffer = snapBuffer;
     low.type = 'sine';
-    low.frequency.setValueAtTime(type === 'knock' ? 82 : 58, now);
-    low.frequency.exponentialRampToValueAtTime(18, now + 0.28);
-    lowGain.gain.setValueAtTime(0.5, now);
-    lowGain.gain.exponentialRampToValueAtTime(0.0001, now + 0.36);
+    low.frequency.setValueAtTime(type === 'knock' ? 70 : 47, now);
+    low.frequency.exponentialRampToValueAtTime(17, now + 0.24);
+    lowGain.gain.setValueAtTime(0.58, now);
+    lowGain.gain.exponentialRampToValueAtTime(0.0001, now + 0.42);
     throat.type = 'bandpass';
-    throat.frequency.setValueAtTime(type === 'glass' ? 1850 : 1350, now);
-    throat.frequency.exponentialRampToValueAtTime(type === 'glass' ? 5200 : 3900, now + 0.2);
-    throat.Q.value = 4.8;
+    throat.frequency.setValueAtTime(type === 'glass' ? 2300 : 860, now);
+    throat.frequency.exponentialRampToValueAtTime(type === 'glass' ? 5600 : 3200, now + 0.18);
+    throat.frequency.exponentialRampToValueAtTime(type === 'glass' ? 1800 : 1250, now + duration);
+    throat.Q.value = 7.5;
     teeth.type = 'highpass';
-    teeth.frequency.value = 1900;
-    teeth.Q.value = 2.4;
+    teeth.frequency.value = 1300;
+    teeth.Q.value = 4.2;
+    snarl.curve = new Float32Array(512).map((_, i) => {
+      const x = i / 255.5 - 1;
+      return Math.tanh(x * 7.5);
+    });
+    snarl.oversample = '4x';
     hissGain.gain.setValueAtTime(0.0001, now);
-    hissGain.gain.exponentialRampToValueAtTime(type === 'glass' ? 0.42 : 0.54, now + 0.035);
-    hissGain.gain.linearRampToValueAtTime(type === 'glass' ? 0.28 : 0.38, now + 0.22);
-    hissGain.gain.exponentialRampToValueAtTime(0.0001, now + 0.72);
-    bite.type = 'sawtooth';
-    bite.frequency.setValueAtTime(720, now);
-    bite.frequency.exponentialRampToValueAtTime(2800, now + 0.09);
-    bite.frequency.exponentialRampToValueAtTime(460, now + 0.2);
-    biteGain.gain.setValueAtTime(0.0001, now);
-    biteGain.gain.exponentialRampToValueAtTime(0.16, now + 0.018);
-    biteGain.gain.exponentialRampToValueAtTime(0.0001, now + 0.24);
+    hissGain.gain.exponentialRampToValueAtTime(type === 'glass' ? 0.46 : 0.68, now + 0.018);
+    hissGain.gain.linearRampToValueAtTime(type === 'glass' ? 0.26 : 0.42, now + 0.2);
+    hissGain.gain.exponentialRampToValueAtTime(0.0001, now + duration);
+    snapFilter.type = 'highpass';
+    snapFilter.frequency.value = type === 'glass' ? 2600 : 1700;
+    snapFilter.Q.value = 8;
+    snapGain.gain.setValueAtTime(0.0001, now);
+    snapGain.gain.exponentialRampToValueAtTime(type === 'glass' ? 0.42 : 0.58, now + 0.006);
+    snapGain.gain.exponentialRampToValueAtTime(0.0001, now + 0.11);
     low.connect(lowGain).connect(this.master);
-    inhale.connect(throat).connect(teeth).connect(hissGain).connect(this.master);
-    bite.connect(biteGain).connect(this.master);
+    inhale.connect(throat).connect(teeth).connect(snarl).connect(hissGain).connect(this.master);
+    snap.connect(snapFilter).connect(snapGain).connect(this.master);
     low.start(now);
     inhale.start(now);
-    bite.start(now);
+    snap.start(now + 0.012);
     low.stop(now + 0.46);
-    inhale.stop(now + 0.76);
-    bite.stop(now + 0.26);
+    inhale.stop(now + duration + 0.04);
+    snap.stop(now + 0.13);
   }
 
   playHelpCry(type = 'distant') {
@@ -642,65 +1092,88 @@ export class HorrorPresentation {
     const ctx = this.ensureAudio();
     if (!ctx || !this.master) return;
     const now = ctx.currentTime;
+    const duration = type === 'glass' ? 0.58 : 0.82;
     const noise = ctx.createBufferSource();
-    const buffer = ctx.createBuffer(1, Math.floor(ctx.sampleRate * 0.48), ctx.sampleRate);
+    const rawScream = ctx.createBufferSource();
+    const buffer = ctx.createBuffer(1, Math.floor(ctx.sampleRate * duration), ctx.sampleRate);
     const data = buffer.getChannelData(0);
+    let dirt = 0;
     for (let i = 0; i < data.length; i++) {
-      const falloff = 1 - i / data.length;
-      data[i] = (Math.random() * 2 - 1) * falloff;
+      const t = i / data.length;
+      const attack = Math.min(1, t / 0.025);
+      const falloff = Math.pow(1 - t, 0.58);
+      const flutter = 0.55 + Math.sin(t * 116) * 0.25 + Math.sin(t * 293) * 0.18;
+      dirt = dirt * 0.46 + (Math.random() * 2 - 1) * 0.54;
+      data[i] = dirt * attack * falloff * flutter;
     }
     noise.buffer = buffer;
+    const screamBuffer = ctx.createBuffer(1, Math.floor(ctx.sampleRate * duration), ctx.sampleRate);
+    const screamData = screamBuffer.getChannelData(0);
+    let phase = 0;
+    for (let i = 0; i < screamData.length; i++) {
+      const t = i / screamData.length;
+      const attack = Math.min(1, t / 0.018);
+      const falloff = Math.pow(1 - t, 0.75);
+      const sweep = type === 'pierHand' ? 900 + t * 2600 : 1250 + Math.sin(t * Math.PI) * 2400;
+      const panic = Math.sin(t * 91) * 440 + (Math.random() * 2 - 1) * 280;
+      phase += (Math.max(260, sweep + panic) / ctx.sampleRate) * Math.PI * 2;
+      const tornVoice = Math.sin(phase) * 0.36 + Math.sin(phase * 1.97) * 0.18;
+      screamData[i] = (tornVoice + (Math.random() * 2 - 1) * 0.32) * attack * falloff;
+    }
+    rawScream.buffer = screamBuffer;
 
-    const shriek = ctx.createOscillator();
-    const shriekTwo = ctx.createOscillator();
-    const shriekGain = ctx.createGain();
-    const shriekTwoGain = ctx.createGain();
     const noiseGain = ctx.createGain();
+    const screamGain = ctx.createGain();
     const filter = ctx.createBiquadFilter();
+    const formant = ctx.createBiquadFilter();
+    const shred = ctx.createWaveShaper();
     const sub = ctx.createOscillator();
     const subGain = ctx.createGain();
 
-    shriek.type = 'sawtooth';
-    shriekTwo.type = 'square';
-    shriek.frequency.setValueAtTime(type === 'glass' ? 1900 : 1250, now);
-    shriek.frequency.exponentialRampToValueAtTime(type === 'pierHand' ? 3100 : 3600, now + 0.11);
-    shriek.frequency.exponentialRampToValueAtTime(410, now + 0.48);
-    shriekTwo.frequency.setValueAtTime(type === 'glass' ? 2630 : 1740, now);
-    shriekTwo.frequency.exponentialRampToValueAtTime(type === 'pierHand' ? 520 : 690, now + 0.32);
-    shriekGain.gain.setValueAtTime(0.0001, now);
-    shriekGain.gain.exponentialRampToValueAtTime(0.34, now + 0.022);
-    shriekGain.gain.exponentialRampToValueAtTime(0.0001, now + 0.56);
-    shriekTwoGain.gain.setValueAtTime(0.0001, now);
-    shriekTwoGain.gain.exponentialRampToValueAtTime(0.18, now + 0.035);
-    shriekTwoGain.gain.exponentialRampToValueAtTime(0.0001, now + 0.42);
-
     filter.type = 'highpass';
-    filter.frequency.value = type === 'knock' ? 1100 : 1600;
+    filter.frequency.value = type === 'knock' ? 1250 : 1850;
+    filter.Q.value = 5;
+    formant.type = 'bandpass';
+    formant.frequency.setValueAtTime(type === 'glass' ? 4100 : 2850, now);
+    formant.frequency.exponentialRampToValueAtTime(type === 'pierHand' ? 5200 : 3700, now + 0.12);
+    formant.frequency.exponentialRampToValueAtTime(type === 'glass' ? 1900 : 1700, now + duration);
+    formant.Q.value = 9.5;
+    shred.curve = new Float32Array(512).map((_, i) => {
+      const x = i / 255.5 - 1;
+      return Math.tanh(x * 5.8);
+    });
+    shred.oversample = '4x';
     noiseGain.gain.setValueAtTime(0.0001, now);
-    noiseGain.gain.exponentialRampToValueAtTime(type === 'glass' ? 0.34 : 0.42, now + 0.012);
-    noiseGain.gain.exponentialRampToValueAtTime(0.0001, now + 0.48);
+    noiseGain.gain.exponentialRampToValueAtTime(type === 'glass' ? 0.42 : 0.56, now + 0.009);
+    noiseGain.gain.exponentialRampToValueAtTime(0.0001, now + duration);
+    screamGain.gain.setValueAtTime(0.0001, now);
+    screamGain.gain.exponentialRampToValueAtTime(type === 'glass' ? 0.2 : 0.28, now + 0.016);
+    screamGain.gain.exponentialRampToValueAtTime(0.0001, now + duration);
 
     sub.type = 'sine';
-    sub.frequency.setValueAtTime(56, now);
-    sub.frequency.exponentialRampToValueAtTime(23, now + 0.38);
-    subGain.gain.setValueAtTime(0.34, now);
-    subGain.gain.exponentialRampToValueAtTime(0.0001, now + 0.44);
+    sub.frequency.setValueAtTime(50, now);
+    sub.frequency.exponentialRampToValueAtTime(19, now + 0.34);
+    subGain.gain.setValueAtTime(0.42, now);
+    subGain.gain.exponentialRampToValueAtTime(0.0001, now + 0.5);
 
-    shriek.connect(shriekGain).connect(this.master);
-    shriekTwo.connect(shriekTwoGain).connect(this.master);
     noise.connect(filter).connect(noiseGain).connect(this.master);
+    rawScream.connect(formant).connect(shred).connect(screamGain).connect(this.master);
     sub.connect(subGain).connect(this.master);
-    shriek.start(now);
-    shriekTwo.start(now);
     noise.start(now);
+    rawScream.start(now + 0.006);
     sub.start(now);
-    shriek.stop(now + 0.72);
-    shriekTwo.stop(now + 0.52);
-    noise.stop(now + 0.52);
-    sub.stop(now + 0.46);
+    noise.stop(now + duration + 0.04);
+    rawScream.stop(now + duration + 0.04);
+    sub.stop(now + 0.52);
   }
 
   destroy() {
+    for (const [target, handler] of this.unlockHandlers) {
+      if (target === 'scene-keyboard') this.scene.input.keyboard.off('keydown', handler);
+      else if (target === 'scene-pointer') this.scene.input.off('pointerdown', handler);
+      else window.removeEventListener(target, handler);
+    }
+    this.unlockHandlers = [];
     if (this.vignette) this.vignette.destroy();
     if (this.audioContext) this.audioContext.close();
   }

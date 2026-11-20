@@ -267,12 +267,15 @@ function defs() {
   </defs>`;
 }
 
-for (const stage of CHAPTER_STAGES) {
+for (const stage of CHAPTER_STAGES.slice(0, 5)) {
+  const artWidth = stage.artWidth ?? stage.width;
+  const artStage = { ...stage, width: artWidth,
+    platforms: stage.platforms.filter(([start]) => start < artWidth).map(([start, end, top]) => [start, Math.min(end, artWidth), top]) };
   const rand = random([...stage.id].reduce((value, char) => value * 31 + char.charCodeAt(0), 1729));
   const scene = stage.id === 'storm-coast' ? coast(rand)
     : stage.id === 'abandoned-facility' ? facility(rand)
       : stage.id === 'thornwood' ? forest(rand) : stage.id === 'drowned-cavern' ? cavern(rand) : vault(rand);
-  const svg = `<svg xmlns="http://www.w3.org/2000/svg" width="${stage.width}" height="${stage.height}" viewBox="0 0 ${stage.width} ${stage.height}">${defs()}${scene}${platformArt(stage, rand)}</svg>`;
+  const svg = `<svg xmlns="http://www.w3.org/2000/svg" width="${artWidth}" height="${stage.height}" viewBox="0 0 ${artWidth} ${stage.height}">${defs()}${scene}${platformArt(artStage, rand)}</svg>`;
   const path = new URL(`${stage.id}.svg`, outDir);
   writeFileSync(path, svg);
   console.log(path.pathname);

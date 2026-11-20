@@ -51,7 +51,21 @@ const CHAPTER_TWO = {
   accent: 0xffc984, danger: 0xf36a65, saturate: -.15,
 };
 
+const CHAPTER_THREE = {
+  'moonbreak-reef': { ambient: 0x46607a, lantern: 0xffe2b0, sky: .32, ink: 0x06121a, rim: 0xa7d8e9, drip: 0x6596a5, fog: 0x73adbd, fogAlpha: .12,
+    motes: { kind: 'spray', color: 0xd3f5f4 }, weather: 'rain', hang: 'moss', bottom: ['rocks', 'grass'], top: [], accent: 0xb8e8eb, saturate: -.04 },
+  'glass-tide': { ambient: 0x3a6264, lantern: 0xffe0b0, sky: .3, ink: 0x06151b, rim: 0x8adbc9, drip: 0x6caaa5, fog: 0x63beb7, fogAlpha: .12,
+    motes: { kind: 'drips', color: 0xbaf7e5 }, weather: null, hang: 'moss', bottom: ['rocks', 'grass'], top: [], accent: 0x8bdbcb, saturate: -.03 },
+  'ash-orchard': { ambient: 0x5a4a3a, lantern: 0xffd9a0, sky: .3, ink: 0x16100b, rim: 0xe1c194, drip: 0x876d54, fog: 0xc5a37a, fogAlpha: .14,
+    motes: { kind: 'ash', color: 0xf8dcc0 }, weather: null, hang: 'roots', bottom: ['grass', 'rubble'], top: ['branches'], accent: 0xe9c49c, saturate: -.06 },
+  'hollow-observatory': { ambient: 0x463f66, lantern: 0xffdcb4, sky: .3, ink: 0x0c0a1b, rim: 0xc2b4e9, drip: 0x847bac, fog: 0x9589bc, fogAlpha: .11,
+    motes: { kind: 'dust', color: 0xe2d8ff }, weather: null, hang: 'rust', bottom: ['rubble', 'candles'], top: ['cables'], accent: 0xc7adf5, saturate: -.03 },
+  'black-lens': { ambient: 0x4c3f36, lantern: 0xffd59a, sky: .26, ink: 0x100d0e, rim: 0xe6c88c, drip: 0xa9805f, fog: 0xad8977, fogAlpha: .12,
+    motes: { kind: 'embers', color: 0xffdb91 }, weather: null, hang: 'roots', bottom: ['rubble', 'candles'], top: ['chains'], accent: 0xf4d199, saturate: -.05 },
+};
+
 export function themeFor(stage) {
+  if (stage.chapter === 3) return { ...CHAPTER_THREE[stage.id] };
   if (stage.chapter === 2) return { ...CHAPTER_TWO };
   return { ...(CHAPTER_ONE[stage.id] ?? CHAPTER_ONE['storm-coast']) };
 }

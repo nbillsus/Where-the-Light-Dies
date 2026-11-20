@@ -16,6 +16,11 @@ body,
   margin: 0;
 }
 
+#app {
+  position: relative;
+  overflow: hidden;
+}
+
 body {
   min-height: 100vh;
   display: grid;
@@ -27,6 +32,8 @@ body {
 }
 
 canvas {
+  position: relative;
+  z-index: 1;
   display: block;
   width: 100% !important;
   height: 100% !important;

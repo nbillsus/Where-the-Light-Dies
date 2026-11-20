@@ -54,7 +54,7 @@ function landmark(index) {
     <path d="M3300 650 Q3300 360 3460 300 Q3600 380 3620 650" fill="none" stroke="#f2856e" stroke-width="7" opacity=".55"/>`;
 }
 
-for (const [index, stage] of CHAPTER_STAGES.slice(5).entries()) {
+for (const [index, stage] of CHAPTER_STAGES.slice(5, 10).entries()) {
   const theme = themes[index];
   const svg = `<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 4096 900" width="4096" height="900">
   <defs>

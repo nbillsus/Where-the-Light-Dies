@@ -13,10 +13,12 @@ import { sfx } from '../../combat/sfx.js';
 // - Below half health: faster, rolls dark WAVES along the floor (1, jump or
 //   dodge), and calls Skitterers.
 const T = {
-  health: 26,
-  walk: 55, slamTelegraph: 820, slamTelegraph2: 600, stuck: 1500, stuck2: 1150,
+  health: 18,
+  walk: 55, phase2Walk: 1.35,
+  slamTelegraph: 820, slamTelegraph2: 800, stuck: 1750, stuck2: 1550,
   sweepTelegraph: 560, sweepTime: 320, waveSpeed: 400,
-  restBetween: 1300, restBetween2: 850, flareStun: 1800, flareImmunity: 7000,
+  restBetween: 1500, restBetween2: 1250, flareStun: 2300, flareImmunity: 5500,
+  summonCooldown: 18000, coreHitRadius: .6, exposureGrace: 350,
 };
 
 export class TheHollow extends Boss {
@@ -48,7 +50,11 @@ export class TheHollow extends Boss {
   get top() { return this.floorY - this.BH; }
   get width() { return this.BW; }
   get height() { return this.BH; }
-  get exposed() { return this.state === 'stuck' || this.scene.time.now < this.stunUntil; }
+  get exposed() {
+    const now = this.scene.time.now;
+    return this.state === 'stuck' || now < this.exposedUntil
+      || (this.stunUntil > 0 && now < this.stunUntil + T.exposureGrace);
+  }
   get slump() { return this.exposed ? 1 : 0; }
   get coreY() { return this.floorY - this.H * (1.6 - this.slumpBlend * .75); }
 
@@ -58,6 +64,7 @@ export class TheHollow extends Boss {
     this.facing = -1;
     this.slumpBlend = 0;
     this.stunImmuneUntil = 0;
+    this.exposedUntil = 0;
     this.hand = { x: 0, y: 0 };
     for (const w of this.waves) { w.sprite.destroy(); w.crest.destroy(); }
     this.waves = [];
@@ -66,7 +73,9 @@ export class TheHollow extends Boss {
   }
 
   hitTest(box) {
-    const coreX = this.bx + this.facing * this.BW * .12, r = this.H * .42;
+    // The drawn core stays the same size, but its forgiving collision radius
+    // lets sword arcs that visibly cross its glow register consistently.
+    const coreX = this.bx + this.facing * this.BW * .12, r = this.H * T.coreHitRadius;
     const nearX = Phaser.Math.Clamp(coreX, box.left, box.right), nearY = Phaser.Math.Clamp(this.coreY, box.top, box.bottom);
     if (Math.hypot(nearX - coreX, nearY - this.coreY) < r) return 'core';
     const overlapsBody = box.right > this.bx - this.BW * .45 && box.left < this.bx + this.BW * .45 && box.bottom > this.floorY - this.BH;
@@ -98,12 +107,12 @@ export class TheHollow extends Boss {
     }
     if (time < this.stunUntil) return;
     const p2 = this.phase2;
-    if (p2 && time > this.nextSummonAt) { this.nextSummonAt = time + 14000; this.summon(2); }
+    if (p2 && time > this.nextSummonAt) { this.nextSummonAt = time + T.summonCooldown; this.summon(2); }
 
     switch (this.state) {
       case 'idle': {
         this.facing = Math.sign(dx) || this.facing;
-        if (dist > H * 2.4) this.bx = Phaser.Math.Clamp(this.bx + this.facing * T.walk * delta / 1000 * (p2 ? 1.5 : 1), this.minX, this.maxX);
+        if (dist > H * 2.4) this.bx = Phaser.Math.Clamp(this.bx + this.facing * T.walk * delta / 1000 * (p2 ? T.phase2Walk : 1), this.minX, this.maxX);
         if (time < this.nextAttackAt) break;
         if (p2 && dist > H * 4 && Math.random() < .55) this.startWave(time);
         else if (dist < H * 3 && Math.random() < .5) this.startSweep(time);
@@ -135,6 +144,7 @@ export class TheHollow extends Boss {
   }
 
   rest(time) {
+    if (this.state === 'stuck') this.exposedUntil = time + T.exposureGrace;
     this.state = 'idle';
     this.nextAttackAt = time + (this.phase2 ? T.restBetween2 : T.restBetween);
   }
