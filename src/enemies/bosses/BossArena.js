@@ -1,6 +1,7 @@
 import { BossBar } from '../../ui/BossBar.js';
 import { TheHollow } from './TheHollow.js';
 import { HeartOfTheWorks } from './HeartOfTheWorks.js';
+import { TheUndertow } from './TheUndertow.js';
 
 // The end-of-chapter boss fight. Walking into the arena locks it behind you;
 // the exit stays sealed until the boss is dead. Dying here brings you back to
@@ -13,7 +14,8 @@ export class BossArena {
     this.endX = scene.worldWidth;
     this.floor = scene.platforms.find(p => p.left <= this.startX && p.right >= this.startX);
     this.state = 'waiting';
-    this.boss = cfg.boss === 'heart' ? new HeartOfTheWorks(scene, this) : new TheHollow(scene, this);
+    this.boss = cfg.boss === 'undertow' ? new TheUndertow(scene, this)
+      : cfg.boss === 'heart' ? new HeartOfTheWorks(scene, this) : new TheHollow(scene, this);
     // The boss takes hits and Flare Pulses through the normal enemy list.
     scene.enemies.list.push(this.boss);
     this.bar = new BossBar(scene, this.boss.title, this.boss.color);

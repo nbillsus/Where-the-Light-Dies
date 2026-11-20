@@ -6,6 +6,7 @@ import { ShadowController } from '../gameplay/ShadowController.js';
 import { ChapterMechanics } from '../gameplay/ChapterMechanics.js';
 import { ChapterTwoMechanics } from '../gameplay/ChapterTwoMechanics.js';
 import { ChapterThreeMechanics } from '../gameplay/ChapterThreeMechanics.js';
+import { DeepSignalMechanics } from '../gameplay/DeepSignalMechanics.js';
 import { Cinematics } from '../gameplay/Cinematics.js';
 import { HorrorPresentation } from '../gameplay/HorrorPresentation.js';
 import { Atmosphere } from '../effects/Atmosphere.js';
@@ -74,7 +75,8 @@ export class ChapterScene extends Phaser.Scene {
     this.animator = new BoyAnimator(this, this.player, this.spriteHeight);
     this.shadow = this.stage.shadow ? new ShadowController(this, this.player, this.spriteHeight) : null;
     this.cinematics = new Cinematics(this);
-    this.mechanics = this.stage.chapter === 3 ? new ChapterThreeMechanics(this)
+    this.mechanics = this.stage.chapter >= 4 ? new DeepSignalMechanics(this)
+      : this.stage.chapter === 3 ? new ChapterThreeMechanics(this)
       : this.stage.chapter === 2 ? new ChapterTwoMechanics(this) : new ChapterMechanics(this);
     this.horror = new HorrorPresentation(this);
     this.enemies = new EnemyDirector(this);
@@ -128,7 +130,7 @@ export class ChapterScene extends Phaser.Scene {
     this.hud = new Hud(this);
     this.keyPrompt = new KeyPrompt(this);
     if (this.restoreData) this.applySave(this.restoreData);
-    else if (![5, 10].includes(this.levelIndex)) this.cinematics.pulse(this.stage.title, this.stage.subtitle,
+    else if (this.stage.chapter < 3 && this.levelIndex !== 5) this.cinematics.pulse(this.stage.title, this.stage.subtitle,
       this.stage.chapter === 3 ? 0xb8e8eb : this.stage.chapter === 2 ? 0xe96756 : this.stage.shadow ? 0xb79bdb : 0xa5dde3, 2600);
     if (this.slotIndex !== null) this.time.addEvent({ delay: 5000, loop: true, callback: () => { if (!this.paused) this.saveProgress(); } });
     sharpenText(this);
@@ -574,7 +576,9 @@ export class ChapterScene extends Phaser.Scene {
     }
     if (this.levelIndex === 4) this.cinematics.pulse('CHAPTER II · THE FACILITY BELOW', 'The signal opens a path beneath the island. The shadow reaches for what the light left behind.', 0xe96756, 2400);
     if (this.levelIndex === 9) this.cinematics.pulse('CHAPTER III · THE REFLECTED COAST', 'The machine opens onto a coast that remembers every light it has swallowed.', 0xb8e8eb, 2400);
-    this.cameras.main.fadeOut([4, 9].includes(this.levelIndex) ? 2500 : 600, 2, 7, 16);
+    if (this.levelIndex === 14) this.cinematics.pulse('CHAPTER IV · BELOW', 'The broken current reveals the transmitter buried beneath the coast.', 0x8fe6dc, 2400);
+    if (this.levelIndex === 19) this.cinematics.pulse('CHAPTER V · THE RETURN', 'The warning has a destination. It is where you began.', 0xe6b8a1, 2400);
+    this.cameras.main.fadeOut([4, 9, 14, 19].includes(this.levelIndex) ? 2500 : 600, 2, 7, 16);
     this.cameras.main.once(Phaser.Cameras.Scene2D.Events.FADE_OUT_COMPLETE,
       () => {
         if (this.slotIndex !== null) saveSlot(this.slotIndex, { levelIndex: this.levelIndex + 1, x: 145, y: null, mechanics: null, shadow: null });
@@ -591,7 +595,7 @@ export class ChapterScene extends Phaser.Scene {
     }
     if (this.paused) return;
     if (this.finished) {
-      if (Phaser.Input.Keyboard.JustDown(this.keys.R)) this.scene.start('Chapter', { levelIndex: this.stage.chapter === 3 ? 10 : this.stage.chapter === 2 ? 5 : 0, slotIndex: this.slotIndex });
+      if (Phaser.Input.Keyboard.JustDown(this.keys.R)) this.scene.start('Chapter', { levelIndex: (this.stage.chapter - 1) * 5, slotIndex: this.slotIndex });
       return;
     }
     if (Phaser.Input.Keyboard.JustDown(this.keys.R)) { this.scene.restart({ levelIndex: this.levelIndex, slotIndex: this.slotIndex }); return; }
@@ -643,6 +647,7 @@ export class ChapterScene extends Phaser.Scene {
     this.hud.update();
     this.keyPrompt.update([...(this.arena?.hints ?? []), ...(this.mechanics.hints ?? []), ...this.combat.hints], time);
     if (this.player.y > this.viewportHeight + 110) this.respawn();
-    if (grounded && this.player.x > this.worldWidth - this.spriteHeight * .43) this.finishStage();
+    if (grounded && this.player.x > this.worldWidth - this.spriteHeight * .43
+      && (!this.stage.finalTrial || this.mechanics.finalLens?.lit)) this.finishStage();
   }
 }

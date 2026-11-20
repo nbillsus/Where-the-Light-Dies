@@ -118,8 +118,11 @@ function platforms(stage, look) {
 }
 
 const motifs = [reef, tide, orchard, observatory, blackLens];
-for (const [index, stage] of CHAPTER_STAGES.slice(10).entries()) {
+for (const [index, stage] of CHAPTER_STAGES.slice(10, 15).entries()) {
   const look = looks[index];
+  // Boss levels run on past the painted 4096 (the arena is drawn in code).
+  const artWidth = stage.artWidth ?? stage.width;
+  const artStage = { ...stage, platforms: stage.platforms.filter(([start]) => start < artWidth).map(([start, end, top]) => [start, Math.min(end, artWidth), top]) };
   const defs = `
     <defs>
       <linearGradient id="sky" x2="0" y2="1"><stop stop-color="${look.sky}"/><stop offset=".66" stop-color="${look.horizon}"/><stop offset="1" stop-color="${look.sky}"/></linearGradient>
@@ -138,7 +141,7 @@ for (const [index, stage] of CHAPTER_STAGES.slice(10).entries()) {
     far: distantCliffs(index, look),
     near: motifs[index](look),
     ground: `<path d="M0 730 Q1100 650 2200 730 T4096 700 V900 H0Z" fill="url(#fog)" opacity=".6"/>
-    ${platforms(stage, look)}
+    ${platforms(artStage, look)}
     <text x="3890" y="92" text-anchor="end" font-family="Georgia,serif" font-size="25" letter-spacing="8" fill="${look.light}" opacity=".4">${look.name}</text>`,
   };
   for (const [layer, content] of Object.entries(layers)) {
