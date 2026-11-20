@@ -159,7 +159,7 @@ export class ChapterScene extends Phaser.Scene {
     this.hud = new Hud(this);
     this.keyPrompt = new KeyPrompt(this);
     if (this.restoreData) this.applySave(this.restoreData);
-    else if (![5, 10].includes(this.levelIndex)) this.cinematics.pulse(this.stage.title, this.stage.subtitle,
+    else if (this.stage.chapter < 3 && this.levelIndex !== 5) this.cinematics.pulse(this.stage.title, this.stage.subtitle,
       this.stage.chapter === 3 ? 0xb8e8eb : this.stage.chapter === 2 ? 0xe96756 : this.stage.shadow ? 0xb79bdb : 0xa5dde3, 2600);
     if (this.slotIndex !== null) this.time.addEvent({ delay: 5000, loop: true, callback: () => { if (!this.paused) this.saveProgress(); } });
     sharpenText(this);
