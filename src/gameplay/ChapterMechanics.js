@@ -97,6 +97,7 @@ export class ChapterMechanics {
     for (const platform of this.scene.platforms) this.scene.physics.add.collider(box, platform.zone);
     this.scene.physics.add.collider(this.scene.player, box);
     crateArt(this.scene, box, size, this.scale, { dark });
+    box.spawn = { x: box.x, y: box.y };
     this.crates.push(box);
     return box;
   }
@@ -161,8 +162,8 @@ export class ChapterMechanics {
     const plankWidth = width / plankCount;
     const planks = [];
     for (let i = 0; i < plankCount; i++) {
-      const plank = this.scene.add.rectangle((i + .5) * plankWidth, 7 * this.scale, plankWidth - 3 * this.scale, 17 * this.scale, i % 2 ? 0x76502f : 0x8d6237)
-        .setStrokeStyle(2 * this.scale, 0x3d281b);
+      const plank = this.scene.add.rectangle((i + .5) * plankWidth, 7 * this.scale, plankWidth - 3 * this.scale, 17 * this.scale, i % 2 ? 0x3f2c1f : 0x4d3626)
+        .setStrokeStyle(2 * this.scale, 0x07090c);
       visual.add(plank);
       planks.push(plank);
     }
@@ -328,8 +329,17 @@ export class ChapterMechanics {
     }
   }
 
+  // Keep timed puzzles honest across a pause.
+  shiftTimers(ms) {
+    if (this.flags.timerEnd) this.flags.timerEnd += ms;
+  }
+
   update(time) {
     const player = this.scene.player;
+    // A crate pushed into a pit returns to where it started, so the puzzle can't soft-lock.
+    for (const box of this.crates) {
+      if (box.y > this.scene.viewportHeight + 120) box.body.reset(box.spawn.x, box.spawn.y);
+    }
     if (this.id === 'storm-coast') {
       const body = this.moving.surface.body;
       if (body.x < this.moving.min || body.x + body.width > this.moving.max) {
@@ -339,7 +349,7 @@ export class ChapterMechanics {
       this.moving.visual.setPosition(this.moving.surface.x - this.moving.width / 2, this.moving.surface.y - 8 * this.scale);
       if (!this.flags.collapsingStarted && player.body.blocked.down && Math.abs(player.x - this.collapsing.surface.x) < 64 * this.scale) {
         this.flags.collapsingStarted = true;
-        this.scene.cameras.main.shake(380, .004);
+        this.scene.shakeCamera(380, .004);
         this.scene.time.delayedCall(480, () => {
           this.collapsing.surface.body.enable = false;
           this.scene.tweens.add({ targets: this.collapsing.ropes, alpha: 0, duration: 170 });

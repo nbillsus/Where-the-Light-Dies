@@ -26,6 +26,10 @@ import { HorrorPresentation } from '../gameplay/HorrorPresentation.js';
 import { Atmosphere } from '../effects/Atmosphere.js';
 import { Hud } from '../ui/Hud.js';
 import { KeyPrompt } from '../ui/KeyPrompt.js';
+import { readSettings } from '../settings.js';
+import { Combat } from '../combat/Combat.js';
+import { EnemyDirector } from '../enemies/EnemyDirector.js';
+import { BossArena } from '../enemies/bosses/BossArena.js';
 import { fixedLayerOffset, logicalSize, renderScale, sharpenText } from '../rendering.js';
 import { saveSlot } from '../saveSlots.js';
 
@@ -58,7 +62,10 @@ export class ChapterScene extends Phaser.Scene {
     this.artScale = h / this.stage.height;
     this.worldWidth = this.stage.width * this.artScale;
     this.cameras.main.setZoom(renderScale).setBounds(0, 0, this.worldWidth, h);
-    this.add.image(this.worldWidth / 2, h / 2, this.backdropKey).setDisplaySize(this.worldWidth, h).setDepth(-10);
+    // The painted backdrop covers the original 4096-wide area; boss arenas
+    // beyond it are drawn in code (src/effects/ArenaBackdrop.js).
+    const artWidth = (this.stage.artWidth ?? this.stage.width) * this.artScale;
+    this.add.image(artWidth / 2, h / 2, this.backdropKey).setDisplaySize(artWidth, h).setDepth(-10);
 
     this.platforms = this.stage.platforms.map(([start, end, top]) => {
       const left = start * this.artScale;
@@ -87,6 +94,9 @@ export class ChapterScene extends Phaser.Scene {
     this.mechanics = this.stage.chapter === 3 ? new ChapterThreeMechanics(this)
       : this.stage.chapter === 2 ? new ChapterTwoMechanics(this) : new ChapterMechanics(this);
     this.horror = new HorrorPresentation(this);
+    this.enemies = new EnemyDirector(this);
+    this.arena = this.stage.arena ? new BossArena(this) : null;
+    this.combat = new Combat(this);
     this.checkpoint = 0;
     this.lastGrounded = 0;
     this.jumpQueued = -1000;
@@ -184,6 +194,10 @@ export class ChapterScene extends Phaser.Scene {
     this.paused = true;
     this.physics.world.pause();
     this.tweens.pauseAll();
+    // Freeze scheduled events (lightning, scares) and remember when, so timed
+    // puzzles don't lose time while the game is paused.
+    this.time.paused = true;
+    this.pausedAt = this.game.loop.time;
     const w = this.viewportWidth, h = this.viewportHeight;
     const offset = fixedLayerOffset(w, h);
     this.pausePanel = this.add.container(offset.x, offset.y).setScrollFactor(0).setDepth(150);
@@ -238,8 +252,7 @@ export class ChapterScene extends Phaser.Scene {
 
   showPauseSettings() {
     const w = this.viewportWidth, h = this.viewportHeight;
-    const settings = (() => { try { return { rain: true, shake: true, ...JSON.parse(localStorage.getItem('wtld-settings') || '{}') }; }
-      catch { return { rain: true, shake: true }; } })();
+    const settings = readSettings();
     this.pauseSettings = this.add.container(0, 0);
     this.pausePanel.add(this.pauseSettings);
     this.pauseSettings.add(this.add.rectangle(w / 2, h / 2, Math.min(540, w - 32), Math.min(450, h - 32), 0x10232d, .99)
@@ -254,7 +267,12 @@ export class ChapterScene extends Phaser.Scene {
       }).setOrigin(.5);
       const refresh = () => row.setText(`${label}     ${settings[key] ? 'ON' : 'OFF'}`);
       refresh();
-      this.pauseSettingToggles[index] = () => { settings[key] = !settings[key]; localStorage.setItem('wtld-settings', JSON.stringify(settings)); refresh(); };
+      this.pauseSettingToggles[index] = () => {
+        settings[key] = !settings[key];
+        localStorage.setItem('wtld-settings', JSON.stringify(settings));
+        if (key === 'rain') this.atmosphere.setRain(settings.rain);
+        refresh();
+      };
       this.pauseSettings.add(row);
     }
     this.pauseSettings.add(this.add.text(w / 2, h / 2 + 140, 'BACK', { fontFamily: 'Georgia, serif', fontSize: '21px', color: '#f5d499' })
@@ -268,6 +286,8 @@ export class ChapterScene extends Phaser.Scene {
     this.paused = false;
     this.physics.world.resume();
     this.tweens.resumeAll();
+    this.time.paused = false;
+    this.mechanics.shiftTimers?.(this.game.loop.time - (this.pausedAt ?? this.game.loop.time));
   }
 
   // A quiet story caption near the top of the screen (no box). Gameplay
@@ -277,7 +297,8 @@ export class ChapterScene extends Phaser.Scene {
     const w = this.viewportWidth, h = this.viewportHeight;
     const offset = fixedLayerOffset(w, h);
     const toast = this.add.container(offset.x, offset.y).setScrollFactor(0).setDepth(45);
-    const text = this.add.text(w / 2, h * .17, message, {
+    // Subtitle position, clear of the radio panel at the top.
+    const text = this.add.text(w / 2, h * .8, message, {
       fontFamily: 'Georgia, serif', fontStyle: 'italic', fontSize: `${Math.round(Math.max(15, Math.min(20, w * .016)))}px`,
       color: `#${color.toString(16).padStart(6, '0')}`, align: 'center', wordWrap: { width: Math.min(w - 80, 720) },
     }).setOrigin(.5).setShadow(0, 1, '#000000', 8, false, true);
@@ -307,10 +328,19 @@ export class ChapterScene extends Phaser.Scene {
 
   placePlayerOnPlatform(index, x = null) {
     const platform = this.platforms[index];
-    this.player.setPosition(x ?? Math.min(platform.right - 50, platform.left + 40), platform.y - this.spriteHeight * .49);
+    const px = x ?? Math.min(platform.right - 50, platform.left + 40);
+    this.player.setPosition(px, platform.y - this.spriteHeight * .49);
     this.player.body.updateFromGameObject();
-    this.player.y -= this.player.body.bottom - (platform.y - 1);
-    this.player.body.updateFromGameObject();
+    // Distance from the sprite's centre to its feet, then a clean body reset so
+    // the physics body and sprite agree (moving them separately mid-fall made
+    // the boy reappear at the far-left edge in mid-air).
+    const foot = this.player.body.bottom - this.player.y;
+    this.player.body.reset(px, platform.y - 1 - foot);
+  }
+
+  // Camera shake that respects the "Screen shake" setting.
+  shakeCamera(duration, intensity) {
+    if (readSettings().shake) this.cameras.main.shake(duration, intensity);
   }
 
   respawn() {
@@ -392,8 +422,11 @@ export class ChapterScene extends Phaser.Scene {
     this.shadow?.update(time, delta, { left, right, jumpPressed, jumpHeld });
     this.mechanics.update(time);
     this.horror?.update(time);
+    this.enemies.update(time, delta);
+    this.arena?.update(time, delta);
+    this.combat.update(time);
     this.hud.update();
-    this.keyPrompt.update(this.mechanics.hints ?? [], time);
+    this.keyPrompt.update([...(this.arena?.hints ?? []), ...(this.mechanics.hints ?? []), ...this.combat.hints], time);
     if (this.player.y > this.viewportHeight + 110) this.respawn();
     if (grounded && this.player.x > this.worldWidth - this.spriteHeight * .43) this.finishStage();
   }
