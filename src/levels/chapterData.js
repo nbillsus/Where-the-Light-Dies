@@ -63,10 +63,7 @@ export const CHAPTER_STAGES = [
     ['bloodglass-chamber', 'THE BLOODGLASS CHAMBER', 'THE CHAMBER', 'In every pane, your shadow is a second too late.',
       [[0,720,735],[850,1310,690],[1440,1900,650],[2030,2490,700],[2620,3070,650],[3200,3650,625],[3780,4096,675]]],
     ['heart-of-works', 'THE HEART OF THE WORKS', 'THE HEART', 'The machine calls for two hands. One of them is yours.',
-      [[0,720,735],[850,1320,690],[1450,1900,650],[2030,2500,700],[2630,3090,650],[3220,3650,625],[3780,5900,675],
-        // These ledges carry the two shield receptors. Their heights form a
-        // reachable staircase from the arena floor at every normal viewport.
-        [4420,4660,585],[5000,5240,510]]],
+      [[0,720,735],[850,1320,690],[1450,1900,650],[2030,2500,700],[2630,3090,650],[3220,3650,625],[3780,5900,675]]],
   ].map(([id, title, phase, subtitle, platforms], index) => ({
     id, title, phase, subtitle, platforms, width: 4096, height: 900,
     shadow: true, grasp: [0, 3, 4].includes(index), chapter: 2,
