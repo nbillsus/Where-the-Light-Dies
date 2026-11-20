@@ -237,7 +237,7 @@ export class ChapterMechanics {
   buildVault() {
     this.vaultBox = this.crate(2940, 5, { dark: true });
     this.vaultPlate = this.plate(3050, 665);
-    this.vaultPrism = this.receiver(3500, 360, { kind: 'prism', color: 0xf2d29a });
+    this.vaultPrism = this.receiver(3500, 465, { kind: 'prism', color: 0xf2d29a });
     this.vaultLever = this.combinationIgnitor(3390, 540);
     this.vaultGate = this.gate('final', 3990, 660, 0xe5c48f);
     this.flags.release = false;

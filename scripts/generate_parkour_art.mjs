@@ -267,7 +267,7 @@ function defs() {
   </defs>`;
 }
 
-for (const stage of CHAPTER_STAGES) {
+for (const stage of CHAPTER_STAGES.slice(0, 5)) {
   const rand = random([...stage.id].reduce((value, char) => value * 31 + char.charCodeAt(0), 1729));
   const scene = stage.id === 'storm-coast' ? coast(rand)
     : stage.id === 'abandoned-facility' ? facility(rand)
