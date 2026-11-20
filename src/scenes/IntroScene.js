@@ -2,6 +2,7 @@ import Phaser from 'phaser';
 import introVideoUrl from '../../assets/video/lighthouse-intro.mp4?url';
 import boyUpperUrl from '../../assets/characters/boy_upper.png?url';
 import { BoyAnimator } from '../animation/BoyAnimator.js';
+import { StormCutsceneAudio } from '../audio/StormCutsceneAudio.js';
 import { logicalSize, renderScale, sharpenText } from '../rendering.js';
 
 const PRELOAD_HOLD_MS = 1800;
@@ -33,6 +34,7 @@ export class IntroScene extends Phaser.Scene {
     this.scale.on('resize', this.layout, this);
     this.events.once('shutdown', () => {
       this.scale.off('resize', this.layout, this);
+      this.stormAudio?.stop();
       this.destroyVideoElement();
     });
 
@@ -136,6 +138,8 @@ export class IntroScene extends Phaser.Scene {
   revealVideo() {
     if (this.finishing || this.phase === 'video') return;
     this.phase = 'video';
+    this.stormAudio = new StormCutsceneAudio(this);
+    this.stormAudio.start();
     this.videoElement.style.opacity = '1';
     this.tweens.add({
       targets: this.loadingItems,
@@ -162,6 +166,7 @@ export class IntroScene extends Phaser.Scene {
     if (this.finishing) return;
     this.finishing = true;
     this.phase = 'finishing';
+    this.stormAudio?.stop();
     if (this.videoElement) this.videoElement.style.opacity = '0';
     this.time.delayedCall(760, () => this.destroyVideoElement());
     this.loadingText.setText('LOADING');
