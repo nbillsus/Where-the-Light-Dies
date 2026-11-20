@@ -1,7 +1,7 @@
 import { BoyAnimator } from '../animation/BoyAnimator.js';
 
 const RUN_SPEED = 320;
-const JUMP_SPEED = -490;
+const JUMP_SPEED = -525;
 
 // The browser chapter talks to this small interface only. A teammate's later
 // shadow system can replace it without changing level puzzle definitions.

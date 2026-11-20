@@ -20,6 +20,29 @@ export function ensureFxTextures(scene) {
   canvasTexture(scene, 'fx-glow', 128, 128, (ctx, w, h) => radial(ctx, w, h, [[0, 1], [.22, .55], [.55, .14], [1, 0]]));
   // Very soft blob for fog banks.
   canvasTexture(scene, 'fx-fog', 256, 256, (ctx, w, h) => radial(ctx, w, h, [[0, .55], [.5, .22], [1, 0]]));
+  // Light pool for the light map: a gentler falloff than fx-glow, so light
+  // spreads across the ground instead of looking like a bright dot.
+  canvasTexture(scene, 'fx-light', 256, 256, (ctx, w, h) => radial(ctx, w, h, [[0, 1], [.2, .82], [.45, .45], [.72, .14], [1, 0]]));
+  // Vertical fade (bright top → clear bottom) for the sky in the light map.
+  canvasTexture(scene, 'fx-vfade', 4, 128, (ctx, w, h) => {
+    const gradient = ctx.createLinearGradient(0, 0, 0, h);
+    gradient.addColorStop(0, 'rgba(255,255,255,1)');
+    gradient.addColorStop(.5, 'rgba(255,255,255,.45)');
+    gradient.addColorStop(1, 'rgba(255,255,255,0)');
+    ctx.fillStyle = gradient;
+    ctx.fillRect(0, 0, w, h);
+  });
+  // Film grain: speckles of light and dark, tiled over the screen.
+  canvasTexture(scene, 'fx-grain', 256, 256, (ctx, w, h) => {
+    const image = ctx.createImageData(w, h);
+    const rand = seededRandom('grain');
+    for (let i = 0; i < image.data.length; i += 4) {
+      const value = rand() < .5 ? 0 : 255;
+      image.data[i] = image.data[i + 1] = image.data[i + 2] = value;
+      image.data[i + 3] = Math.floor(rand() * rand() * 110);
+    }
+    ctx.putImageData(image, 0, 0);
+  });
   // Tiny particle.
   canvasTexture(scene, 'fx-mote', 16, 16, (ctx, w, h) => radial(ctx, w, h, [[0, 1], [.45, .6], [1, 0]]));
   // Rain streak.

@@ -9,23 +9,47 @@ import worksUrl from '../../assets/environment/chapter-two/ossuary-works.svg?url
 import arrayUrl from '../../assets/environment/chapter-two/crimson-array.svg?url';
 import chamberUrl from '../../assets/environment/chapter-two/bloodglass-chamber.svg?url';
 import heartUrl from '../../assets/environment/chapter-two/heart-of-works.svg?url';
+import reefUrl from '../../assets/environment/chapter-three/moonbreak-reef.svg?url';
+import tideUrl from '../../assets/environment/chapter-three/glass-tide.svg?url';
+import orchardUrl from '../../assets/environment/chapter-three/ash-orchard.svg?url';
+import observatoryUrl from '../../assets/environment/chapter-three/hollow-observatory.svg?url';
+import lensUrl from '../../assets/environment/chapter-three/black-lens.svg?url';
+import archiveUrl from '../../assets/environment/deep-chapters/sunken-archive.svg?url';
+import conduitUrl from '../../assets/environment/deep-chapters/bone-conduit.svg?url';
+import wellUrl from '../../assets/environment/deep-chapters/mirror-well.svg?url';
+import engineUrl from '../../assets/environment/deep-chapters/silent-engine.svg?url';
+import transmitterUrl from '../../assets/environment/deep-chapters/deep-transmitter.svg?url';
+import shoreUrl from '../../assets/environment/deep-chapters/last-shore.svg?url';
+import splitUrl from '../../assets/environment/deep-chapters/split-signal.svg?url';
+import cathedralUrl from '../../assets/environment/deep-chapters/red-cathedral.svg?url';
+import nightUrl from '../../assets/environment/deep-chapters/night-array.svg?url';
+import thresholdUrl from '../../assets/environment/deep-chapters/threshold.svg?url';
 import boyUpperUrl from '../../assets/characters/boy_upper.png?url';
 import { BoyAnimator } from '../animation/BoyAnimator.js';
 import { CHAPTER_STAGES } from '../levels/chapterData.js';
 import { ShadowController } from '../gameplay/ShadowController.js';
 import { ChapterMechanics } from '../gameplay/ChapterMechanics.js';
 import { ChapterTwoMechanics } from '../gameplay/ChapterTwoMechanics.js';
+import { ChapterThreeMechanics } from '../gameplay/ChapterThreeMechanics.js';
+import { DeepSignalMechanics } from '../gameplay/DeepSignalMechanics.js';
 import { Cinematics } from '../gameplay/Cinematics.js';
 import { HorrorPresentation } from '../gameplay/HorrorPresentation.js';
 import { Atmosphere } from '../effects/Atmosphere.js';
 import { Hud } from '../ui/Hud.js';
 import { KeyPrompt } from '../ui/KeyPrompt.js';
+import { SETTING_ROWS, readSettings, writeSettings } from '../settings.js';
+import { Combat } from '../combat/Combat.js';
+import { EnemyDirector } from '../enemies/EnemyDirector.js';
+import { BossArena } from '../enemies/bosses/BossArena.js';
 import { fixedLayerOffset, logicalSize, renderScale, sharpenText } from '../rendering.js';
 import { saveSlot } from '../saveSlots.js';
 
-const ART_URLS = [coastUrl, facilityUrl, thornwoodUrl, cavernUrl, vaultUrl, descentUrl, worksUrl, arrayUrl, chamberUrl, heartUrl];
+const ART_URLS = [coastUrl, facilityUrl, thornwoodUrl, cavernUrl, vaultUrl, descentUrl, worksUrl, arrayUrl, chamberUrl, heartUrl,
+  reefUrl, tideUrl, orchardUrl, observatoryUrl, lensUrl,
+  archiveUrl, conduitUrl, wellUrl, engineUrl, transmitterUrl,
+  shoreUrl, splitUrl, cathedralUrl, nightUrl, thresholdUrl];
 const RUN_SPEED = 320;
-const JUMP_SPEED = -490;
+const JUMP_SPEED = -525;
 
 export class ChapterScene extends Phaser.Scene {
   constructor() { super('Chapter'); }
@@ -51,7 +75,10 @@ export class ChapterScene extends Phaser.Scene {
     this.artScale = h / this.stage.height;
     this.worldWidth = this.stage.width * this.artScale;
     this.cameras.main.setZoom(renderScale).setBounds(0, 0, this.worldWidth, h);
-    this.add.image(this.worldWidth / 2, h / 2, this.backdropKey).setDisplaySize(this.worldWidth, h).setDepth(-10);
+    // The painted backdrop covers the original 4096-wide area; boss arenas
+    // beyond it are drawn in code (src/effects/ArenaBackdrop.js).
+    const artWidth = (this.stage.artWidth ?? this.stage.width) * this.artScale;
+    this.add.image(artWidth / 2, h / 2, this.backdropKey).setDisplaySize(artWidth, h).setDepth(-10);
 
     this.platforms = this.stage.platforms.map(([start, end, top]) => {
       const left = start * this.artScale;
@@ -77,8 +104,13 @@ export class ChapterScene extends Phaser.Scene {
     this.animator = new BoyAnimator(this, this.player, this.spriteHeight);
     this.shadow = this.stage.shadow ? new ShadowController(this, this.player, this.spriteHeight) : null;
     this.cinematics = new Cinematics(this);
-    this.mechanics = this.stage.chapter === 2 ? new ChapterTwoMechanics(this) : new ChapterMechanics(this);
+    this.mechanics = this.stage.chapter >= 4 ? new DeepSignalMechanics(this)
+      : this.stage.chapter === 3 ? new ChapterThreeMechanics(this)
+      : this.stage.chapter === 2 ? new ChapterTwoMechanics(this) : new ChapterMechanics(this);
     this.horror = new HorrorPresentation(this);
+    this.enemies = new EnemyDirector(this);
+    this.arena = this.stage.arena ? new BossArena(this) : null;
+    this.combat = new Combat(this);
     this.checkpoint = 0;
     this.lastGrounded = 0;
     this.jumpQueued = -1000;
@@ -86,6 +118,7 @@ export class ChapterScene extends Phaser.Scene {
     this.paused = false;
     this.dead = false;
     this.respawning = false;
+    this.respawnAtBoss = false;
     this.deathPanel = null;
     this.pausePanel = null;
     this.pauseSelection = 0;
@@ -126,8 +159,8 @@ export class ChapterScene extends Phaser.Scene {
     this.hud = new Hud(this);
     this.keyPrompt = new KeyPrompt(this);
     if (this.restoreData) this.applySave(this.restoreData);
-    else if (this.levelIndex !== 5) this.cinematics.pulse(this.stage.title, this.stage.subtitle,
-      this.stage.chapter === 2 ? 0xe96756 : this.stage.shadow ? 0xb79bdb : 0xa5dde3, 2600);
+    else if (this.stage.chapter < 3 && this.levelIndex !== 5) this.cinematics.pulse(this.stage.title, this.stage.subtitle,
+      this.stage.chapter === 3 ? 0xb8e8eb : this.stage.chapter === 2 ? 0xe96756 : this.stage.shadow ? 0xb79bdb : 0xa5dde3, 2600);
     if (this.slotIndex !== null) this.time.addEvent({ delay: 5000, loop: true, callback: () => { if (!this.paused) this.saveProgress(); } });
     sharpenText(this);
   }
@@ -181,6 +214,10 @@ export class ChapterScene extends Phaser.Scene {
     this.paused = true;
     this.physics.world.pause();
     this.tweens.pauseAll();
+    // Freeze scheduled events (lightning, scares) and remember when, so timed
+    // puzzles don't lose time while the game is paused.
+    this.time.paused = true;
+    this.pausedAt = this.game.loop.time;
     const w = this.viewportWidth, h = this.viewportHeight;
     const offset = fixedLayerOffset(w, h);
     this.pausePanel = this.add.container(offset.x, offset.y).setScrollFactor(0).setDepth(150);
@@ -215,7 +252,7 @@ export class ChapterScene extends Phaser.Scene {
     if (Math.abs(x - midX) > Math.min(270, (this.viewportWidth - 32) / 2)) return;
     if (this.pauseSettings) {
       if (Math.abs(y - (midY + 140)) < 30) { this.pauseSettings.destroy(true); this.pauseSettings = null; return; }
-      const index = [midY - 50, midY + 24].findIndex(rowY => Math.abs(y - rowY) < 30);
+      const index = SETTING_ROWS.findIndex((row, i) => Math.abs(y - (midY - 98 + i * 54)) < 26);
       if (index >= 0) this.pauseSettingToggles[index]();
       return;
     }
@@ -235,8 +272,7 @@ export class ChapterScene extends Phaser.Scene {
 
   showPauseSettings() {
     const w = this.viewportWidth, h = this.viewportHeight;
-    const settings = (() => { try { return { rain: true, shake: true, ...JSON.parse(localStorage.getItem('wtld-settings') || '{}') }; }
-      catch { return { rain: true, shake: true }; } })();
+    const settings = readSettings();
     this.pauseSettings = this.add.container(0, 0);
     this.pausePanel.add(this.pauseSettings);
     this.pauseSettings.add(this.add.rectangle(w / 2, h / 2, Math.min(540, w - 32), Math.min(450, h - 32), 0x10232d, .99)
@@ -245,15 +281,23 @@ export class ChapterScene extends Phaser.Scene {
       fontFamily: 'Georgia, serif', fontSize: '30px', color: '#f5eddb',
     }).setOrigin(.5));
     this.pauseSettingToggles = [];
-    for (const [index, key, label] of [[0, 'rain', 'Rain effects'], [1, 'shake', 'Screen shake']]) {
-      const row = this.add.text(w / 2, h / 2 - 50 + index * 74, '', {
+    SETTING_ROWS.forEach(([key, label], index) => {
+      const row = this.add.text(w / 2, h / 2 - 98 + index * 54, '', {
         fontFamily: 'Arial, sans-serif', fontSize: '19px', color: '#d8e1dc',
       }).setOrigin(.5);
       const refresh = () => row.setText(`${label}     ${settings[key] ? 'ON' : 'OFF'}`);
       refresh();
-      this.pauseSettingToggles[index] = () => { settings[key] = !settings[key]; localStorage.setItem('wtld-settings', JSON.stringify(settings)); refresh(); };
+      this.pauseSettingToggles[index] = () => {
+        settings[key] = !settings[key];
+        writeSettings(settings);
+        if (key === 'rain') this.atmosphere.setRain(settings.rain);
+        refresh();
+      };
       this.pauseSettings.add(row);
-    }
+    });
+    this.pauseSettings.add(this.add.text(w / 2, h / 2 + 108, 'Lighting and grain changes apply when the level restarts.', {
+      fontFamily: 'Arial, sans-serif', fontSize: '12px', color: '#9eafb0',
+    }).setOrigin(.5));
     this.pauseSettings.add(this.add.text(w / 2, h / 2 + 140, 'BACK', { fontFamily: 'Georgia, serif', fontSize: '21px', color: '#f5d499' })
       .setOrigin(.5));
   }
@@ -265,6 +309,8 @@ export class ChapterScene extends Phaser.Scene {
     this.paused = false;
     this.physics.world.resume();
     this.tweens.resumeAll();
+    this.time.paused = false;
+    this.mechanics.shiftTimers?.(this.game.loop.time - (this.pausedAt ?? this.game.loop.time));
   }
 
   // A quiet story caption near the top of the screen (no box). Gameplay
@@ -274,7 +320,8 @@ export class ChapterScene extends Phaser.Scene {
     const w = this.viewportWidth, h = this.viewportHeight;
     const offset = fixedLayerOffset(w, h);
     const toast = this.add.container(offset.x, offset.y).setScrollFactor(0).setDepth(45);
-    const text = this.add.text(w / 2, h * .17, message, {
+    // Subtitle position, clear of the radio panel at the top.
+    const text = this.add.text(w / 2, h * .8, message, {
       fontFamily: 'Georgia, serif', fontStyle: 'italic', fontSize: `${Math.round(Math.max(15, Math.min(20, w * .016)))}px`,
       color: `#${color.toString(16).padStart(6, '0')}`, align: 'center', wordWrap: { width: Math.min(w - 80, 720) },
     }).setOrigin(.5).setShadow(0, 1, '#000000', 8, false, true);
@@ -304,14 +351,26 @@ export class ChapterScene extends Phaser.Scene {
 
   placePlayerOnPlatform(index, x = null) {
     const platform = this.platforms[index];
-    this.player.setPosition(x ?? Math.min(platform.right - 50, platform.left + 40), platform.y - this.spriteHeight * .49);
+    const px = x ?? Math.min(platform.right - 50, platform.left + 40);
+    this.player.setPosition(px, platform.y - this.spriteHeight * .49);
     this.player.body.updateFromGameObject();
-    this.player.y -= this.player.body.bottom - (platform.y - 1);
-    this.player.body.updateFromGameObject();
+    // Distance from the sprite's centre to its feet, then a clean body reset so
+    // the physics body and sprite agree (moving them separately mid-fall made
+    // the boy reappear at the far-left edge in mid-air).
+    const foot = this.player.body.bottom - this.player.y;
+    this.player.body.reset(px, platform.y - 1 - foot);
+  }
+
+  // Camera shake that respects the "Screen shake" setting.
+  shakeCamera(duration, intensity) {
+    if (readSettings().shake) this.cameras.main.shake(duration, intensity);
   }
 
   respawn() {
     if (this.dead) return;
+    // Remember whether the death happened during a boss fight so the eventual
+    // respawn uses the arena entrance rather than the start of the stage.
+    this.respawnAtBoss = this.arena?.state === 'fighting';
     this.showDeathScreen();
   }
 
@@ -393,18 +452,28 @@ export class ChapterScene extends Phaser.Scene {
     this.deathRespawnArea = null;
     this.dead = false;
     this.respawning = true;
-    this.checkpoint = 0;
-    this.placePlayerOnPlatform(0, 145 * this.artScale);
+    if (this.respawnAtBoss) {
+      this.arena?.afterDeath();
+    } else {
+      this.checkpoint = 0;
+      this.placePlayerOnPlatform(0, 145 * this.artScale);
+    }
     if (this.shadow?.detached) this.shadow.toggleDetach();
+    // The physics sprite is intentionally always hidden by BoyAnimator. The
+    // respawn effect must hide the animated visual instead; showing the sprite
+    // here creates a second boy directly behind the animated one.
     this.player.setVisible(false).setVelocity(0, 0).setAcceleration(0, 0);
+    this.animator.visual.setVisible(false);
     this.jumpQueued = -1000;
     this.lastGrounded = this.time.now;
     this.followActor(this.player);
     this.cameras.main.centerOn(this.player.x, this.player.y);
     this.playRespawnLightning(() => {
-      this.player.setVisible(true);
+      this.player.setVisible(false);
+      this.animator.visual.setVisible(true);
       this.physics.world.resume();
       this.respawning = false;
+      this.respawnAtBoss = false;
       this.cameras.main.flash(260, 244, 226, 210);
       this.cameras.main.shake(170, 0.006);
     });
@@ -531,11 +600,14 @@ export class ChapterScene extends Phaser.Scene {
     this.player.setVelocity(0, 0).setAcceleration(0, 0);
     if (this.levelIndex === CHAPTER_STAGES.length - 1) {
       this.saveProgress();
-      this.cinematics.finale(2);
+      this.cinematics.finale(this.stage.chapter || 1);
       return;
     }
     if (this.levelIndex === 4) this.cinematics.pulse('CHAPTER II · THE FACILITY BELOW', 'The signal opens a path beneath the island. The shadow reaches for what the light left behind.', 0xe96756, 2400);
-    this.cameras.main.fadeOut(this.levelIndex === 4 ? 2500 : 600, 2, 7, 16);
+    if (this.levelIndex === 9) this.cinematics.pulse('CHAPTER III · THE REFLECTED COAST', 'The machine opens onto a coast that remembers every light it has swallowed.', 0xb8e8eb, 2400);
+    if (this.levelIndex === 14) this.cinematics.pulse('CHAPTER IV · BELOW', 'The broken current reveals the transmitter buried beneath the coast.', 0x8fe6dc, 2400);
+    if (this.levelIndex === 19) this.cinematics.pulse('CHAPTER V · THE RETURN', 'The warning has a destination. It is where you began.', 0xe6b8a1, 2400);
+    this.cameras.main.fadeOut([4, 9, 14, 19].includes(this.levelIndex) ? 2500 : 600, 2, 7, 16);
     this.cameras.main.once(Phaser.Cameras.Scene2D.Events.FADE_OUT_COMPLETE,
       () => {
         if (this.slotIndex !== null) saveSlot(this.slotIndex, { levelIndex: this.levelIndex + 1, x: 145, y: null, mechanics: null, shadow: null });
@@ -552,7 +624,7 @@ export class ChapterScene extends Phaser.Scene {
     }
     if (this.paused) return;
     if (this.finished) {
-      if (Phaser.Input.Keyboard.JustDown(this.keys.R)) this.scene.start('Chapter', { levelIndex: this.stage.chapter === 2 ? 5 : 0, slotIndex: this.slotIndex });
+      if (Phaser.Input.Keyboard.JustDown(this.keys.R)) this.scene.start('Chapter', { levelIndex: (this.stage.chapter - 1) * 5, slotIndex: this.slotIndex });
       return;
     }
     if (Phaser.Input.Keyboard.JustDown(this.keys.R)) { this.scene.restart({ levelIndex: this.levelIndex, slotIndex: this.slotIndex }); return; }
@@ -598,9 +670,13 @@ export class ChapterScene extends Phaser.Scene {
     this.shadow?.update(time, delta, { left, right, jumpPressed, jumpHeld });
     this.mechanics.update(time);
     this.horror?.update(time);
+    this.enemies.update(time, delta);
+    this.arena?.update(time, delta);
+    this.combat.update(time);
     this.hud.update();
-    this.keyPrompt.update(this.mechanics.hints ?? [], time);
+    this.keyPrompt.update([...(this.arena?.hints ?? []), ...(this.mechanics.hints ?? []), ...this.combat.hints], time);
     if (this.player.y > this.viewportHeight + 110) this.respawn();
-    if (grounded && this.player.x > this.worldWidth - this.spriteHeight * .43) this.finishStage();
+    if (grounded && this.player.x > this.worldWidth - this.spriteHeight * .43
+      && (!this.stage.finalTrial || this.mechanics.finalLens?.lit)) this.finishStage();
   }
 }

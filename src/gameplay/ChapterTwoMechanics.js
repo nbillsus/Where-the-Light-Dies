@@ -10,7 +10,7 @@ const GHOST = 0xaddde9;
 // Each area adds a different beat. Only the first, fourth and final areas
 // ask the shadow to carry an object; ordinary crates are pushed by the boy.
 export class ChapterTwoMechanics {
-  constructor(scene) {
+  constructor(scene, { autoBuild = true } = {}) {
     this.scene = scene;
     this.scale = scene.artScale;
     this.area = scene.levelIndex - 5;
@@ -21,6 +21,7 @@ export class ChapterTwoMechanics {
     this.levers = [];
     this.hints = [];
     this.links = [];
+    if (!autoBuild) return;
     if (this.area === 0) {
       this.makePuzzle({ kind: 'shadow', platform: 2, weight: 1550, plate: 1810, gate: 2240 });
       scene.cinematics.pulse('GRASP', 'The shadow can carry what the Keeper cannot.', GHOST, 3100);
@@ -64,6 +65,7 @@ export class ChapterTwoMechanics {
     this.scene.physics.add.existing(wall, true);
     this.scene.physics.add.collider(this.scene.player, wall);
     const gateDrawing = gateArt(this.scene, gx, floor, s, color);
+    block.spawn = { x: block.x, y: block.y };
     const puzzle = { kind, block, plateX: px, floor, plateArt: plateDrawing, wall, gateArt: gateDrawing, gateX: gx, lit: false };
     this.puzzles.push(puzzle);
     this.links.push({ wire: link(this.scene, { x: px, y: floor - 14 * s }, gateDrawing.base, s, color), isLit: () => puzzle.lit });
@@ -186,6 +188,9 @@ export class ChapterTwoMechanics {
       } else this.held.block.setPosition(actor.x, actor.body.bottom - 30 * this.scale);
     }
     for (const puzzle of this.puzzles) {
+      // A relic or crate that falls into a pit returns to where it started.
+      if (this.held !== puzzle && puzzle.block.y > this.scene.viewportHeight + 120)
+        puzzle.block.body.reset(puzzle.block.spawn.x, puzzle.block.spawn.y);
       if (puzzle.lit || this.held === puzzle) continue;
       const active = Math.abs(puzzle.block.x - puzzle.plateX) < 44 * this.scale
         && Math.abs(puzzle.block.body.bottom - puzzle.floor) < 28 * this.scale;
@@ -203,7 +208,7 @@ export class ChapterTwoMechanics {
       if (dangerous && Math.abs(this.scene.player.x - beam.x) < 25 * this.scale
         && this.scene.player.body.bottom > 430 * this.scale) {
         this.scene.cameras.main.flash(320, 150, 24, 30);
-        this.scene.cameras.main.shake(220, .006);
+        this.scene.shakeCamera(220, .006);
         this.scene.respawn();
       }
     }

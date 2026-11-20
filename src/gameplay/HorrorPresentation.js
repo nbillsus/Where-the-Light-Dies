@@ -115,6 +115,31 @@ const STORY_BEATS = {
       color: AMBER,
     },
   ],
+  'moonbreak-reef': [{
+    key: 'first-reflection', x: 2200, kind: 'radio', title: 'THE RETURNING BEAM',
+    message: 'The lens gave back a light that had gone out decades ago. Someone carved a warning into its frame: reflections have memories.',
+    voice: '...not the lighthouse... something on the reef is answering...', color: CYAN,
+  }],
+  'glass-tide': [{
+    key: 'glass-tide-echo', x: 2100, kind: 'scare', title: 'UNDER THE GLASS',
+    message: 'A silhouette keeps pace beneath the transparent shore.',
+    after: 'It stops only when you stop. Its head turns one beat too late.', scare: 'glass', color: CYAN,
+  }],
+  'ash-orchard': [{
+    key: 'orchard-recording', x: 2050, kind: 'radio', title: 'ORCHARD RECORDING',
+    message: 'The trees grew around the old reflectors after the first blackout. Their roots follow the buried cables, not the water.',
+    voice: 'The station called this place a garden. No one remembers planting it.', color: AMBER,
+  }],
+  'hollow-observatory': [{
+    key: 'observatory-eye', x: 2500, kind: 'scare', title: 'THE EMPTY TELESCOPE',
+    message: 'The instrument points down, toward the floor beneath your feet.',
+    after: 'A pale handprint appears on the inside of the lens.', scare: 'glass', color: CYAN,
+  }],
+  'black-lens': [{
+    key: 'lens-message', x: 2650, kind: 'radio', title: 'THE ORIGINAL SIGNAL',
+    message: 'This is not a distress call. The first keeper sent it to keep the black lens closed. The signal has been repeating his warning ever since.',
+    voice: '...if it learns to carry light, do not let it find the lighthouse...', color: AMBER,
+  }],
 };
 
 // Soft round light (radial gradient) instead of a hard-edged ellipse. The
@@ -228,9 +253,13 @@ export class HorrorPresentation {
     const h = scene.viewportHeight;
     ensureFxTextures(scene);
     // Lighter than before: these stack with the atmosphere's fog and vignette.
-    this.moonDimmer = scene.add.rectangle(scene.worldWidth / 2, h / 2, scene.worldWidth, h, 0x020713, 0.5)
+    // With dynamic lighting on, the light map does most of the darkening.
+    // Chapter 3 is meant to read lighter than the first two chapters.
+    const lit = !!scene.atmosphere?.lighting, chapterThree = scene.stage.chapter === 3;
+    const dim = lit ? (chapterThree ? 0.14 : 0.28) : (chapterThree ? 0.25 : 0.5);
+    this.moonDimmer = scene.add.rectangle(scene.worldWidth / 2, h / 2, scene.worldWidth, h, 0x020713, dim)
       .setDepth(-8);
-    this.deepFog = scene.add.rectangle(scene.worldWidth / 2, h / 2, scene.worldWidth, h, 0x02050a, 0.14)
+    this.deepFog = scene.add.rectangle(scene.worldWidth / 2, h / 2, scene.worldWidth, h, 0x02050a, scene.stage.chapter === 3 ? 0.08 : 0.14)
       .setDepth(1);
 
     this.torches = [];
@@ -268,7 +297,9 @@ export class HorrorPresentation {
   createWatcherEyes(x, y, delay) {
     const scene = this.scene;
     const eyes = scene.add.container(x, y).setDepth(2.7).setAlpha(0);
-    const shadow = scene.add.ellipse(0, 0, 118 * this.scale, 54 * this.scale, 0x000000, 0.58);
+    // Soft darkness behind the eyes instead of a hard-edged oval.
+    const shadow = scene.add.image(0, 0, 'fx-glow').setTint(0x000000)
+      .setDisplaySize(118 * 1.8 * this.scale, 54 * 2 * this.scale).setAlpha(0.8);
     const left = scene.add.ellipse(-24 * this.scale, 0, 23 * this.scale, 13 * this.scale, 0xf1f7df, 0.9)
       .setBlendMode(Phaser.BlendModes.ADD);
     const right = scene.add.ellipse(24 * this.scale, 0, 23 * this.scale, 13 * this.scale, 0xf1f7df, 0.9)
@@ -362,7 +393,10 @@ export class HorrorPresentation {
     const w = scene.viewportWidth;
     const h = scene.viewportHeight;
     const offset = fixedLayerOffset(w, h);
+    // Only one radio message at a time: a new one replaces any still on screen.
+    if (this.activePanel?.active) this.activePanel.destroy(true);
     const panel = scene.add.container(offset.x + w / 2, offset.y + 126).setScrollFactor(0).setDepth(95);
+    this.activePanel = panel;
     const box = scene.add.rectangle(0, 0, Math.min(w - 42, 760), 112, 0x061017, 0.94)
       .setStrokeStyle(2, color, 0.78);
     const glow = scene.add.rectangle(0, 0, Math.min(w - 42, 760), 112, color, 0.05);
@@ -389,6 +423,7 @@ export class HorrorPresentation {
     scene.tweens.add({ targets: panel, alpha: 1, y: offset.y + 126, duration: 220, ease: 'Sine.easeOut' });
     scene.tweens.add({ targets: glow, alpha: { from: 0.02, to: 0.16 }, duration: 120, yoyo: true, repeat: Math.floor(duration / 240) });
     scene.time.delayedCall(duration, () => {
+      if (!panel.active) return;
       scene.tweens.add({ targets: panel, alpha: 0, y: offset.y + 98, duration: 350, onComplete: () => panel.destroy(true) });
     });
     this.playRadioNoise();
@@ -409,7 +444,7 @@ export class HorrorPresentation {
       this.playScream(beat.scare);
       this.flash(beat.color);
       this.drawScareVisual(beat);
-      this.scene.cameras.main.shake(360, 0.012);
+      this.scene.shakeCamera(360, 0.012);
       this.scene.time.delayedCall(540, () => this.radioPanel('AFTERIMAGE', beat.after, 'do not answer your own voice', beat.color, 3300));
       this.scene.time.delayedCall(900, () => { this.isScaring = false; });
     });

@@ -1,6 +1,10 @@
 import Phaser from 'phaser';
 import { themeFor } from './theme.js';
 import { ensureFxTextures, seededRandom } from './textures.js';
+import { readSettings } from '../settings.js';
+import { drawArenaBackdrop } from './ArenaBackdrop.js';
+import { Lighting } from './Lighting.js';
+import { fixedLayerOffset } from '../rendering.js';
 
 // Depth and mood for a level: fog banks, drifting particles, weather, a dark
 // foreground ink layer that scrolls faster than the camera, decorated ledges,
@@ -21,13 +25,18 @@ export class Atmosphere {
     this.H = scene.viewportHeight;
     this.rand = seededRandom(scene.stage.id);
     ensureFxTextures(scene);
+    drawArenaBackdrop(scene);
     this.addFarFog();
     this.addLedges();
     this.addGroundFog();
     this.addParticles();
     this.addForeground();
-    if (this.theme.weather === 'rain') this.addRain();
-    this.addGrade();
+    const settings = readSettings();
+    if (this.theme.weather === 'rain') this.addRain(settings.rain);
+    // Settings > Dynamic lighting: off falls back to the old flat look.
+    this.lighting = settings.lighting ? new Lighting(scene, this.theme) : null;
+    if (settings.grain) this.addGrain();
+    this.addGrade(!!this.lighting);
   }
 
   r(min, max) { return min + this.rand() * (max - min); }
@@ -64,11 +73,15 @@ export class Atmosphere {
     const { s, theme } = this;
     const back = this.scene.add.graphics().setDepth(1);
     const front = this.scene.add.graphics().setDepth(3);
+    // Moonlight catching the lip of every ledge. It sits above the light map
+    // (19.5) so you can always read where to land, even in total darkness.
+    const rims = this.scene.add.graphics().setDepth(19.55);
     for (const { left, right, y } of this.scene.platforms) {
       const width = right - left;
       back.fillGradientStyle(theme.ink, theme.ink, theme.ink, theme.ink, .5, .5, 0, 0)
         .fillRect(left, y + 10 * s, width, 90 * s);
       back.lineStyle(2 * s, theme.rim, .35).lineBetween(left + 4 * s, y + 1 * s, right - 4 * s, y + 1 * s);
+      rims.lineStyle(1.5 * s, theme.rim, .2).lineBetween(left + 10 * s, y + 1 * s, right - 10 * s, y + 1 * s);
       for (let x = left + this.r(6, 30) * s; x < right - 6 * s; x += this.r(16, 48) * s) {
         this.hangingStrand(back, x, y + 9 * s);
       }
@@ -252,7 +265,16 @@ export class Atmosphere {
   }
 
   // Rain falls around the camera only, so it stays cheap on long levels.
-  addRain() {
+  // Turn rain and lightning on or off (Settings > Rain effects).
+  setRain(on) {
+    if (!this.rain) return;
+    this.rainOn = on;
+    this.rain.setVisible(on);
+    if (on) this.rain.start(); else this.rain.stop();
+  }
+
+  addRain(on = true) {
+    this.rainOn = on;
     const cam = this.scene.cameras.main;
     const rain = this.scene.add.particles(0, -40, 'fx-rain', {
       x: { min: -150, max: this.scene.viewportWidth + 250 }, y: 0,
@@ -260,8 +282,12 @@ export class Atmosphere {
       lifespan: 900, quantity: 3, frequency: 16,
       scale: { min: .6, max: 1.1 }, alpha: { min: .14, max: .3 }, tint: 0xc5d9ea,
     }).setDepth(25);
+    this.rain = rain;
+    if (!on) { rain.stop(); rain.setVisible(false); }
+    // The light map reads this flash to light up the whole world.
     const flash = this.scene.add.rectangle(0, 0, 10, 10, 0x9fb8d8, 0).setOrigin(0)
       .setDepth(24).setBlendMode(Phaser.BlendModes.ADD);
+    this.lightning = flash;
     const onUpdate = () => {
       rain.setPosition(cam.worldView.x, cam.worldView.y - 40);
       flash.setPosition(cam.worldView.x, cam.worldView.y).setSize(cam.worldView.width, cam.worldView.height);
@@ -269,6 +295,7 @@ export class Atmosphere {
     this.scene.events.on('postupdate', onUpdate);
     this.scene.events.once('shutdown', () => this.scene.events.off('postupdate', onUpdate));
     const strike = () => {
+      if (!this.rainOn) { this.scene.time.delayedCall(4000, strike); return; }
       this.scene.tweens.chain({ targets: flash, tweens: [
         { fillAlpha: .22, duration: 60 }, { fillAlpha: .02, duration: 90 },
         { fillAlpha: .14, duration: 50 }, { fillAlpha: 0, duration: 600 },
@@ -278,12 +305,28 @@ export class Atmosphere {
     this.scene.time.delayedCall(Phaser.Math.Between(3000, 7000), strike);
   }
 
-  // Soft vignette and slightly muted colour, WebGL only.
-  addGrade() {
+  // Film grain: fine speckle over the whole screen, re-shuffled every frame.
+  // It keeps the big dark areas from looking flat (Settings > Film grain).
+  addGrain() {
+    const scene = this.scene, w = scene.viewportWidth, h = scene.viewportHeight;
+    const offset = fixedLayerOffset(w, h);
+    const grain = scene.add.tileSprite(offset.x + w / 2, offset.y + h / 2, w, h, 'fx-grain')
+      .setScrollFactor(0).setDepth(26).setAlpha(.35);
+    const shuffle = () => { if (!scene.paused) grain.setTilePosition(Math.random() * 256, Math.random() * 256); };
+    scene.events.on('postupdate', shuffle);
+    scene.events.once('shutdown', () => scene.events.off('postupdate', shuffle));
+    this.grain = grain;
+  }
+
+  // Colour grade, WebGL only: a vignette that pulls the eye to the middle,
+  // muted colour, and (with dynamic lighting) a little extra contrast so lit
+  // areas pop against the dark.
+  addGrade(lit) {
     const cam = this.scene.cameras.main;
     if (this.scene.renderer.type !== Phaser.WEBGL || !cam.postFX) return;
-    cam.postFX.addVignette(.5, .5, .92, .34);
+    cam.postFX.addVignette(.5, .5, lit ? .86 : .92, lit ? .42 : .34);
     const grade = cam.postFX.addColorMatrix();
     grade.saturate(this.theme.saturate);
+    if (lit) grade.contrast(.14, true);
   }
 }

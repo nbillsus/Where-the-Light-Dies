@@ -4,9 +4,20 @@ import { ensureFxTextures } from '../effects/textures.js';
 export class Cinematics {
   constructor(scene) { this.scene = scene; ensureFxTextures(scene); }
 
+  clearPulse() {
+    this.pulseTimer?.remove();
+    this.pulseTimer = null;
+    if (!this.pulseLayer) return;
+    for (const part of this.pulseParts) this.scene.tweens.killTweensOf(part);
+    this.pulseLayer.destroy(true);
+    this.pulseLayer = null;
+    this.pulseParts = null;
+  }
+
   // Title card: area names, abilities and story beats. Centred serif title,
   // an ornamental divider and one line of text, then it fades away.
   pulse(title, subtitle, color = 0xaee4e1, duration = 1900) {
+    this.clearPulse();
     const scene = this.scene;
     const w = scene.viewportWidth, h = scene.viewportHeight;
     const offset = fixedLayerOffset(w, h);
@@ -29,13 +40,20 @@ export class Cinematics {
       color: '#d3dcd8', align: 'center', wordWrap: { width: Math.min(w - 80, 760) },
     }).setOrigin(.5, 0).setShadow(0, 1, '#000000', 6, false, true);
     layer.add([shade, heading, ornament, line]);
+    this.pulseLayer = layer;
+    this.pulseParts = [layer, heading, ornament, line, shade];
     layer.setAlpha(0);
     ornament.setScale(0, 1);
     heading.y += 10;
     scene.tweens.add({ targets: layer, alpha: 1, duration: 500, ease: 'Sine.easeOut' });
     scene.tweens.add({ targets: heading, y: heading.y - 10, duration: 900, ease: 'Sine.easeOut' });
     scene.tweens.add({ targets: ornament, scaleX: 1, duration: 900, delay: 150, ease: 'Cubic.easeOut' });
-    scene.time.delayedCall(duration, () => scene.tweens.add({ targets: layer, alpha: 0, duration: 800, onComplete: () => layer.destroy(true) }));
+    this.pulseTimer = scene.time.delayedCall(duration, () => {
+      this.pulseTimer = null;
+      scene.tweens.add({ targets: layer, alpha: 0, duration: 800, onComplete: () => {
+        if (this.pulseLayer === layer) this.clearPulse();
+      } });
+    });
     sharpenText(scene);
   }
 
@@ -58,11 +76,17 @@ export class Cinematics {
     machine.setPosition(w / 2, h * .43);
     const ray = scene.add.graphics();
     ray.fillStyle(0xd7f7e5, .15).fillTriangle(w / 2, h * .43, 0, h, w, h);
-    const title = scene.add.text(w / 2, h * .72, chapter === 2 ? 'THE MACHINE HAS LEARNED YOUR SHAPE' : 'THE SIGNAL CAME FROM BELOW', {
+    const title = scene.add.text(w / 2, h * .72, chapter === 5 ? 'THE THRESHOLD IS OPEN' : chapter === 4 ? 'THE WARNING HAS BEEN SENT' : chapter === 3 ? 'THE DARK HAS SEEN ITS OWN REFLECTION' : chapter === 2 ? 'THE MACHINE HAS LEARNED YOUR SHAPE' : 'THE SIGNAL CAME FROM BELOW', {
       fontFamily: 'Georgia, serif', fontSize: `${Math.round(Math.max(24, Math.min(37, w * .03)))}px`, color: '#f9e4bc',
       align: 'center', wordWrap: { width: w - 48 },
     }).setOrigin(.5);
-    const message = scene.add.text(w / 2, h * .82, chapter === 2
+    const message = scene.add.text(w / 2, h * .82, chapter === 5
+      ? '“Something waits on the other side.”\n\nCHAPTER V COMPLETE  ·  FINAL BOSS TO COME  ·  R RESTART  ·  ESC MENU'
+      : chapter === 4
+      ? '“If the warning came from us, who was it for?”\n\nCHAPTER IV COMPLETE  ·  R RESTART  ·  ESC MENU'
+      : chapter === 3
+      ? '“It does not fear the light. It fears what the light remembers.”\n\nCHAPTER III COMPLETE  ·  R RESTART  ·  ESC MENU'
+      : chapter === 2
       ? '“It held the weight for you. What will it hold next?”\n\nCHAPTER II COMPLETE  ·  R RESTART  ·  ESC MENU'
       : '“Caldera to lighthouse... we see your light. But what is beneath it?”\n\nR  RESTART CHAPTER     ·     ESC  MENU', {
       fontFamily: 'Arial, sans-serif', fontSize: `${Math.round(Math.max(12, Math.min(16, w * .013)))}px`,
