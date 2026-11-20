@@ -1,4 +1,5 @@
 import Phaser from 'phaser';
+import scarySoundUrl from '../../audio/scarysound.mp3?url';
 import { ensureFxTextures } from '../effects/textures.js';
 import { fixedLayerOffset } from '../rendering.js';
 
@@ -147,6 +148,8 @@ export class HorrorPresentation {
     this.audioContext = null;
     this.master = null;
     this.music = null;
+    this.scarySoundBuffer = null;
+    this.scarySoundPromise = null;
     this.isScaring = false;
     this.createAmbience();
     this.createLighting();
@@ -169,6 +172,7 @@ export class HorrorPresentation {
       this.master.gain.value = 0.26;
       this.master.connect(this.audioContext.destination);
       this.startSuspenseMusic();
+      this.loadScarySound(this.audioContext);
     }
     if (this.audioContext.state === 'suspended') this.audioContext.resume();
     return this.audioContext;
@@ -366,9 +370,11 @@ export class HorrorPresentation {
     this.isScaring = true;
     this.radioPanel(beat.title, beat.message, 'signal pressure rising...', beat.color, 2600);
     this.linkedCrescendo(2400, 82);
+    this.playScarySoundCrescendo(2200, beat.scare);
     this.scene.time.delayedCall(520, () => this.playHelpCry(beat.scare === 'pierHand' ? 'near' : 'falseKeeper'));
     this.scene.time.delayedCall(1350, () => this.playHelpCry('panic'));
     this.scene.time.delayedCall(2150, () => {
+      this.playScarySoundHit(beat.scare);
       this.playImpact(beat.scare);
       this.playScream(beat.scare);
       this.flash(beat.color);
@@ -595,6 +601,129 @@ export class HorrorPresentation {
     this.music.filter.frequency.linearRampToValueAtTime(920, now + duration / 1000);
     this.music.growlFilter.frequency.linearRampToValueAtTime(320, now + duration / 1000);
     this.music.whisperFilter.frequency.linearRampToValueAtTime(3800, now + duration / 1000);
+  }
+
+  loadScarySound(ctx) {
+    if (this.scarySoundBuffer) return Promise.resolve(this.scarySoundBuffer);
+    if (!this.scarySoundPromise) {
+      this.scarySoundPromise = fetch(scarySoundUrl)
+        .then(response => response.arrayBuffer())
+        .then(data => ctx.decodeAudioData(data))
+        .then(buffer => {
+          this.scarySoundBuffer = buffer;
+          return buffer;
+        })
+        .catch(() => null);
+    }
+    return this.scarySoundPromise;
+  }
+
+  playProcessedScarySound({
+    when = 0,
+    offset = 0,
+    duration = null,
+    rate = 1,
+    gain = 0.24,
+    pan = 0,
+    filterStart = 700,
+    filterEnd = 2500,
+    distortion = 4.5,
+    fadeIn = 0.04,
+    fadeOut = 0.18,
+  } = {}) {
+    const ctx = this.ensureAudio();
+    if (!ctx || !this.master) return;
+    const scheduledStart = ctx.currentTime + when;
+    this.loadScarySound(ctx).then(buffer => {
+      if (!buffer || !this.master || ctx.state === 'closed') return;
+      const start = Math.max(scheduledStart, ctx.currentTime + 0.01);
+      const source = ctx.createBufferSource();
+      const filter = ctx.createBiquadFilter();
+      const shaper = ctx.createWaveShaper();
+      const volume = ctx.createGain();
+      const panner = ctx.createStereoPanner ? ctx.createStereoPanner() : null;
+      const playDuration = Math.min(duration ?? buffer.duration, Math.max(0.05, buffer.duration - offset));
+      const stopTime = start + playDuration;
+      source.buffer = buffer;
+      source.playbackRate.setValueAtTime(rate, start);
+      filter.type = 'bandpass';
+      filter.frequency.setValueAtTime(filterStart, start);
+      filter.frequency.exponentialRampToValueAtTime(filterEnd, stopTime);
+      filter.Q.value = 8;
+      shaper.curve = new Float32Array(512).map((_, i) => {
+        const x = i / 255.5 - 1;
+        return Math.tanh(x * distortion);
+      });
+      shaper.oversample = '4x';
+      volume.gain.setValueAtTime(0.0001, start);
+      volume.gain.exponentialRampToValueAtTime(gain, start + fadeIn);
+      volume.gain.setValueAtTime(gain, Math.max(start + fadeIn, stopTime - fadeOut));
+      volume.gain.exponentialRampToValueAtTime(0.0001, stopTime);
+      if (panner) {
+        panner.pan.setValueAtTime(pan, start);
+        panner.pan.linearRampToValueAtTime(-pan, stopTime);
+        source.connect(filter).connect(shaper).connect(volume).connect(panner).connect(this.master);
+      } else {
+        source.connect(filter).connect(shaper).connect(volume).connect(this.master);
+      }
+      source.start(start, offset, playDuration);
+      source.stop(stopTime + 0.02);
+    });
+  }
+
+  playScarySoundCrescendo(duration = 2200, type = 'behind') {
+    const seconds = duration / 1000;
+    this.playProcessedScarySound({
+      duration: seconds,
+      rate: type === 'glass' ? 0.74 : 0.66,
+      gain: type === 'pierHand' ? 0.21 : 0.18,
+      pan: type === 'knock' ? -0.28 : 0.24,
+      filterStart: 180,
+      filterEnd: type === 'glass' ? 2100 : 1450,
+      distortion: 3.2,
+      fadeIn: 0.32,
+      fadeOut: 0.08,
+    });
+    this.playProcessedScarySound({
+      when: Math.max(0, seconds - 0.74),
+      offset: 0.9,
+      duration: 0.72,
+      rate: type === 'glass' ? 1.15 : 0.92,
+      gain: 0.14,
+      pan: -0.18,
+      filterStart: 900,
+      filterEnd: 3600,
+      distortion: 6.2,
+      fadeIn: 0.05,
+      fadeOut: 0.06,
+    });
+  }
+
+  playScarySoundHit(type = 'behind') {
+    this.playProcessedScarySound({
+      offset: type === 'pierHand' ? 0.2 : 0.55,
+      duration: type === 'glass' ? 1.05 : 1.18,
+      rate: type === 'glass' ? 1.28 : type === 'knock' ? 0.82 : 1.04,
+      gain: type === 'glass' ? 0.36 : 0.46,
+      pan: type === 'pierHand' ? 0.34 : -0.26,
+      filterStart: type === 'glass' ? 1300 : 520,
+      filterEnd: type === 'glass' ? 5200 : 4100,
+      distortion: 8.5,
+      fadeIn: 0.008,
+      fadeOut: 0.2,
+    });
+    this.playProcessedScarySound({
+      offset: 1.35,
+      duration: 0.42,
+      rate: 0.58,
+      gain: 0.28,
+      pan: 0.12,
+      filterStart: 120,
+      filterEnd: 760,
+      distortion: 10,
+      fadeIn: 0.004,
+      fadeOut: 0.08,
+    });
   }
 
   playRadioNoise() {
