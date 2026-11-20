@@ -10,7 +10,7 @@ const GHOST = 0xaddde9;
 // Each area adds a different beat. Only the first, fourth and final areas
 // ask the shadow to carry an object; ordinary crates are pushed by the boy.
 export class ChapterTwoMechanics {
-  constructor(scene) {
+  constructor(scene, { autoBuild = true } = {}) {
     this.scene = scene;
     this.scale = scene.artScale;
     this.area = scene.levelIndex - 5;
@@ -21,6 +21,7 @@ export class ChapterTwoMechanics {
     this.levers = [];
     this.hints = [];
     this.links = [];
+    if (!autoBuild) return;
     if (this.area === 0) {
       this.makePuzzle({ kind: 'shadow', platform: 2, weight: 1550, plate: 1810, gate: 2240 });
       scene.cinematics.pulse('GRASP', 'The shadow can carry what the Keeper cannot.', GHOST, 3100);
