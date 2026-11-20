@@ -1,88 +1,135 @@
-// The second chapter's grasp puzzles are separate from the signal chapter's
-// machinery, so the two routes can be tuned independently.
 import {
-  beamEmitter, gate as gateArt, hideShape, link, plate as plateArt, receptor as receptorArt, weight as weightArt,
+  beamEmitter, crate as crateArt, gate as gateArt, hideShape, lever as leverArt, link, plate as plateArt,
+  receptor as receptorArt, relic as relicArt,
 } from '../puzzles/PropArt.js';
 
 const RED = 0xf36a65;
 const GOLD = 0xffc984;
+const GHOST = 0xaddde9;
 
+// Each area adds a different beat. Only the first, fourth and final areas
+// ask the shadow to carry an object; ordinary crates are pushed by the boy.
 export class ChapterTwoMechanics {
   constructor(scene) {
     this.scene = scene;
     this.scale = scene.artScale;
     this.area = scene.levelIndex - 5;
-    this.prompt = 'Q DETACH THE SHADOW  ·  G GRASP A WEIGHT';
+    this.prompt = '';
     this.held = null;
-    this.weights = [];
-    this.plates = [];
-    this.gates = [];
+    this.puzzles = [];
     this.beams = [];
+    this.levers = [];
     this.hints = [];
     this.links = [];
-    this.makePuzzle(0, 1010, 1220, 1660);
-    if (this.area > 0) this.makePuzzle(1, 2810, 2950, 3460);
-    if (this.area > 0) this.makeBeam(2320, 2050, this.area >= 2);
-    if (this.area >= 3) this.makeBeam(3600, 3330, this.area === 4);
-    if (this.area === 0) scene.cinematics.pulse('GRASP', 'The shadow can carry what the Keeper cannot.', RED, 3200);
+    if (this.area === 0) {
+      this.makePuzzle({ kind: 'shadow', platform: 2, weight: 1550, plate: 1810, gate: 2240 });
+      scene.cinematics.pulse('GRASP', 'The shadow can carry what the Keeper cannot.', GHOST, 3100);
+    } else if (this.area === 1) {
+      this.makePuzzle({ kind: 'ordinary', platform: 1, weight: 970, plate: 1210, gate: 1700 });
+      this.makeBeam(2320, 2110, { color: GOLD, pulsing: true });
+      this.makeLever(2850, 3450);
+    } else if (this.area === 2) {
+      this.makeBeam(1640, 1480, { color: 0x8be2dc, pulsing: true });
+      this.makeBeam(3360, 3200, { color: RED, pulsing: false });
+    } else if (this.area === 3) {
+      this.makeBeam(1510, 1500, { color: 0xc49de8, pulsing: true });
+      this.makePuzzle({ kind: 'shadow', platform: 3, weight: 2130, plate: 2390, gate: 2850 });
+    } else {
+      this.makePuzzle({ kind: 'ordinary', platform: 1, weight: 990, plate: 1230, gate: 1690 });
+      this.makeBeam(2320, 2140, { color: RED, pulsing: true });
+      this.makePuzzle({ kind: 'shadow', platform: 4, weight: 2730, plate: 2980, gate: 3490 });
+    }
   }
 
-  position(x, y) { return [x * this.scale, y * this.scale]; }
+  near(a, b, radius) { return Math.hypot(a.x - b.x, a.y - b.y) < radius * this.scale; }
 
-  makePuzzle(index, weightX, plateX, gateX) {
-    const platformIndex = index ? 4 : 1;
-    const floor = this.scene.platforms[platformIndex].y;
-    const size = 56 * this.scale;
-    const [x] = this.position(weightX, 0);
+  makePuzzle({ kind, platform, weight, plate, gate }) {
+    const floor = this.scene.platforms[platform].y;
+    const s = this.scale;
+    const size = (kind === 'shadow' ? 52 : 66) * s;
+    const x = weight * s;
     const block = hideShape(this.scene.add.rectangle(x, floor - size / 2 - 2, size, size, 0, 0));
     this.scene.physics.add.existing(block);
-    weightArt(this.scene, block, size, this.scale, RED);
-    block.body.setSize(size, size).setCollideWorldBounds(true).setDragX(800).setMaxVelocity(250, 900);
+    block.body.setSize(size, size).setCollideWorldBounds(true).setDragX(kind === 'shadow' ? 760 : 450)
+      .setMaxVelocity(230, 900);
     for (const ledge of this.scene.platforms) this.scene.physics.add.collider(block, ledge.zone);
-    this.weights.push(block);
-    const [platePos] = this.position(plateX, 0);
-    const plate = { x: platePos, y: floor, art: plateArt(this.scene, platePos, floor, this.scale, RED), lit: false };
-    this.plates.push(plate);
-    const [gx] = this.position(gateX, 0);
-    const gate = hideShape(this.scene.add.rectangle(gx, floor / 2, 32 * this.scale, floor, 0, 0));
-    this.scene.physics.add.existing(gate, true);
-    this.scene.physics.add.collider(this.scene.player, gate);
-    const art = gateArt(this.scene, gx, floor, this.scale, RED);
-    this.gates.push({ x: gx, object: gate, art, open: false });
-    this.links.push({ wire: link(this.scene, { x: platePos, y: floor - 14 * this.scale }, art.base, this.scale, GOLD), isLit: () => plate.lit });
-    // Key icons: Q to send the Shadow, G to lift the weight, G again over the plate.
-    const shadow = () => this.scene.shadow;
-    const near = (a, b, r) => Math.hypot(a.x - b.x, a.y - b.y) < r * this.scale;
-    this.hints.push({ key: 'G', at: () => ({ x: block.x, y: block.y - size * .8 }),
-      active: () => !plate.lit && !this.held && !!shadow()?.controlling && near(shadow().actor, block, 115) });
-    this.hints.push({ key: 'G', at: () => ({ x: platePos, y: floor - 30 * this.scale }),
-      active: () => this.held === block && Math.abs(block.x - platePos) < 60 * this.scale });
-    this.hints.push({ key: 'Q', at: () => ({ x: block.x, y: block.y - size * .8 }),
-      active: () => !plate.lit && !!shadow() && !shadow().detached && near(this.scene.player, block, 420) });
+    if (kind === 'ordinary') this.scene.physics.add.collider(this.scene.player, block);
+    if (kind === 'shadow') relicArt(this.scene, block, size, s, GHOST);
+    else crateArt(this.scene, block, size, s);
+    const px = plate * s;
+    const color = kind === 'shadow' ? GHOST : GOLD;
+    const plateDrawing = plateArt(this.scene, px, floor, s, color);
+    const gx = gate * s;
+    const wall = hideShape(this.scene.add.rectangle(gx, floor / 2, 33 * s, floor, 0, 0));
+    this.scene.physics.add.existing(wall, true);
+    this.scene.physics.add.collider(this.scene.player, wall);
+    const gateDrawing = gateArt(this.scene, gx, floor, s, color);
+    const puzzle = { kind, block, plateX: px, floor, plateArt: plateDrawing, wall, gateArt: gateDrawing, gateX: gx, lit: false };
+    this.puzzles.push(puzzle);
+    this.links.push({ wire: link(this.scene, { x: px, y: floor - 14 * s }, gateDrawing.base, s, color), isLit: () => puzzle.lit });
+    if (kind === 'shadow') {
+      // Key icons: Q to send the Shadow, G to lift the relic, G again over the seal.
+      const shadow = () => this.scene.shadow;
+      const above = () => ({ x: block.x, y: block.y - size * .8 });
+      this.hints.push({ key: 'G', at: above,
+        active: () => !puzzle.lit && !this.held && !!shadow()?.controlling && this.near(shadow().actor, block, 125) });
+      this.hints.push({ key: 'G', at: () => ({ x: px, y: floor - 30 * s }),
+        active: () => this.held === puzzle && Math.abs(block.x - px) < 60 * s });
+      this.hints.push({ key: 'Q', at: above,
+        active: () => !puzzle.lit && !!shadow() && !shadow().detached && this.near(this.scene.player, block, 420) });
+    }
   }
 
-  makeBeam(x, receptorX, pulsing) {
-    const [bx] = this.position(x, 0);
-    const [rx, ry] = this.position(receptorX, 500);
+  makeBeam(x, receptorX, { color, pulsing }) {
+    const s = this.scale, bx = x * s, rx = receptorX * s, ry = 530 * s;
     const h = this.scene.viewportHeight;
-    const beam = this.scene.add.rectangle(bx, h * .42, 8 * this.scale, h * .84, 0xffd6cc, .8).setDepth(4);
-    const glow = this.scene.add.rectangle(bx, h * .42, 44 * this.scale, h * .84, RED, .2).setDepth(3)
-      .setBlendMode('ADD');
-    const emitter = beamEmitter(this.scene, bx, h * .84, this.scale, RED);
-    const receptor = receptorArt(this.scene, rx, ry, this.scale, RED, GOLD);
+    const beam = this.scene.add.rectangle(bx, h * .42, 8 * s, h * .84, 0xfff0e6, .78).setDepth(4);
+    const glow = this.scene.add.rectangle(bx, h * .42, 44 * s, h * .84, color, .18).setDepth(3).setBlendMode('ADD');
+    const emitter = beamEmitter(this.scene, bx, h * .84, s, color);
+    const receptor = receptorArt(this.scene, rx, ry, s, color, GOLD);
     const target = { x: rx, y: ry };
     const shadow = () => this.scene.shadow;
-    this.links.push({ wire: link(this.scene, target, { x: bx, y: 46 * this.scale }, this.scale, GOLD, 'rune'), isLit: () => !!shadow()?.isAnchoredNear(rx, ry, 115 * this.scale) });
+    this.links.push({ wire: link(this.scene, target, { x: bx, y: 46 * s }, s, GOLD, 'rune'),
+      isLit: () => !!shadow()?.isAnchoredNear(rx, ry, 120 * s) });
     this.hints.push({ key: 'F', at: () => target,
-      active: () => !!shadow()?.controlling && Math.hypot(shadow().actor.x - rx, shadow().actor.y - ry) < 115 * this.scale });
-    this.beams.push({ x: bx, rx, ry, beam, glow, emitter, receptor, pulsing, disabled: false });
+      active: () => !!shadow()?.controlling && this.near(shadow().actor, target, 120) });
+    this.beams.push({ x: bx, rx, ry, beam, glow, emitter, receptor, color, pulsing });
+  }
+
+  makeLever(x, gateX) {
+    const s = this.scale, floor = this.scene.platforms[4].y;
+    const art = leverArt(this.scene, x * s, floor - 70 * s, s, GOLD);
+    const gateFloor = this.scene.platforms[5].y;
+    const wall = hideShape(this.scene.add.rectangle(gateX * s, gateFloor / 2, 33 * s, gateFloor, 0, 0));
+    this.scene.physics.add.existing(wall, true);
+    this.scene.physics.add.collider(this.scene.player, wall);
+    const gateDrawing = gateArt(this.scene, gateX * s, gateFloor, s, GOLD);
+    const lever = { x: x * s, art, wall, gateArt: gateDrawing, active: false };
+    this.levers.push(lever);
+    this.links.push({ wire: link(this.scene, { x: x * s, y: floor - 59 * s }, gateDrawing.base, s, GOLD), isLit: () => lever.active });
+    this.hints.push({ key: 'E', at: () => ({ x: x * s, y: floor - 70 * s }),
+      active: () => !lever.active && !this.scene.shadow?.controlling && Math.abs(this.scene.player.x - lever.x) < 90 * s });
+  }
+
+  openLever(lever) {
+    lever.active = true;
+    lever.art.activate();
+    lever.wall.body.enable = false;
+    lever.gateArt.setOpen(true);
+  }
+
+  openPuzzle(puzzle) {
+    puzzle.lit = true;
+    puzzle.plateArt.setActive(true);
+    puzzle.wall.body.enable = false;
+    puzzle.gateArt.setOpen(true);
   }
 
   toggleGrasp() {
     const shadow = this.scene.shadow;
     if (!shadow?.detached || !shadow.controlling) return;
     if (this.held) {
-      const block = this.held;
+      const block = this.held.block;
       this.held = null;
       block.body.enable = true;
       block.body.reset(block.x, block.y);
@@ -90,57 +137,76 @@ export class ChapterTwoMechanics {
       return;
     }
     const actor = shadow.actor;
-    const nearest = this.weights.find(block => Math.hypot(block.x - actor.x, block.y - actor.y) < 115 * this.scale);
+    const nearest = this.puzzles.find(p => p.kind === 'shadow' && !p.lit
+      && Math.hypot(p.block.x - actor.x, p.block.y - actor.y) < 125 * this.scale);
     if (!nearest) return;
     this.held = nearest;
-    nearest.body.enable = false;
+    nearest.block.body.enable = false;
   }
 
-  interact() { /* Existing E input belongs to the first chapter's machinery. */ }
+  interact() {
+    const lever = this.levers.find(item => !item.active && Math.abs(this.scene.player.x - item.x) < 90 * this.scale);
+    if (lever) this.openLever(lever);
+  }
+
+  snapshot() {
+    return {
+      puzzles: this.puzzles.map(p => ({ x: p.block.x / this.scale, y: p.block.y / this.scale, lit: p.lit })),
+      levers: this.levers.map(l => l.active),
+      held: this.held ? this.puzzles.indexOf(this.held) : -1,
+    };
+  }
+
+  restore(data) {
+    if (!data || typeof data !== 'object') return;
+    data.puzzles?.forEach((saved, index) => {
+      const p = this.puzzles[index];
+      if (!p) return;
+      if (Number.isFinite(saved.x) && Number.isFinite(saved.y)) p.block.body.reset(saved.x * this.scale, saved.y * this.scale);
+      if (saved.lit) this.openPuzzle(p);
+    });
+    data.levers?.forEach((active, index) => {
+      const lever = this.levers[index];
+      if (lever && active) this.openLever(lever);
+    });
+    if (Number.isInteger(data.held) && data.held >= 0 && this.puzzles[data.held]?.kind === 'shadow') {
+      this.held = this.puzzles[data.held];
+      this.held.block.body.enable = false;
+    }
+  }
 
   update(time) {
     const actor = this.scene.shadow?.actor;
     if (this.held) {
       if (!this.scene.shadow?.detached) {
-        this.held.body.enable = true;
-        this.held.body.reset(this.held.x, this.held.y);
+        const block = this.held.block;
         this.held = null;
-      } else {
-        this.held.setPosition(actor.x, actor.body.bottom - 30 * this.scale);
-      }
+        block.body.enable = true;
+        block.body.reset(block.x, block.y);
+      } else this.held.block.setPosition(actor.x, actor.body.bottom - 30 * this.scale);
     }
-    this.plates.forEach((plate, index) => {
-      const block = this.weights[index];
-      const active = !this.held && Math.abs(block.x - plate.x) < 40 * this.scale
-        && Math.abs(block.body.bottom - plate.y) < 28 * this.scale;
-      if (active && !plate.lit) {
-        plate.lit = true;
-        plate.art.setActive(true);
-        const gate = this.gates[index];
-        gate.open = true;
-        gate.object.body.enable = false;
-        gate.art.setOpen(true);
-      }
-    });
+    for (const puzzle of this.puzzles) {
+      if (puzzle.lit || this.held === puzzle) continue;
+      const active = Math.abs(puzzle.block.x - puzzle.plateX) < 44 * this.scale
+        && Math.abs(puzzle.block.body.bottom - puzzle.floor) < 28 * this.scale;
+      if (active) this.openPuzzle(puzzle);
+    }
     for (const beam of this.beams) {
-      const anchored = this.scene.shadow?.isAnchoredNear(beam.rx, beam.ry, 115 * this.scale);
-      const powered = beam.pulsing ? Math.sin(time * .003) > -.3 : true;
+      const anchored = this.scene.shadow?.isAnchoredNear(beam.rx, beam.ry, 120 * this.scale);
+      const powered = !beam.pulsing || Math.sin(time * .003) > -.3;
       const dangerous = powered && !anchored;
       // A crackling, flickering beam while live; a faint trace when silenced.
-      beam.beam.setAlpha(dangerous ? .7 + Math.random() * .3 : .05);
-      beam.glow.setAlpha(dangerous ? .18 + Math.random() * .1 : .02);
+      beam.beam.setAlpha(dangerous ? .7 + Math.random() * .25 : .05);
+      beam.glow.setAlpha(dangerous ? .18 + Math.random() * .08 : .02);
       beam.emitter.setDangerous(dangerous);
       beam.receptor.setActive(!!anchored);
-      if (dangerous && Math.abs(this.scene.player.x - beam.x) < 24 * this.scale && this.scene.player.body.bottom > 430 * this.scale) {
+      if (dangerous && Math.abs(this.scene.player.x - beam.x) < 25 * this.scale
+        && this.scene.player.body.bottom > 430 * this.scale) {
         this.scene.cameras.main.flash(320, 150, 24, 30);
         this.scene.cameras.main.shake(220, .006);
         this.scene.respawn();
       }
     }
-    const remaining = this.plates.findIndex(plate => !plate.lit);
-    this.prompt = remaining >= 0 ? 'Q DETACH  ·  G LIFT / DROP WEIGHT ON 0/1 PLATE  ·  F ANCHOR'
-      : this.beams.length ? 'ANCHOR THE SHADOW IN A RED RECEPTOR TO SILENCE ITS BEAM.'
-        : 'THE BULKHEAD IS OPEN. FOLLOW THE RED CABLES.';
     for (const { wire, isLit } of this.links) wire.setLit(!!isLit());
   }
 }

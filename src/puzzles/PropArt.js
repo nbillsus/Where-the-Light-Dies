@@ -102,6 +102,31 @@ export function weight(scene, target, size, s, accent) {
   return art;
 }
 
+// A pale relic only the Shadow can carry: a ghostly carved stone with a rune.
+export function relic(scene, target, size, s, accent) {
+  const art = scene.add.container(0, 0).setDepth(7);
+  const halo = glow(scene, 0, 0, accent, size * 2.6, .35, 0);
+  breathe(scene, halo, .2, .5, 1300);
+  const g = scene.add.graphics();
+  const h = size / 2;
+  const stone = [{ x: 0, y: -h }, { x: h * .8, y: -h * .35 }, { x: h * .7, y: h }, { x: -h * .7, y: h }, { x: -h * .8, y: -h * .35 }];
+  g.fillStyle(0x1a2733, .95).fillPoints(stone, true);
+  g.lineStyle(2.5 * s, accent, .9).strokePoints(stone, true);
+  g.lineStyle(2 * s, accent, .85).strokeCircle(0, h * .1, h * .32);
+  g.lineBetween(0, -h * .45, 0, h * .65).lineBetween(-h * .32, h * .1, h * .32, h * .1);
+  const wisps = scene.add.graphics();
+  wisps.lineStyle(1.6 * s, accent, .45);
+  for (const side of [-1, 1]) {
+    wisps.strokePoints(new Phaser.Curves.QuadraticBezier(
+      new Phaser.Math.Vector2(side * h * .6, -h * .2), new Phaser.Math.Vector2(side * h * 1.1, -h * .7),
+      new Phaser.Math.Vector2(side * h * .5, -h * 1.3)).getPoints(10));
+  }
+  scene.tweens.add({ targets: wisps, alpha: .2, y: -4 * s, duration: 1100, yoyo: true, repeat: -1, ease: 'Sine.easeInOut' });
+  art.add([halo, wisps, g]);
+  follow(scene, art, target);
+  return art;
+}
+
 // --- Pressure plate ---------------------------------------------------------------
 
 export function plate(scene, x, floorY, s, accent) {
