@@ -37,7 +37,7 @@ import { HorrorPresentation } from '../gameplay/HorrorPresentation.js';
 import { Atmosphere } from '../effects/Atmosphere.js';
 import { Hud } from '../ui/Hud.js';
 import { KeyPrompt } from '../ui/KeyPrompt.js';
-import { readSettings } from '../settings.js';
+import { SETTING_ROWS, readSettings, writeSettings } from '../settings.js';
 import { Combat } from '../combat/Combat.js';
 import { EnemyDirector } from '../enemies/EnemyDirector.js';
 import { BossArena } from '../enemies/bosses/BossArena.js';
@@ -252,7 +252,7 @@ export class ChapterScene extends Phaser.Scene {
     if (Math.abs(x - midX) > Math.min(270, (this.viewportWidth - 32) / 2)) return;
     if (this.pauseSettings) {
       if (Math.abs(y - (midY + 140)) < 30) { this.pauseSettings.destroy(true); this.pauseSettings = null; return; }
-      const index = [midY - 50, midY + 24].findIndex(rowY => Math.abs(y - rowY) < 30);
+      const index = SETTING_ROWS.findIndex((row, i) => Math.abs(y - (midY - 98 + i * 54)) < 26);
       if (index >= 0) this.pauseSettingToggles[index]();
       return;
     }
@@ -281,20 +281,23 @@ export class ChapterScene extends Phaser.Scene {
       fontFamily: 'Georgia, serif', fontSize: '30px', color: '#f5eddb',
     }).setOrigin(.5));
     this.pauseSettingToggles = [];
-    for (const [index, key, label] of [[0, 'rain', 'Rain effects'], [1, 'shake', 'Screen shake']]) {
-      const row = this.add.text(w / 2, h / 2 - 50 + index * 74, '', {
+    SETTING_ROWS.forEach(([key, label], index) => {
+      const row = this.add.text(w / 2, h / 2 - 98 + index * 54, '', {
         fontFamily: 'Arial, sans-serif', fontSize: '19px', color: '#d8e1dc',
       }).setOrigin(.5);
       const refresh = () => row.setText(`${label}     ${settings[key] ? 'ON' : 'OFF'}`);
       refresh();
       this.pauseSettingToggles[index] = () => {
         settings[key] = !settings[key];
-        localStorage.setItem('wtld-settings', JSON.stringify(settings));
+        writeSettings(settings);
         if (key === 'rain') this.atmosphere.setRain(settings.rain);
         refresh();
       };
       this.pauseSettings.add(row);
-    }
+    });
+    this.pauseSettings.add(this.add.text(w / 2, h / 2 + 108, 'Lighting and grain changes apply when the level restarts.', {
+      fontFamily: 'Arial, sans-serif', fontSize: '12px', color: '#9eafb0',
+    }).setOrigin(.5));
     this.pauseSettings.add(this.add.text(w / 2, h / 2 + 140, 'BACK', { fontFamily: 'Georgia, serif', fontSize: '21px', color: '#f5d499' })
       .setOrigin(.5));
   }
@@ -518,10 +521,77 @@ export class ChapterScene extends Phaser.Scene {
     this.tweens.add({ targets: [bolt, glow], alpha: 1, duration: 70, yoyo: true, repeat: 1 });
     this.time.delayedCall(260, () => {
       impact.setAlpha(0.95);
+      this.playRespawnLightningSound();
       this.tweens.add({ targets: impact, radius: 120 * this.artScale, alpha: 0, duration: 380, ease: 'Cubic.easeOut', onComplete: () => impact.destroy() });
       this.tweens.add({ targets: [bolt, glow], alpha: 0, duration: 170, onComplete: () => { bolt.destroy(); glow.destroy(); } });
       onImpact?.();
     });
+  }
+
+  playRespawnLightningSound() {
+    const ctx = this.horror?.ensureAudio(true);
+    const master = this.horror?.master;
+    if (!ctx || !master) return;
+    const now = ctx.currentTime;
+
+    const crack = ctx.createBufferSource();
+    const crackBuffer = ctx.createBuffer(1, Math.floor(ctx.sampleRate * 0.18), ctx.sampleRate);
+    const crackData = crackBuffer.getChannelData(0);
+    for (let i = 0; i < crackData.length; i++) {
+      const t = i / crackData.length;
+      const snap = Math.pow(1 - t, 3.2);
+      crackData[i] = (Math.random() * 2 - 1) * snap;
+    }
+    crack.buffer = crackBuffer;
+
+    const crackFilter = ctx.createBiquadFilter();
+    const crackGain = ctx.createGain();
+    crackFilter.type = 'highpass';
+    crackFilter.frequency.value = 1400;
+    crackFilter.Q.value = 5;
+    crackGain.gain.setValueAtTime(0.0001, now);
+    crackGain.gain.exponentialRampToValueAtTime(0.62, now + 0.006);
+    crackGain.gain.exponentialRampToValueAtTime(0.0001, now + 0.18);
+    crack.connect(crackFilter).connect(crackGain).connect(master);
+
+    const thunder = ctx.createOscillator();
+    const thunderGain = ctx.createGain();
+    thunder.type = 'sine';
+    thunder.frequency.setValueAtTime(72, now);
+    thunder.frequency.exponentialRampToValueAtTime(24, now + 0.48);
+    thunderGain.gain.setValueAtTime(0.0001, now);
+    thunderGain.gain.exponentialRampToValueAtTime(0.38, now + 0.03);
+    thunderGain.gain.exponentialRampToValueAtTime(0.0001, now + 0.72);
+    thunder.connect(thunderGain).connect(master);
+
+    const sizzle = ctx.createBufferSource();
+    const sizzleBuffer = ctx.createBuffer(1, Math.floor(ctx.sampleRate * 0.42), ctx.sampleRate);
+    const sizzleData = sizzleBuffer.getChannelData(0);
+    let last = 0;
+    for (let i = 0; i < sizzleData.length; i++) {
+      const t = i / sizzleData.length;
+      last = last * 0.58 + (Math.random() * 2 - 1) * 0.42;
+      sizzleData[i] = last * Math.pow(1 - t, 1.4) * (0.7 + Math.sin(t * 180) * 0.22);
+    }
+    sizzle.buffer = sizzleBuffer;
+    const sizzleFilter = ctx.createBiquadFilter();
+    const sizzleGain = ctx.createGain();
+    sizzleFilter.type = 'bandpass';
+    sizzleFilter.frequency.setValueAtTime(2600, now);
+    sizzleFilter.frequency.exponentialRampToValueAtTime(6800, now + 0.12);
+    sizzleFilter.frequency.exponentialRampToValueAtTime(1200, now + 0.42);
+    sizzleFilter.Q.value = 9;
+    sizzleGain.gain.setValueAtTime(0.0001, now);
+    sizzleGain.gain.exponentialRampToValueAtTime(0.24, now + 0.012);
+    sizzleGain.gain.exponentialRampToValueAtTime(0.0001, now + 0.42);
+    sizzle.connect(sizzleFilter).connect(sizzleGain).connect(master);
+
+    crack.start(now);
+    thunder.start(now);
+    sizzle.start(now);
+    crack.stop(now + 0.2);
+    thunder.stop(now + 0.75);
+    sizzle.stop(now + 0.45);
   }
 
   finishStage() {

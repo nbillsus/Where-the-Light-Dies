@@ -1,6 +1,7 @@
 import Phaser from 'phaser';
 import { ensureFxTextures } from '../effects/textures.js';
 import { fixedLayerOffset } from '../rendering.js';
+import { getDelayToNextMusicHitMs, syncGameMusicToScare, unlockGameMusic } from '../audio/GameMusic.js';
 
 const AMBER = 0xf4c16b;
 const CYAN = 0x9ce6e0;
@@ -172,6 +173,7 @@ export class HorrorPresentation {
   }
 
   ensureAudio(fromGesture = false) {
+    if (fromGesture) unlockGameMusic(0.42);
     const AudioContextClass = window.AudioContext || window.webkitAudioContext;
     if (!AudioContextClass) return null;
     if (!this.audioContext) {
@@ -374,11 +376,13 @@ export class HorrorPresentation {
   runScare(beat) {
     if (this.isScaring) return;
     this.isScaring = true;
-    this.radioPanel(beat.title, beat.message, 'signal pressure rising...', beat.color, 2600);
-    this.scoreJumpScare(SCARE_HIT_MS, beat.scare);
+    const hitMs = getDelayToNextMusicHitMs({ minMs: 1300, maxMs: 3300, fallbackMs: SCARE_HIT_MS });
+    this.radioPanel(beat.title, beat.message, 'signal pressure rising...', beat.color, Math.max(2600, hitMs + 420));
+    this.scoreJumpScare(hitMs, beat.scare);
+    syncGameMusicToScare(hitMs);
     this.scene.time.delayedCall(520, () => this.playHelpCry(beat.scare === 'pierHand' ? 'near' : 'falseKeeper'));
-    this.scene.time.delayedCall(1350, () => this.playHelpCry('panic'));
-    this.scene.time.delayedCall(SCARE_HIT_MS, () => {
+    this.scene.time.delayedCall(Math.min(1350, Math.max(780, hitMs - 780)), () => this.playHelpCry('panic'));
+    this.scene.time.delayedCall(hitMs, () => {
       this.playHorrorHit(beat.scare);
       this.playImpact(beat.scare);
       this.playScream(beat.scare);
