@@ -1,0 +1,27 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="4096" height="900" viewBox="0 0 4096 900"><defs>
+    <linearGradient id="coastSky" x2="0" y2="1"><stop stop-color="#070d22"/><stop offset=".52" stop-color="#254d73"/><stop offset=".82" stop-color="#407f94"/><stop offset="1" stop-color="#071321"/></linearGradient>
+    <radialGradient id="coastMoon"><stop stop-color="#bdd9e6" stop-opacity=".68"/><stop offset=".47" stop-color="#788bb8" stop-opacity=".24"/><stop offset="1" stop-color="#20355c" stop-opacity="0"/></radialGradient>
+    <linearGradient id="coastBeam"><stop stop-color="#fff4c5" stop-opacity=".74"/><stop offset="1" stop-color="#c8f1e9" stop-opacity="0"/></linearGradient>
+    <linearGradient id="facilitySky" x2="0" y2="1"><stop stop-color="#0b0b20"/><stop offset=".48" stop-color="#27374d"/><stop offset=".85" stop-color="#233f4a"/><stop offset="1" stop-color="#090d19"/></linearGradient>
+    <radialGradient id="facilityGlow"><stop stop-color="#59d0c7" stop-opacity=".36"/><stop offset="1" stop-color="#513c78" stop-opacity="0"/></radialGradient>
+    <linearGradient id="facilityShaft"><stop stop-color="#b7f2e9" stop-opacity=".6"/><stop offset="1" stop-color="#b7f2e9" stop-opacity="0"/></linearGradient>
+    <linearGradient id="forestSky" x2="0" y2="1"><stop stop-color="#090d16"/><stop offset=".55" stop-color="#4b3a32"/><stop offset=".78" stop-color="#a0774c"/><stop offset="1" stop-color="#211a18"/></linearGradient>
+    <radialGradient id="amberHaze"><stop stop-color="#efd1a2" stop-opacity=".77"/><stop offset=".45" stop-color="#ba8456" stop-opacity=".38"/><stop offset="1" stop-color="#37251f" stop-opacity="0"/></radialGradient>
+    <radialGradient id="violetHaze"><stop stop-color="#af78c7" stop-opacity=".32"/><stop offset="1" stop-color="#702d85" stop-opacity="0"/></radialGradient>
+    <linearGradient id="caveSky" x2="0" y2="1"><stop stop-color="#061113"/><stop offset=".45" stop-color="#15383b"/><stop offset=".82" stop-color="#2b6b6d"/><stop offset="1" stop-color="#071b20"/></linearGradient>
+    <radialGradient id="tealHaze"><stop stop-color="#a8d8d1" stop-opacity=".55"/><stop offset="1" stop-color="#2d7b7d" stop-opacity="0"/></radialGradient>
+    <linearGradient id="lightShaft" x2=".35" y2="1"><stop stop-color="#ecfff3" stop-opacity=".7"/><stop offset="1" stop-color="#7fd1c6" stop-opacity="0"/></linearGradient>
+    <linearGradient id="vaultSky" x2="0" y2="1"><stop stop-color="#09090e"/><stop offset=".53" stop-color="#342821"/><stop offset="1" stop-color="#100d10"/></linearGradient>
+    <radialGradient id="goldHaze"><stop stop-color="#ad7543" stop-opacity=".5"/><stop offset="1" stop-color="#5c3625" stop-opacity="0"/></radialGradient>
+    <radialGradient id="lensGlow"><stop stop-color="#a9dfe0" stop-opacity=".9"/><stop offset=".4" stop-color="#446b7d" stop-opacity=".67"/><stop offset="1" stop-color="#0d1824"/></radialGradient>
+    <radialGradient id="torchGlow"><stop stop-color="#ffad3e" stop-opacity=".45"/><stop offset="1" stop-color="#ffad3e" stop-opacity="0"/></radialGradient>
+    <radialGradient id="exitGlow"><stop stop-color="#dfd4a2" stop-opacity=".4"/><stop offset="1" stop-color="#dfd4a2" stop-opacity="0"/></radialGradient>
+    <linearGradient id="forestFace" x2=".4" y2="1"><stop stop-color="#302922"/><stop offset=".3" stop-color="#171719"/><stop offset="1" stop-color="#090b10"/></linearGradient>
+    <linearGradient id="coastFace" x2=".4" y2="1"><stop stop-color="#294251"/><stop offset=".3" stop-color="#142432"/><stop offset="1" stop-color="#070f1d"/></linearGradient>
+    <linearGradient id="facilityFace" x2=".4" y2="1"><stop stop-color="#385359"/><stop offset=".3" stop-color="#172c34"/><stop offset="1" stop-color="#080f1d"/></linearGradient>
+    <linearGradient id="caveFace" x2=".3" y2="1"><stop stop-color="#31565a"/><stop offset=".26" stop-color="#123034"/><stop offset="1" stop-color="#06171b"/></linearGradient>
+    <linearGradient id="vaultFace" x2=".2" y2="1"><stop stop-color="#453629"/><stop offset=".32" stop-color="#201a1b"/><stop offset="1" stop-color="#0a0b11"/></linearGradient>
+    <linearGradient id="doorLight" x2="0" y2="1"><stop stop-color="#e6ddb3"/><stop offset="1" stop-color="#6f8f8e" stop-opacity=".15"/></linearGradient>
+    <filter id="soft"><feGaussianBlur stdDeviation="22"/></filter>
+  </defs><rect width="4096" height="900" fill="url(#coastSky)"/>
+    <ellipse cx="820" cy="190" rx="740" ry="380" fill="url(#coastMoon)"/></svg>

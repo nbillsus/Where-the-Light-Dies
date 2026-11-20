@@ -4,16 +4,17 @@ import { ensureFxTextures, seededRandom } from './textures.js';
 import { readSettings } from '../settings.js';
 import { drawArenaBackdrop } from './ArenaBackdrop.js';
 import { Lighting } from './Lighting.js';
+import { Ledges } from './Ledges.js';
 import { fixedLayerOffset } from '../rendering.js';
 
-// Depth and mood for a level: fog banks, drifting particles, weather, a dark
-// foreground ink layer that scrolls faster than the camera, decorated ledges,
-// and a soft vignette. Owner: Lucas (graphics).
+// Depth and mood for a level: drifting particles, weather, a dark foreground
+// ink layer that scrolls faster than the camera, decorated ledges, lighting,
+// grain and a soft vignette. Owner: Lucas (graphics).
 //
 // Depth order used across the game:
-//   -10 backdrop · -6 far fog · 1–3 ledge decoration · 2 boy · 3 cables
-//   5–7 puzzle objects · 9 ground fog · 10 particles · 20 foreground ink
-//   24 lightning · 25 rain · 28 key prompts · 30 HUD · 80 title cards
+//   -14…-10 backdrop layers · 1–3 ledge decoration · 2 boy · 3 cables
+//   5–7 puzzle objects · 10 particles · 19.5 light map · 20 foreground ink
+//   25 rain · 26 grain · 28 key prompts · 30 HUD · 80 title cards
 const FOREGROUND_PARALLAX = 1.35;
 
 export class Atmosphere {
@@ -40,57 +41,10 @@ export class Atmosphere {
   r(min, max) { return min + this.rand() * (max - min); }
   pick(list) { return list[Math.floor(this.rand() * list.length)]; }
 
-  // Inked ledges: shade under each lip, hanging strands, tufts on top.
+  // Ledge dressing lives in Ledges.js: material lips, shading, lit rims and
+  // falling drips or dust.
   addLedges() {
-    const { s, theme } = this;
-    const back = this.scene.add.graphics().setDepth(1);
-    const front = this.scene.add.graphics().setDepth(3);
-    // Moonlight catching the lip of every ledge. It sits above the light map
-    // (19.5) so you can always read where to land, even in total darkness.
-    const rims = this.scene.add.graphics().setDepth(19.55);
-    for (const { left, right, y } of this.scene.platforms) {
-      const width = right - left;
-      back.fillGradientStyle(theme.ink, theme.ink, theme.ink, theme.ink, .5, .5, 0, 0)
-        .fillRect(left, y + 10 * s, width, 90 * s);
-      back.lineStyle(2 * s, theme.rim, .35).lineBetween(left + 4 * s, y + 1 * s, right - 4 * s, y + 1 * s);
-      rims.lineStyle(1.5 * s, theme.rim, .2).lineBetween(left + 10 * s, y + 1 * s, right - 10 * s, y + 1 * s);
-      for (let x = left + this.r(6, 30) * s; x < right - 6 * s; x += this.r(16, 48) * s) {
-        this.hangingStrand(back, x, y + 9 * s);
-      }
-      for (let x = left + this.r(10, 60) * s; x < right - 12 * s; x += this.r(70, 170) * s) {
-        this.tuft(front, x, y + 2 * s, this.r(6, 15) * s);
-      }
-    }
-  }
-
-  hangingStrand(g, x, y) {
-    const { s, theme } = this;
-    const length = this.r(10, 64) * s;
-    if (theme.hang === 'rust') {
-      g.lineStyle(this.r(2, 4) * s, theme.drip, .45).lineBetween(x, y, x + this.r(-2, 2) * s, y + length * .8);
-      return;
-    }
-    const sway = this.r(-10, 10) * s;
-    const points = new Phaser.Curves.QuadraticBezier(
-      new Phaser.Math.Vector2(x, y),
-      new Phaser.Math.Vector2(x + sway, y + length * .5),
-      new Phaser.Math.Vector2(x + sway * .4, y + length),
-    ).getPoints(8);
-    g.lineStyle(this.r(1.5, 3.2) * s, theme.ink, .9).strokePoints(points);
-    if (this.rand() < .35) {
-      const end = points[points.length - 1];
-      g.fillStyle(theme.drip, .55).fillCircle(end.x, end.y + 2 * s, 2.2 * s);
-    }
-  }
-
-  tuft(g, x, y, height) {
-    const blades = 3 + Math.floor(this.rand() * 4);
-    g.fillStyle(this.theme.ink, .95);
-    for (let i = 0; i < blades; i++) {
-      const base = x + (i - blades / 2) * 3 * this.s;
-      const lean = this.r(-6, 6) * this.s;
-      g.fillTriangle(base - 1.6 * this.s, y, base + 1.6 * this.s, y, base + lean, y - height * this.r(.6, 1.1));
-    }
+    this.ledges = new Ledges(this.scene, this.theme);
   }
 
   addParticles() {
@@ -237,7 +191,7 @@ export class Atmosphere {
   }
 
   // Rain falls around the camera only, so it stays cheap on long levels.
-  // Turn rain and lightning on or off (Settings > Rain effects).
+  // Turn rain on or off (Settings > Rain effects).
   setRain(on) {
     if (!this.rain) return;
     this.rainOn = on;

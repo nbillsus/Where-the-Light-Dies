@@ -23,9 +23,9 @@ function grain(rand, color, count = 560) {
 
 function coast(rand) {
   let result = `<rect width="4096" height="900" fill="url(#coastSky)"/>
-    <ellipse cx="820" cy="190" rx="740" ry="380" fill="url(#coastMoon)"/>
+    <ellipse cx="820" cy="190" rx="740" ry="380" fill="url(#coastMoon)"/><!--far-->
     <path d="M0 410 Q700 290 1280 410 T2600 360 T4096 430 V900 H0Z" fill="#253755" opacity=".8"/>
-    <path d="M0 575 Q430 460 880 545 T1840 505 T2770 570 T4096 495 V900 H0Z" fill="#172844"/>
+    <path d="M0 575 Q430 460 880 545 T1840 505 T2770 570 T4096 495 V900 H0Z" fill="#172844"/><!--near-->
     <path d="M0 785 Q400 730 800 790 T1600 778 T2430 800 T3320 765 T4096 795 V900 H0Z" fill="#0b2034"/>
     <path d="M0 795 Q190 780 375 800 T750 800 T1120 795 T1510 805 T1900 795 T2280 800 T2650 790 T3090 805 T3510 800 T4096 798" fill="none" stroke="#82d0e1" stroke-width="7" opacity=".3"/>`;
   for (let x = 70; x < 4200; x += 150 + rand() * 110) {
@@ -42,7 +42,7 @@ function coast(rand) {
 }
 
 function facility(rand) {
-  let result = `<rect width="4096" height="900" fill="url(#facilitySky)"/>
+  let result = `<rect width="4096" height="900" fill="url(#facilitySky)"/><!--far-->
     <path d="M0 0 H4096 V260 Q3600 200 3100 250 T2100 210 T1030 250 T0 225Z" fill="#080d1b"/>
     <path d="M0 790 H4096 V900 H0Z" fill="#0a1120"/>`;
   for (let x = 0; x < 4300; x += 515) {
@@ -52,6 +52,7 @@ function facility(rand) {
       <rect x="${x + 175}" y="290" width="132" height="190" rx="11" fill="#07151f" stroke="#7b849c" stroke-width="5" opacity=".55"/>
       <path d="M${x + 242} 325 v120 M${x + 196} 385 h93" stroke="#7bd9dd" stroke-width="4" opacity=".25"/>`;
   }
+  result += '<!--near-->';
   for (let x = 340; x < 4400; x += 780) {
     result += `<circle cx="${x}" cy="390" r="138" fill="url(#facilityGlow)"/>
       <circle cx="${x}" cy="390" r="96" fill="none" stroke="#6394a1" stroke-width="17" opacity=".45"/>
@@ -91,12 +92,12 @@ function forest(rand) {
   let result = `<rect width="4096" height="900" fill="url(#forestSky)"/>
     <ellipse cx="1080" cy="490" rx="950" ry="590" fill="url(#amberHaze)"/>
     <ellipse cx="3330" cy="420" rx="760" ry="520" fill="url(#amberHaze)" opacity=".7"/>
-    <ellipse cx="2450" cy="490" rx="620" ry="370" fill="url(#violetHaze)" opacity=".6"/>
+    <ellipse cx="2450" cy="490" rx="620" ry="370" fill="url(#violetHaze)" opacity=".6"/><!--far-->
     <path d="M0 590 Q400 515 760 600 T1480 565 T2250 610 T3010 550 T4096 610 L4096 900 H0Z" fill="#4c382d" opacity=".48"/>
     <path d="M0 680 Q430 590 850 670 T1750 630 T2620 675 T3400 620 T4096 670 L4096 900 H0Z" fill="#251f1d" opacity=".58"/>
     <g opacity=".47">`;
   for (let x = 60; x < 4200; x += 150 + rand() * 115) result += tree(x, 690 + rand() * 35, 0.38 + rand() * 0.45, '#1b1b1d', rand);
-  result += `</g><g opacity=".82">`;
+  result += `</g><!--near--><g opacity=".82">`;
   for (let x = 160; x < 4200; x += 390 + rand() * 260) result += tree(x, 735 + rand() * 35, 0.75 + rand() * 0.55, '#101316', rand);
   result += `</g><path d="M0 640 Q600 575 1200 620 T2500 625 T4096 600" fill="none" stroke="#dac197" stroke-width="36" opacity=".06" filter="url(#soft)"/>
     <path d="M0 710 Q560 680 1200 708 T2500 695 T4096 690" fill="none" stroke="#f1d8a8" stroke-width="42" opacity=".07" filter="url(#soft)"/>
@@ -108,7 +109,7 @@ function forest(rand) {
 function cavern(rand) {
   let result = `<rect width="4096" height="900" fill="url(#caveSky)"/>
     <ellipse cx="850" cy="530" rx="950" ry="390" fill="url(#tealHaze)"/>
-    <ellipse cx="3000" cy="570" rx="1200" ry="390" fill="url(#tealHaze)" opacity=".75"/>
+    <ellipse cx="3000" cy="570" rx="1200" ry="390" fill="url(#tealHaze)" opacity=".75"/><!--far-->
     <path d="M0 0 H4096 V310 Q3700 220 3390 310 T2700 300 T2070 250 T1300 280 T600 250 T0 330 Z" fill="#071315"/>
     <path d="M0 900 V445 Q420 330 760 450 T1500 410 T2270 430 T3090 390 T4096 445 V900Z" fill="#0b282b" opacity=".55"/>`;
   for (let x = 0; x < 4100; x += 85 + rand() * 105) {
@@ -119,6 +120,7 @@ function cavern(rand) {
     const y = 280 + rand() * 220;
     result += `<path d="M${x} ${y + 165} l${-80 - rand() * 80} ${120 + rand() * 90} l${125 + rand() * 100} ${-155 - rand() * 120}Z" fill="#17383a" opacity=".48"/>`;
   }
+  result += '<!--near-->';
   for (const x of [500, 1700, 2900, 3650]) {
     result += `<path d="M${x - 220} 0 h300 l-520 790 h-380Z" fill="url(#lightShaft)" opacity=".5"/>
       <path d="M${x + 20} 0 h140 l-165 790 h-230Z" fill="url(#lightShaft)" opacity=".23"/>`;
@@ -136,13 +138,14 @@ function cavern(rand) {
 function vault(rand) {
   let result = `<rect width="4096" height="900" fill="url(#vaultSky)"/>
     <ellipse cx="1100" cy="440" rx="720" ry="520" fill="url(#goldHaze)" opacity=".72"/>
-    <ellipse cx="3090" cy="460" rx="900" ry="560" fill="url(#goldHaze)" opacity=".55"/>`;
+    <ellipse cx="3090" cy="460" rx="900" ry="560" fill="url(#goldHaze)" opacity=".55"/><!--far-->`;
   for (let x = -180; x < 4300; x += 620) {
     result += `<path d="M${x} 800 V285 Q${x + 270} -45 ${x + 540} 285 V800" fill="none" stroke="#160f12" stroke-width="100"/>
       <path d="M${x + 14} 800 V300 Q${x + 270} 25 ${x + 526} 300 V800" fill="none" stroke="#544034" stroke-width="14" opacity=".65"/>
       <path d="M${x + 74} 780 V332 Q${x + 270} 105 ${x + 466} 332 V780" fill="none" stroke="#85694f" stroke-width="5" opacity=".26"/>
       <path d="M${x + 7} 365 h72 m${x + 455} 0 h72" stroke="#a88757" stroke-width="12" opacity=".4"/>`;
   }
+  result += '<!--near-->';
   for (const x of [1080, 2390, 3520]) {
     result += `<circle cx="${x}" cy="405" r="175" fill="#101823" stroke="#6e603e" stroke-width="27"/>
       <circle cx="${x}" cy="405" r="145" fill="url(#lensGlow)" stroke="#9e8152" stroke-width="9"/>
@@ -275,8 +278,17 @@ for (const stage of CHAPTER_STAGES.slice(0, 5)) {
   const scene = stage.id === 'storm-coast' ? coast(rand)
     : stage.id === 'abandoned-facility' ? facility(rand)
       : stage.id === 'thornwood' ? forest(rand) : stage.id === 'drowned-cavern' ? cavern(rand) : vault(rand);
-  const svg = `<svg xmlns="http://www.w3.org/2000/svg" width="${artWidth}" height="${stage.height}" viewBox="0 0 ${artWidth} ${stage.height}">${defs()}${scene}${platformArt(artStage, rand)}</svg>`;
-  const path = new URL(`${stage.id}.svg`, outDir);
-  writeFileSync(path, svg);
-  console.log(path.pathname);
+  // Four parallax layers (see src/effects/Parallax.js): the scene art is
+  // split at its <!--far--> and <!--near--> markers; the ground layer holds
+  // the platforms and must line up with their collision.
+  const [sky, rest] = scene.split('<!--far-->');
+  const [far, near] = rest.split('<!--near-->');
+  const layers = { sky, far, near, ground: platformArt(artStage, rand) };
+  for (const [layer, content] of Object.entries(layers)) {
+    const name = layer === 'ground' ? stage.id : `${stage.id}-${layer}`;
+    const svg = `<svg xmlns="http://www.w3.org/2000/svg" width="${artWidth}" height="${stage.height}" viewBox="0 0 ${artWidth} ${stage.height}">${defs()}${content}</svg>`;
+    const path = new URL(`${name}.svg`, outDir);
+    writeFileSync(path, svg);
+    console.log(path.pathname);
+  }
 }

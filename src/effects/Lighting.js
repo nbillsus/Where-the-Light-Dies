@@ -1,5 +1,6 @@
 import Phaser from 'phaser';
 import { ensureFxTextures } from './textures.js';
+import { afterCameraMoves } from './cameraSync.js';
 
 // Real darkness for every level. Owner: Lucas (graphics).
 //
@@ -34,12 +35,6 @@ const GLOW_SIZE = 128;   // fx-glow texture size
 const ADD = Phaser.BlendModes.ADD;
 const SHAPES = new Set(['Arc', 'Ellipse', 'Rectangle']);
 
-function mixColor(a, b, t) {
-  const ar = a >> 16 & 255, ag = a >> 8 & 255, ab = a & 255;
-  const br = b >> 16 & 255, bg = b >> 8 & 255, bb = b & 255;
-  return Math.round(ar + (br - ar) * t) << 16 | Math.round(ag + (bg - ag) * t) << 8 | Math.round(ab + (bb - ab) * t);
-}
-
 export class Lighting {
   constructor(scene, theme) {
     this.scene = scene;
@@ -60,9 +55,8 @@ export class Lighting {
     this.lights = [];
     this.matrix = new Phaser.GameObjects.Components.TransformMatrix();
     this.parentMatrix = new Phaser.GameObjects.Components.TransformMatrix();
-    this.onPreRender = () => this.render();
-    scene.events.on('prerender', this.onPreRender);
-    scene.events.once('shutdown', () => scene.events.off('prerender', this.onPreRender));
+    // Paint the map in step with the camera, so it always covers the view.
+    afterCameraMoves(scene, () => this.render());
   }
 
   /** A short burst of light, e.g. a hit or an explosion. */
@@ -116,11 +110,16 @@ export class Lighting {
     const scene = this.scene, now = scene.time.now, size = scene.spriteHeight ?? 150;
     const player = scene.player;
     if (player?.active) {
-      // Two slow, unrelated sines make an uneven, flame-like flicker.
-      const flicker = .9 + Math.sin(now * .0071) * .05 + Math.sin(now * .0173 + 1.3) * .04;
+      // A slow, gentle sway in brightness (kept subtle: no flicker or flashing).
+      const flicker = .97 + Math.sin(now * .0021) * .02 + Math.sin(now * .0047 + 1.3) * .01;
       const radius = size * 5.6 * flicker;
       lights.push({ x: player.x, y: player.y - size * .1, width: radius, height: radius * .86, color: this.theme.lantern ?? 0xffd9a0, strength: 1.05, bloom: .4, glowW: radius * .45, glowH: radius * .4 });
       lights.push({ x: player.x, y: player.y - size * .1, width: size * 2.4, height: size * 2.4, color: 0xfff0d4, strength: .55 * flicker, bloom: 0 });
+      // The lantern itself, at his hip: a steady warm glow (no flicker, so it
+      // never reads as flashing) plus a small bright core.
+      const hipX = player.x + (player.flipX ? -1 : 1) * size * .08, hipY = player.y + size * .05;
+      lights.push({ x: hipX, y: hipY, width: 0, height: 0, color: 0xffc977, strength: .85, bloom: 1, glowW: size * 2.6, glowH: size * 2.1 });
+      lights.push({ x: hipX, y: hipY, width: 0, height: 0, color: 0xffe9b8, strength: 1, bloom: 1, glowW: size * .75, glowH: size * .85 });
     }
     const shadow = scene.shadow;
     if (shadow?.detached && shadow.actor?.active) {
@@ -136,10 +135,7 @@ export class Lighting {
   // --- Drawing ------------------------------------------------------------
 
   ambientColor() {
-    // Lightning briefly lights the whole world.
-    const base = this.theme.ambient ?? 0x34405a; // areas without their own ambient colour
-    const flash = this.scene.atmosphere?.lightning?.fillAlpha ?? 0;
-    return flash > 0 ? mixColor(base, 0xc6d6f2, Math.min(1, flash * 3.6)) : base;
+    return this.theme.ambient ?? 0x34405a; // areas without their own ambient colour
   }
 
   render() {
@@ -148,11 +144,17 @@ export class Lighting {
     this.map.setPosition(ox, oy);
     const lights = this.collect();
 
-    // `fill` draws with whatever blend mode the renderer used last (ADD,
-    // after our own stamps), so reset it or the fill piles up frame by frame.
-    if (this.scene.renderer.setBlendMode) this.scene.renderer.setBlendMode(Phaser.BlendModes.NORMAL);
-    this.map.fill(this.ambientColor(), 1);
+    // Everything is painted in one batch, starting with a solid ambient base.
+    // (Phaser's ADD blend also scales what is underneath by its alpha, so
+    // lights added onto a transparent texture leave square seams where they
+    // overlap. On a solid base they add up cleanly.)
+    const white = this.scene.textures.getFrame('__WHITE');
+    this.map.clear();
     this.map.beginDraw();
+    this.map.stamp('__WHITE', null, 0, 0, {
+      originX: 0, originY: 0, scaleX: this.map.width / white.width, scaleY: this.map.height / white.height,
+      tint: this.ambientColor(), alpha: 1, blendMode: Phaser.BlendModes.NORMAL, skipBatch: true,
+    });
     // Moonlight from above: the sky and far background stay faintly visible,
     // which keeps the depth of the painted backdrop.
     this.map.stamp('fx-vfade', null, 0, 0, {
@@ -160,11 +162,15 @@ export class Lighting {
       tint: this.theme.rim, alpha: this.theme.sky ?? .2, blendMode: ADD, skipBatch: true,
     });
     for (const light of lights) {
+      if (!light.width) continue; // glow-only entries
       this.map.stamp('fx-light', null, (light.x - ox) * RES, (light.y - oy) * RES, {
         scaleX: light.width * RES / LIGHT_SIZE, scaleY: light.height * RES / LIGHT_SIZE,
         tint: light.color, alpha: Math.min(1, light.strength), blendMode: ADD, skipBatch: true,
       });
     }
+    // The finished batch is copied onto the (cleared) texture with the
+    // renderer's current blend mode; make that a plain copy.
+    this.scene.renderer.setBlendMode?.(Phaser.BlendModes.NORMAL);
     this.map.endDraw();
 
     let used = 0;

@@ -77,11 +77,17 @@ const DEEP_THEMES = {
   threshold: [0x090e19, 0xf3d7ab, 0xa5886d, 'embers', 'chains'],
 };
 
+function scaleColor(color, k) {
+  return Math.round((color >> 16 & 255) * k) << 16 | Math.round((color >> 8 & 255) * k) << 8 | Math.round((color & 255) * k);
+}
+
 export function themeFor(stage) {
   if (stage.chapter >= 4) {
     const [ink, rim, fog, kind, hang] = DEEP_THEMES[stage.id];
     return { ink, rim, drip: fog, fog, fogAlpha: .12, motes: { kind, color: rim }, weather: null,
-      hang, bottom: ['rocks', 'rubble'], top: ['cables'], accent: rim, saturate: -.06 };
+      hang, bottom: ['rocks', 'rubble'], top: ['cables'], accent: rim, saturate: -.06,
+      // Lighting: the darkness takes the area's fog colour, at about 55%.
+      ambient: scaleColor(fog, .55), lantern: 0xffdcaa, sky: .26 };
   }
   if (stage.chapter === 3) return { ...CHAPTER_THREE[stage.id] };
   if (stage.chapter === 2) return { ...CHAPTER_TWO };
