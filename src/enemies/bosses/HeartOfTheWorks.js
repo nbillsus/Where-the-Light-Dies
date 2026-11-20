@@ -6,7 +6,7 @@ import { sfx } from '../../combat/sfx.js';
 // THE HEART OF THE WORKS — Chapter 2 boss.
 // A red machine heart in an iron cage, with two hanging iron hands.
 // - Its core is behind a SHIELD. The shield only drops while your Shadow is
-//   anchored in one of the two receptors on the ledges (Q, climb, F). Each
+//   anchored in one of the two floor receptors (Q, move, F). Each
 //   receptor then needs time to recharge, so you keep moving between them.
 // - The boy is defenceless while you steer the Shadow, so pick your moment.
 // - HAND SLAM: a red mark tracks the boy, then an iron hand drops (2).
@@ -33,12 +33,14 @@ export class HeartOfTheWorks extends Boss {
     this.cx = arena.endX - H * 3.3;
     this.coreY = this.floorY - H * 1.15;
     this.bx = this.cx;
-    // Receptors above the two arena ledges.
-    this.receptors = scene.platforms.filter(p => p.left > arena.startX && p.right < arena.endX && p.y < this.floorY - 20 * s)
-      .map(p => {
-        const x = (p.left + p.right) / 2, y = p.y - H * .95;
-        return { x, y, art: receptorArt(scene, x, y, s, RED, GOLD), readyAt: 0 };
-      });
+    // Keep both shield receptors on the continuous arena floor so the fight
+    // does not need floating platforms or precision jumps.
+    const receptorY = this.floorY - H * .95;
+    const receptorSpan = this.cx - arena.startX;
+    this.receptors = [.28, .68].map(position => {
+      const x = arena.startX + receptorSpan * position;
+      return { x, y: receptorY, art: receptorArt(scene, x, receptorY, s, RED, GOLD), readyAt: 0 };
+    });
     this.cage = scene.add.graphics().setDepth(1.6);
     this.coreGfx = scene.add.graphics().setDepth(1.75);
     this.coreGlow = scene.add.image(this.cx, this.coreY, 'fx-glow').setTint(RED).setBlendMode(Phaser.BlendModes.ADD)
