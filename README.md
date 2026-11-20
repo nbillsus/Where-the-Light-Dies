@@ -25,6 +25,9 @@ Open the local URL Vite prints and choose **New Game**, then choose one of three
 | `F` | Lock or release the detached shadow; locking returns control to the boy |
 | `G` | In Grasp areas, lift or drop a nearby pale relic while controlling the shadow; ordinary wooden weights are pushed by the boy |
 | `E` | Operate a nearby mechanism as the boy |
+| `J` or left click | Light Strike: a 3-hit lantern combo (the third hit is heavier) |
+| `K` or right click | Flare Pulse: a burst of light that destroys Skitterers and stuns Wardens (6 s recharge) |
+| `Shift` | Dodge: a quick dash you can't be hurt during; with no direction held it's a backstep |
 | `R` | Restart the current area (`R` after the finale restarts the chapter) |
 | `Esc` | Pause or resume; the pause menu has Resume, Save & Main Menu, and Settings |
 

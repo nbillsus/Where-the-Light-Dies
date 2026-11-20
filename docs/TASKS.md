@@ -34,6 +34,11 @@ Each step below ends with one commit.
 
 ### Phase 2: Vertical Slice (Act 1)
 
+- [x] Combat and enemies: Light Strike combo, Flare Pulse, dodge, health
+      and death; Skitterers (fear the lantern) and Shroud Wardens (armoured
+      front) placed in all 10 areas. Enemy AI lives in `src/enemies/` for
+      Neel to take over.
+
 - [ ] Combat: Light Strike 3-hit combo, Flare Pulse, dodge, hit detection, health.
 - [ ] Path Anchor ability.
 - [ ] Reusable puzzle building blocks (plates, gates, grates, collapsing bridges) out of `ChapterMechanics.js`.

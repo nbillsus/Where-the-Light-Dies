@@ -53,6 +53,40 @@ Current behaviour, from `src/gameplay/ShadowController.js`:
 | Phase & Switch | Shadow slips under grates to reach switches (Phase 3) |
 | Light Reflection & Refraction | Shadow redirects light beams (Phase 3) |
 
+## Combat
+
+Code: `src/combat/Combat.js` (numbers in `TUNING` at the top).
+
+| Move | Key | Rules |
+| --- | --- | --- |
+| Light Strike | `J` / left click | 3-hit combo. A press within 0.56 s of the last continues it; presses closer than 0.23 s are ignored. Damage 1, 1, 2. Reaches 0.66 × the boy's height in front of him. |
+| Flare Pulse | `K` / right click | Radius 1.75 × boy height. Destroys Skitterers, stuns Wardens for 2.2 s. Recharges in 6 s (ring next to the health flames). |
+| Dodge | `Shift` | 0.21 s dash at 820 px/s, invulnerable throughout; the way you're pushing, or a backstep with no direction held. 0.65 s recharge. |
+
+- **Health:** 5 flames. A hit costs 1, knocks the boy back and makes him
+  invulnerable for 1.1 s. At 0 the screen fades, the boy returns to the
+  start of the area with full health, enemies come back, and solved puzzles
+  stay solved. Falling into a pit doesn't cost health.
+- Can't attack while controlling the Shadow (the boy is vulnerable then).
+
+### Enemies
+
+Code: `src/enemies/`. Placement per area: `src/enemies/placements.js`.
+Enemies stay on the ledge they spawn on.
+
+| Enemy | Health | Behaviour | How to beat it |
+| --- | --- | --- | --- |
+| Skitterer | 1 | Hunts within 3.2 × boy height; bites (1 damage, 0.9 s cooldown). **Backs off from the lantern**: if the boy faces it within 1.6 × his height, it flees. | Face it and strike, or Flare Pulse a group. |
+| Shroud Warden | 4 | Patrols; walks up and swings when you're in front (0.65 s wind-up with raised blade and red eyes, 1 damage). **Front is armoured**: strikes there spark and push you back. Takes 0.48 s to turn round and stands still 0.7 s after each swing. | Dodge through it during the wind-up and strike its back, or stun it with a Flare Pulse (armour goes dark) and hit from any side. |
+
+### Combat events
+
+Emitted on the level scene (`scene.events`) for audio and UI:
+`combat:strike` (combo step), `combat:hit` (enemy, blocked),
+`combat:flare` (x, y), `combat:hurt` (health left), `combat:died`,
+`combat:enemy-killed` (enemy). Current sounds are synthesised placeholders
+in `src/combat/sfx.js`.
+
 ## Puzzle building blocks
 
 Current mechanisms in `src/gameplay/ChapterMechanics.js`: gates, pressure
