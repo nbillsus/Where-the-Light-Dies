@@ -3,6 +3,8 @@ import { themeFor } from './theme.js';
 import { ensureFxTextures, seededRandom } from './textures.js';
 import { readSettings } from '../settings.js';
 import { drawArenaBackdrop } from './ArenaBackdrop.js';
+import { Lighting } from './Lighting.js';
+import { fixedLayerOffset } from '../rendering.js';
 
 // Depth and mood for a level: fog banks, drifting particles, weather, a dark
 // foreground ink layer that scrolls faster than the camera, decorated ledges,
@@ -27,8 +29,12 @@ export class Atmosphere {
     this.addLedges();
     this.addParticles();
     this.addForeground();
-    if (this.theme.weather === 'rain') this.addRain(readSettings().rain);
-    this.addGrade();
+    const settings = readSettings();
+    if (this.theme.weather === 'rain') this.addRain(settings.rain);
+    // Settings > Dynamic lighting: off falls back to the old flat look.
+    this.lighting = settings.lighting ? new Lighting(scene, this.theme) : null;
+    if (settings.grain) this.addGrain();
+    this.addGrade(!!this.lighting);
   }
 
   r(min, max) { return min + this.rand() * (max - min); }
@@ -39,11 +45,15 @@ export class Atmosphere {
     const { s, theme } = this;
     const back = this.scene.add.graphics().setDepth(1);
     const front = this.scene.add.graphics().setDepth(3);
+    // Moonlight catching the lip of every ledge. It sits above the light map
+    // (19.5) so you can always read where to land, even in total darkness.
+    const rims = this.scene.add.graphics().setDepth(19.55);
     for (const { left, right, y } of this.scene.platforms) {
       const width = right - left;
       back.fillGradientStyle(theme.ink, theme.ink, theme.ink, theme.ink, .5, .5, 0, 0)
         .fillRect(left, y + 10 * s, width, 90 * s);
       back.lineStyle(2 * s, theme.rim, .35).lineBetween(left + 4 * s, y + 1 * s, right - 4 * s, y + 1 * s);
+      rims.lineStyle(1.5 * s, theme.rim, .2).lineBetween(left + 10 * s, y + 1 * s, right - 10 * s, y + 1 * s);
       for (let x = left + this.r(6, 30) * s; x < right - 6 * s; x += this.r(16, 48) * s) {
         this.hangingStrand(back, x, y + 9 * s);
       }
@@ -253,12 +263,28 @@ export class Atmosphere {
     this.scene.events.once('shutdown', () => this.scene.events.off('postupdate', onUpdate));
   }
 
-  // Soft vignette and slightly muted colour, WebGL only.
-  addGrade() {
+  // Film grain: fine speckle over the whole screen, re-shuffled every frame.
+  // It keeps the big dark areas from looking flat (Settings > Film grain).
+  addGrain() {
+    const scene = this.scene, w = scene.viewportWidth, h = scene.viewportHeight;
+    const offset = fixedLayerOffset(w, h);
+    const grain = scene.add.tileSprite(offset.x + w / 2, offset.y + h / 2, w, h, 'fx-grain')
+      .setScrollFactor(0).setDepth(26).setAlpha(.35);
+    const shuffle = () => { if (!scene.paused) grain.setTilePosition(Math.random() * 256, Math.random() * 256); };
+    scene.events.on('postupdate', shuffle);
+    scene.events.once('shutdown', () => scene.events.off('postupdate', shuffle));
+    this.grain = grain;
+  }
+
+  // Colour grade, WebGL only: a vignette that pulls the eye to the middle,
+  // muted colour, and (with dynamic lighting) a little extra contrast so lit
+  // areas pop against the dark.
+  addGrade(lit) {
     const cam = this.scene.cameras.main;
     if (this.scene.renderer.type !== Phaser.WEBGL || !cam.postFX) return;
-    cam.postFX.addVignette(.5, .5, .92, .34);
+    cam.postFX.addVignette(.5, .5, lit ? .86 : .92, lit ? .42 : .34);
     const grade = cam.postFX.addColorMatrix();
     grade.saturate(this.theme.saturate);
+    if (lit) grade.contrast(.14, true);
   }
 }
