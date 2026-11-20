@@ -17,6 +17,9 @@ import { ChapterMechanics } from '../gameplay/ChapterMechanics.js';
 import { ChapterTwoMechanics } from '../gameplay/ChapterTwoMechanics.js';
 import { Cinematics } from '../gameplay/Cinematics.js';
 import { HorrorPresentation } from '../gameplay/HorrorPresentation.js';
+import { Atmosphere } from '../effects/Atmosphere.js';
+import { Hud } from '../ui/Hud.js';
+import { KeyPrompt } from '../ui/KeyPrompt.js';
 import { fixedLayerOffset, logicalSize, renderScale, sharpenText } from '../rendering.js';
 import { saveSlot } from '../saveSlots.js';
 
@@ -58,6 +61,7 @@ export class ChapterScene extends Phaser.Scene {
       this.physics.add.existing(zone, true);
       return { left, right, y, zone };
     });
+    this.atmosphere = new Atmosphere(this);
 
     this.spriteHeight = Phaser.Math.Clamp(h * .21, 100, 190);
     const spriteWidth = this.spriteHeight * 330 / 410;
@@ -114,10 +118,11 @@ export class ChapterScene extends Phaser.Scene {
 
     this.cameras.main.setDeadzone(Math.min(w * .3, 360), h * .42);
     this.followActor(this.player);
-    this.addHud(w, h);
+    this.hud = new Hud(this);
+    this.keyPrompt = new KeyPrompt(this);
     if (this.restoreData) this.applySave(this.restoreData);
-    else if (this.levelIndex !== 5) this.cinematics.pulse(this.stage.phase, this.stage.subtitle,
-      this.stage.chapter === 2 ? 0xe96756 : this.stage.shadow ? 0xb79bdb : 0xa5dde3);
+    else if (this.levelIndex !== 5) this.cinematics.pulse(this.stage.title, this.stage.subtitle,
+      this.stage.chapter === 2 ? 0xe96756 : this.stage.shadow ? 0xb79bdb : 0xa5dde3, 2600);
     if (this.slotIndex !== null) this.time.addEvent({ delay: 5000, loop: true, callback: () => { if (!this.paused) this.saveProgress(); } });
     sharpenText(this);
   }
@@ -257,39 +262,23 @@ export class ChapterScene extends Phaser.Scene {
     this.tweens.resumeAll();
   }
 
-  addHud(w, h) {
-    const offset = fixedLayerOffset(w, h);
-    const hud = this.add.container(offset.x, offset.y).setScrollFactor(0).setDepth(30);
-    hud.add(this.add.rectangle(16, 16, Math.min(468, w - 32), 77, 0x061015, .82).setOrigin(0));
-    hud.add(this.add.text(29, 23, this.stage.title, {
-      fontFamily: 'Georgia, serif', fontSize: '18px', color: '#f0e0bd',
-    }));
-    const controls = this.stage.grasp ? 'A / D RUN  ·  SPACE JUMP  ·  Q SHADOW  ·  G GRASP  ·  F ANCHOR'
-      : this.stage.shadow ? 'A / D RUN   ·   SPACE JUMP   ·   Q SHADOW   ·   F ANCHOR   ·   E USE'
-      : 'A / D RUN   ·   SPACE JUMP   ·   E USE   ·   R RESTART';
-    hud.add(this.add.text(30, 54, `CHAPTER ${this.stage.chapter || 1}  ·  AREA ${(this.levelIndex % 5) + 1} / 5   ·   ${controls}`, {
-      fontFamily: 'Arial, sans-serif', fontSize: '10px', color: '#d1dbd5', letterSpacing: 1,
-    }));
-    hud.add(this.add.rectangle(w / 2, h - 37, Math.min(w - 28, 720), 39, 0x061015, .78));
-    this.hintText = this.add.text(w / 2, h - 37, '', {
-      fontFamily: 'Arial, sans-serif', fontSize: '12px', color: '#e2ede4', align: 'center', letterSpacing: 1,
-      wordWrap: { width: Math.max(200, w - 58) },
-    }).setOrigin(.5);
-    hud.add(this.hintText);
-  }
-
+  // A quiet story caption near the top of the screen (no box). Gameplay
+  // feedback is shown in the world instead of with text.
   announce(message, color = 0xb9e5df) {
     if (this.toast) this.toast.destroy(true);
     const w = this.viewportWidth, h = this.viewportHeight;
     const offset = fixedLayerOffset(w, h);
     const toast = this.add.container(offset.x, offset.y).setScrollFactor(0).setDepth(45);
-    toast.add(this.add.rectangle(w / 2, 120, Math.min(620, w - 38), 58, 0x06121b, .9).setStrokeStyle(2, color, .65));
-    toast.add(this.add.text(w / 2, 120, message, {
-      fontFamily: 'Georgia, serif', fontSize: '18px', color: '#f6e9d5', align: 'center', wordWrap: { width: w - 80 },
-    }).setOrigin(.5));
+    const text = this.add.text(w / 2, h * .17, message, {
+      fontFamily: 'Georgia, serif', fontStyle: 'italic', fontSize: `${Math.round(Math.max(15, Math.min(20, w * .016)))}px`,
+      color: `#${color.toString(16).padStart(6, '0')}`, align: 'center', wordWrap: { width: Math.min(w - 80, 720) },
+    }).setOrigin(.5).setShadow(0, 1, '#000000', 8, false, true);
+    toast.add(text);
+    toast.setAlpha(0);
+    this.tweens.add({ targets: toast, alpha: 1, duration: 400 });
     this.toast = toast;
-    this.time.delayedCall(2400, () => {
-      if (toast.active) this.tweens.add({ targets: toast, alpha: 0, duration: 450, onComplete: () => toast.destroy(true) });
+    this.time.delayedCall(2600, () => {
+      if (toast.active) this.tweens.add({ targets: toast, alpha: 0, duration: 700, onComplete: () => toast.destroy(true) });
     });
     sharpenText(this);
   }
@@ -355,7 +344,6 @@ export class ChapterScene extends Phaser.Scene {
     if (this.shadow && Phaser.Input.Keyboard.JustDown(this.keys.Q)) {
       if (this.stage.grasp && this.mechanics.held) this.mechanics.toggleGrasp();
       const detached = this.shadow.toggleDetach();
-      this.announce(detached ? 'THE SHADOW IS FREE. RUN AND JUMP WITH A / D + SPACE. F ANCHORS IT.' : 'THE SHADOW RETURNS.', detached ? 0xc0e8f0 : 0xf0d6a8);
       if (detached && this.stage.id === 'thornwood' && !this.shadowAwakeningShown) {
         this.shadowAwakeningShown = true;
         this.cinematics.pulse('IT MOVED FIRST', 'The light has not changed. Your shadow has.', 0xb7d5ef, 2400);
@@ -363,7 +351,6 @@ export class ChapterScene extends Phaser.Scene {
     }
     if (this.shadow && Phaser.Input.Keyboard.JustDown(this.keys.F) && this.shadow.detached) {
       this.shadow.toggleAnchor();
-      this.announce(this.shadow.anchored ? 'SHADOW ANCHORED. THE KEEPER CAN MOVE.' : 'SHADOW RELEASED.', 0xbde7eb);
     }
     if (Phaser.Input.Keyboard.JustDown(this.keys.E) && !this.shadow?.controlling) this.mechanics.interact();
     if (this.stage.grasp && Phaser.Input.Keyboard.JustDown(this.keys.G)) this.mechanics.toggleGrasp();
@@ -396,7 +383,8 @@ export class ChapterScene extends Phaser.Scene {
     this.shadow?.update(time, delta, { left, right, jumpPressed, jumpHeld });
     this.mechanics.update(time);
     this.horror?.update(time);
-    this.hintText.setText(this.shadow?.controlling ? 'SHADOW ACTIVE  ·  A / D RUN  ·  SPACE JUMP  ·  F LOCK  ·  Q RECALL' : this.mechanics.prompt);
+    this.hud.update();
+    this.keyPrompt.update(this.mechanics.hints ?? [], time);
     if (this.player.y > this.viewportHeight + 110) this.respawn();
     if (grounded && this.player.x > this.worldWidth - this.spriteHeight * .43) this.finishStage();
   }

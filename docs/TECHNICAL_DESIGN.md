@@ -35,6 +35,9 @@ src/gameplay/ShadowController.js  the detached Shadow
 src/gameplay/ChapterMechanics.js  puzzle mechanisms per area
 src/gameplay/Cinematics.js        title pulses and reveal sequences
 src/animation/BoyAnimator.js      procedural run and jump animation
+src/effects/                      atmosphere (fog, particles, rain, foreground, vignette) and per-area themes
+src/puzzles/PropArt.js            hand-drawn art for every interactive object
+src/ui/                           key icons and the Shadow badge
 assets/                           images and SVG backgrounds the game loads
 audio/                            sound and music files the game loads
 scripts/generate_parkour_art.mjs  regenerates the editable SVG backgrounds
@@ -65,6 +68,32 @@ the Shadow can change independently.
 Dev-only shortcuts in the URL: `?stage=1`…`?stage=5` (applies when you press
 **New Game**), optionally `&checkpoint=N`.
 
+## Visual layers
+
+Everything is drawn in code (Phaser Graphics) or generated at runtime, so it
+stays sharp at any screen size and needs no extra image files.
+
+| Depth | Layer |
+| --- | --- |
+| -10 | Area backdrop (SVG) |
+| -6 | Far fog (scrolls slower than the camera) |
+| 1–3 | Inked ledges, shadow bridges, cables |
+| 2 / 4 | Boy / Shadow |
+| 5–7 | Puzzle objects |
+| 9–11 | Ground fog, particles, sparks |
+| 20 | Foreground ink silhouettes (scroll faster than the camera) |
+| 24–25 | Lightning, rain |
+| 28 | Key icon |
+| 30+ | Shadow badge, captions, title cards |
+
+Readability rules for anything the player can use: it glows softly in the
+area's accent colour, brightens and animates when activated, and a cable or
+rune line shows what it opens. A key icon appears only when it can be used.
+Avoid on-screen instruction text.
+
+Puzzle code keeps invisible physics shapes; the art in `PropArt.js` sits on
+top and exposes simple state calls (`setActive`, `setOpen`, `activate`).
+
 ## Asset pipeline
 
 - Menu and character PNGs live under `assets/`.
@@ -77,6 +106,9 @@ Dev-only shortcuts in the URL: `?stage=1`…`?stage=5` (applies when you press
 ## Validation
 
 `npm run build` is the required automated check before a pull request.
+In dev mode the game is exposed as `window.__WTLD_GAME__` for debugging and
+automated play-tests, e.g.
+`__WTLD_GAME__.scene.getScene('Chapter').mechanics` in the browser console.
 Gameplay changes also need browser testing at the affected stages and
 checkpoints.
 

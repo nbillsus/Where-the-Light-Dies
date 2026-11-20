@@ -15,16 +15,22 @@ Each step below ends with one commit.
       to Neel's Phaser build, delete the Godot files, stop tracking
       `node_modules`, make Git LFS safe for a browser build, and rewrite the
       setup, technical and mechanics docs for Phaser.
-- [ ] **Step 4 — Keeper movement.** Move the Keeper's movement out of
+- [x] **Step 4 — Visual overhaul.** Atmosphere and depth (fog, particles,
+      rain and lightning, foreground ink layer, inked ledges, vignette),
+      hand-drawn puzzle objects with glow, cables showing cause and effect,
+      key icons instead of control text, title cards, Shadow badge.
+- [ ] **Step 5 — Keeper movement.** Move the Keeper's movement out of
       `ChapterScene.js` into `src/player/` with all numbers in one tuning
       object, measured in art units so jumps match on every screen size.
+      Fix respawn (after a fall the boy reappears at the far left, mid-air).
       Add mantling and ladders. *(Agree with Neel first: it edits his file.)*
-- [ ] **Step 5 — The Shadow.** Upgrade `ShadowController.js` to the PRD:
+- [ ] **Step 6 — The Shadow.** Upgrade `ShadowController.js` to the PRD:
       tether limit with snap-back recall, Solidify (the Keeper can stand on
       it), and a shared event bus with hooks for Axel's whisper audio.
-- [ ] **Step 6 — Style guide, lantern light, Phase 1 build.** Colour and
-      lighting rules (building on `docs/ART_PRESENTATION.md`), the lantern's
-      light radius, and the first playable build on Vercel.
+- [ ] **Step 7 — Style guide and Phase 1 build.** Write up the colour and
+      lighting rules now in `src/effects/theme.js` (building on
+      `docs/ART_PRESENTATION.md`), the lantern's light radius, and the first
+      playable build on Vercel.
 
 ### Phase 2: Vertical Slice (Act 1)
 

@@ -1,4 +1,5 @@
 import Phaser from 'phaser';
+import { ensureFxTextures } from '../effects/textures.js';
 import { fixedLayerOffset } from '../rendering.js';
 
 const AMBER = 0xf4c16b;
@@ -114,6 +115,28 @@ const STORY_BEATS = {
   ],
 };
 
+// Soft round light (radial gradient) instead of a hard-edged ellipse. The
+// gradient fades to nothing at its edge, so it is drawn a bit larger to keep
+// the same bright area.
+function softLight(scene, x, y, width, height, color, alpha) {
+  return scene.add.image(x, y, 'fx-glow').setTint(color).setDisplaySize(width * 1.6, height * 1.6)
+    .setAlpha(alpha).setBlendMode(Phaser.BlendModes.ADD);
+}
+
+// Flame flicker: brightness and a slight stretch, relative to each light's size.
+function flicker(scene, lights, low, high, duration) {
+  for (const light of lights) {
+    const sx = light.scaleX, sy = light.scaleY;
+    scene.tweens.add({
+      targets: light,
+      alpha: { from: low, to: high },
+      scaleX: { from: sx * 0.92, to: sx * 1.12 },
+      scaleY: { from: sy * 0.88, to: sy * 1.06 },
+      duration, yoyo: true, repeat: -1, ease: 'Sine.easeInOut',
+    });
+  }
+}
+
 export class HorrorPresentation {
   constructor(scene) {
     this.scene = scene;
@@ -164,9 +187,11 @@ export class HorrorPresentation {
   createLighting() {
     const scene = this.scene;
     const h = scene.viewportHeight;
-    this.moonDimmer = scene.add.rectangle(scene.worldWidth / 2, h / 2, scene.worldWidth, h, 0x020713, 0.68)
+    ensureFxTextures(scene);
+    // Lighter than before: these stack with the atmosphere's fog and vignette.
+    this.moonDimmer = scene.add.rectangle(scene.worldWidth / 2, h / 2, scene.worldWidth, h, 0x020713, 0.5)
       .setDepth(-8);
-    this.deepFog = scene.add.rectangle(scene.worldWidth / 2, h / 2, scene.worldWidth, h, 0x02050a, 0.24)
+    this.deepFog = scene.add.rectangle(scene.worldWidth / 2, h / 2, scene.worldWidth, h, 0x02050a, 0.14)
       .setDepth(1);
 
     this.torches = [];
@@ -177,42 +202,19 @@ export class HorrorPresentation {
       const y = Math.min(h - 72 * this.scale, nearest.y - (index % 2 ? 82 : 118) * this.scale);
       const torch = scene.add.container(x, y).setDepth(3.4);
       const post = scene.add.rectangle(0, 42 * this.scale, 9 * this.scale, 95 * this.scale, 0x120905, 0.88);
-      const halo = scene.add.ellipse(0, 0, 330 * this.scale, 230 * this.scale, AMBER, 0.26)
-        .setBlendMode(Phaser.BlendModes.ADD);
-      const flame = scene.add.ellipse(0, 0, 45 * this.scale, 75 * this.scale, 0xff9d3f, 0.78)
-        .setBlendMode(Phaser.BlendModes.ADD);
-      const core = scene.add.ellipse(0, -6 * this.scale, 18 * this.scale, 37 * this.scale, 0xfff1b2, 0.96)
-        .setBlendMode(Phaser.BlendModes.ADD);
+      const halo = softLight(scene, 0, 0, 330 * this.scale, 230 * this.scale, AMBER, 0.26);
+      const flame = softLight(scene, 0, 0, 45 * this.scale, 75 * this.scale, 0xff9d3f, 0.78);
+      const core = softLight(scene, 0, -6 * this.scale, 18 * this.scale, 37 * this.scale, 0xfff1b2, 0.96);
       torch.add([halo, post, flame, core]);
-      scene.tweens.add({
-        targets: [halo, flame, core],
-        alpha: { from: 0.2, to: 0.58 },
-        scaleX: { from: 0.92, to: 1.16 },
-        scaleY: { from: 0.86, to: 1.08 },
-        duration: 620 + index * 73,
-        yoyo: true,
-        repeat: -1,
-        ease: 'Sine.easeInOut',
-      });
+      flicker(scene, [halo, flame, core], 0.2, 0.58, 620 + index * 73);
       this.torches.push(torch);
     }
 
     this.lanternGlow = scene.add.container(0, 0).setDepth(3.2);
-    this.lanternAura = scene.add.ellipse(0, 0, 380 * this.scale, 280 * this.scale, AMBER, 0.34)
-      .setBlendMode(Phaser.BlendModes.ADD);
-    this.lanternCore = scene.add.ellipse(0, 0, 102 * this.scale, 132 * this.scale, 0xffe1a1, 0.48)
-      .setBlendMode(Phaser.BlendModes.ADD);
+    this.lanternAura = softLight(scene, 0, 0, 380 * this.scale, 280 * this.scale, AMBER, 0.34);
+    this.lanternCore = softLight(scene, 0, 0, 102 * this.scale, 132 * this.scale, 0xffe1a1, 0.48);
     this.lanternGlow.add([this.lanternAura, this.lanternCore]);
-    scene.tweens.add({
-      targets: [this.lanternAura, this.lanternCore],
-      alpha: { from: 0.24, to: 0.52 },
-      scaleX: { from: 0.9, to: 1.08 },
-      scaleY: { from: 0.86, to: 1.04 },
-      duration: 760,
-      yoyo: true,
-      repeat: -1,
-      ease: 'Sine.easeInOut',
-    });
+    flicker(scene, [this.lanternAura, this.lanternCore], 0.24, 0.52, 760);
   }
 
   showOpeningIfNeeded() {
