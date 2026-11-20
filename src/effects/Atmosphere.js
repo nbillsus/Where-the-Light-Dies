@@ -1,6 +1,7 @@
 import Phaser from 'phaser';
 import { themeFor } from './theme.js';
 import { ensureFxTextures, seededRandom } from './textures.js';
+import { readSettings } from '../settings.js';
 
 // Depth and mood for a level: fog banks, drifting particles, weather, a dark
 // foreground ink layer that scrolls faster than the camera, decorated ledges,
@@ -26,7 +27,7 @@ export class Atmosphere {
     this.addGroundFog();
     this.addParticles();
     this.addForeground();
-    if (this.theme.weather === 'rain') this.addRain();
+    if (this.theme.weather === 'rain') this.addRain(readSettings().rain);
     this.addGrade();
   }
 
@@ -252,7 +253,16 @@ export class Atmosphere {
   }
 
   // Rain falls around the camera only, so it stays cheap on long levels.
-  addRain() {
+  // Turn rain and lightning on or off (Settings > Rain effects).
+  setRain(on) {
+    if (!this.rain) return;
+    this.rainOn = on;
+    this.rain.setVisible(on);
+    if (on) this.rain.start(); else this.rain.stop();
+  }
+
+  addRain(on = true) {
+    this.rainOn = on;
     const cam = this.scene.cameras.main;
     const rain = this.scene.add.particles(0, -40, 'fx-rain', {
       x: { min: -150, max: this.scene.viewportWidth + 250 }, y: 0,
@@ -260,6 +270,8 @@ export class Atmosphere {
       lifespan: 900, quantity: 3, frequency: 16,
       scale: { min: .6, max: 1.1 }, alpha: { min: .14, max: .3 }, tint: 0xc5d9ea,
     }).setDepth(25);
+    this.rain = rain;
+    if (!on) { rain.stop(); rain.setVisible(false); }
     const flash = this.scene.add.rectangle(0, 0, 10, 10, 0x9fb8d8, 0).setOrigin(0)
       .setDepth(24).setBlendMode(Phaser.BlendModes.ADD);
     const onUpdate = () => {
@@ -269,6 +281,7 @@ export class Atmosphere {
     this.scene.events.on('postupdate', onUpdate);
     this.scene.events.once('shutdown', () => this.scene.events.off('postupdate', onUpdate));
     const strike = () => {
+      if (!this.rainOn) { this.scene.time.delayedCall(4000, strike); return; }
       this.scene.tweens.chain({ targets: flash, tweens: [
         { fillAlpha: .22, duration: 60 }, { fillAlpha: .02, duration: 90 },
         { fillAlpha: .14, duration: 50 }, { fillAlpha: 0, duration: 600 },
