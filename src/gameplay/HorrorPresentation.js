@@ -482,25 +482,35 @@ export class HorrorPresentation {
     if (!ctx || !this.master) return;
     const now = ctx.currentTime;
     const low = ctx.createOscillator();
-    const high = ctx.createOscillator();
     const lowGain = ctx.createGain();
-    const highGain = ctx.createGain();
+    const hiss = ctx.createBufferSource();
+    const hissFilter = ctx.createBiquadFilter();
+    const hissGain = ctx.createGain();
+    const buffer = ctx.createBuffer(1, Math.floor(ctx.sampleRate * 0.55), ctx.sampleRate);
+    const data = buffer.getChannelData(0);
+    for (let i = 0; i < data.length; i++) {
+      const attack = Math.min(1, i / (ctx.sampleRate * 0.025));
+      const decay = 1 - i / data.length;
+      data[i] = (Math.random() * 2 - 1) * attack * decay;
+    }
+    hiss.buffer = buffer;
     low.type = 'sine';
-    high.type = type === 'glass' ? 'triangle' : 'square';
-    low.frequency.setValueAtTime(type === 'knock' ? 72 : 48, now);
-    low.frequency.exponentialRampToValueAtTime(24, now + 0.35);
-    high.frequency.setValueAtTime(type === 'glass' ? 1350 : 180, now);
-    high.frequency.exponentialRampToValueAtTime(type === 'glass' ? 3600 : 75, now + 0.18);
-    lowGain.gain.setValueAtTime(0.45, now);
-    lowGain.gain.exponentialRampToValueAtTime(0.0001, now + 0.42);
-    highGain.gain.setValueAtTime(0.22, now);
-    highGain.gain.exponentialRampToValueAtTime(0.0001, now + 0.28);
+    low.frequency.setValueAtTime(type === 'knock' ? 82 : 58, now);
+    low.frequency.exponentialRampToValueAtTime(18, now + 0.28);
+    lowGain.gain.setValueAtTime(0.5, now);
+    lowGain.gain.exponentialRampToValueAtTime(0.0001, now + 0.36);
+    hissFilter.type = 'bandpass';
+    hissFilter.frequency.value = type === 'glass' ? 4200 : 2700;
+    hissFilter.Q.value = type === 'glass' ? 12 : 7;
+    hissGain.gain.setValueAtTime(0.0001, now);
+    hissGain.gain.exponentialRampToValueAtTime(type === 'glass' ? 0.38 : 0.44, now + 0.018);
+    hissGain.gain.exponentialRampToValueAtTime(0.0001, now + 0.52);
     low.connect(lowGain).connect(this.master);
-    high.connect(highGain).connect(this.master);
+    hiss.connect(hissFilter).connect(hissGain).connect(this.master);
     low.start(now);
-    high.start(now);
+    hiss.start(now);
     low.stop(now + 0.46);
-    high.stop(now + 0.32);
+    hiss.stop(now + 0.58);
   }
 
   playHelpCry(type = 'distant') {
@@ -567,25 +577,33 @@ export class HorrorPresentation {
     noise.buffer = buffer;
 
     const shriek = ctx.createOscillator();
+    const shriekTwo = ctx.createOscillator();
     const shriekGain = ctx.createGain();
+    const shriekTwoGain = ctx.createGain();
     const noiseGain = ctx.createGain();
     const filter = ctx.createBiquadFilter();
     const sub = ctx.createOscillator();
     const subGain = ctx.createGain();
 
-    shriek.type = type === 'glass' ? 'triangle' : 'sawtooth';
-    shriek.frequency.setValueAtTime(type === 'glass' ? 1500 : 880, now);
-    shriek.frequency.exponentialRampToValueAtTime(type === 'pierHand' ? 540 : 2200, now + 0.2);
-    shriek.frequency.exponentialRampToValueAtTime(240, now + 0.62);
+    shriek.type = 'sawtooth';
+    shriekTwo.type = 'square';
+    shriek.frequency.setValueAtTime(type === 'glass' ? 1900 : 1250, now);
+    shriek.frequency.exponentialRampToValueAtTime(type === 'pierHand' ? 3100 : 3600, now + 0.11);
+    shriek.frequency.exponentialRampToValueAtTime(410, now + 0.48);
+    shriekTwo.frequency.setValueAtTime(type === 'glass' ? 2630 : 1740, now);
+    shriekTwo.frequency.exponentialRampToValueAtTime(type === 'pierHand' ? 520 : 690, now + 0.32);
     shriekGain.gain.setValueAtTime(0.0001, now);
-    shriekGain.gain.exponentialRampToValueAtTime(0.26, now + 0.045);
-    shriekGain.gain.exponentialRampToValueAtTime(0.0001, now + 0.66);
+    shriekGain.gain.exponentialRampToValueAtTime(0.34, now + 0.022);
+    shriekGain.gain.exponentialRampToValueAtTime(0.0001, now + 0.56);
+    shriekTwoGain.gain.setValueAtTime(0.0001, now);
+    shriekTwoGain.gain.exponentialRampToValueAtTime(0.18, now + 0.035);
+    shriekTwoGain.gain.exponentialRampToValueAtTime(0.0001, now + 0.42);
 
     filter.type = 'highpass';
-    filter.frequency.value = type === 'knock' ? 420 : 900;
+    filter.frequency.value = type === 'knock' ? 1100 : 1600;
     noiseGain.gain.setValueAtTime(0.0001, now);
-    noiseGain.gain.exponentialRampToValueAtTime(type === 'glass' ? 0.16 : 0.24, now + 0.025);
-    noiseGain.gain.exponentialRampToValueAtTime(0.0001, now + 0.5);
+    noiseGain.gain.exponentialRampToValueAtTime(type === 'glass' ? 0.34 : 0.42, now + 0.012);
+    noiseGain.gain.exponentialRampToValueAtTime(0.0001, now + 0.48);
 
     sub.type = 'sine';
     sub.frequency.setValueAtTime(56, now);
@@ -594,12 +612,15 @@ export class HorrorPresentation {
     subGain.gain.exponentialRampToValueAtTime(0.0001, now + 0.44);
 
     shriek.connect(shriekGain).connect(this.master);
+    shriekTwo.connect(shriekTwoGain).connect(this.master);
     noise.connect(filter).connect(noiseGain).connect(this.master);
     sub.connect(subGain).connect(this.master);
     shriek.start(now);
+    shriekTwo.start(now);
     noise.start(now);
     sub.start(now);
     shriek.stop(now + 0.72);
+    shriekTwo.stop(now + 0.52);
     noise.stop(now + 0.52);
     sub.stop(now + 0.46);
   }
