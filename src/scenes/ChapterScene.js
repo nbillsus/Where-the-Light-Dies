@@ -162,7 +162,7 @@ export class ChapterScene extends Phaser.Scene {
 
   applySave(data) {
     this.mechanics.restore(data.mechanics);
-    if (this.stage.arena?.boss === 'last-light' && !data.finalBossWon
+    if (['last-light', 'dead-frequency'].includes(this.stage.arena?.boss) && !data.finalBossWon
       && Number.isFinite(data.x) && data.x >= this.stage.arena.start) {
       this.placePlayerOnPlatform(this.platforms.length - 1, (this.stage.arena.start - 160) * this.artScale);
     } else if (Number.isFinite(data.x) && Number.isFinite(data.y)) {

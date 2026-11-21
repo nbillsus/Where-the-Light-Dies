@@ -98,7 +98,7 @@ export const CHAPTER_STAGES = [
     grasp: [1, 3, 4].includes(index), reflection: true,
     platforms: [[0,760,735],[890,1400,690],[1530,2010,650],[2140,2620,700],[2750,3200,650],[3330,3740,625],[3870,4096,675]],
     // The last area runs on into a boss arena (art beyond 4096 is drawn in code).
-    ...(index === 4 ? { width: 5900, artWidth: 4096, arena: { start: 4300, boss: 'carrier' },
+    ...(index === 4 ? { width: 5900, artWidth: 4096, arena: { start: 4300, boss: 'dead-frequency' },
       platforms: [[0,760,735],[890,1400,690],[1530,2010,650],[2140,2620,700],[2750,3200,650],[3330,3740,625],[3870,5900,675]] } : {}),
   })),
   ...[
