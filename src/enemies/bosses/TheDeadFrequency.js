@@ -5,6 +5,7 @@ import { sfx } from '../../combat/sfx.js';
 import { fixedLayerOffset } from '../../rendering.js';
 
 const COLORS = [0x8bd6dd, 0xf0c681, 0xe77985];
+const PULSE_TRAVEL_MS = 3200;
 
 // Chapter 4's transmitter fights on a continuous floor. The radio and an
 // anchored Shadow must agree with its changing broadcast to break the shield.
@@ -159,7 +160,7 @@ export class TheDeadFrequency extends Boss {
       }
       this.marks.clear();
       a.startedAt = time;
-      a.activeUntil = time + (a.kind === 'pulse' ? 1250 : 600);
+      a.activeUntil = time + (a.kind === 'pulse' ? PULSE_TRAVEL_MS : 600);
       if (a.kind === 'lightning') {
         const g = this.bolts.clear();
         for (const x of a.targets) {
@@ -178,7 +179,7 @@ export class TheDeadFrequency extends Boss {
       if (a.targets.some(x => Math.abs(this.scene.player.x - x) < this.H * .65))
         this.scene.combat?.hurt(this.phase2 ? 2 : 1, a.target);
     } else {
-      const travel = (time - a.startedAt) / 1250;
+      const travel = (time - a.startedAt) / PULSE_TRAVEL_MS;
       const from = a.dir > 0 ? this.arena.startX : this.arena.endX;
       const to = a.dir > 0 ? this.arena.endX : this.arena.startX;
       const x = Phaser.Math.Linear(from, to, travel);
