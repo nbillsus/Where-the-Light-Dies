@@ -1,0 +1,11 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 4096 900" width="4096" height="900">
+  <defs>
+    <radialGradient id="haze"><stop stop-color="#674b96" stop-opacity=".65"/><stop offset="1" stop-color="#674b96" stop-opacity="0"/></radialGradient>
+    <radialGradient id="core"><stop stop-color="#ffca95" stop-opacity=".7"/><stop offset=".35" stop-color="#a81036" stop-opacity=".5"/><stop offset="1" stop-color="#a81036" stop-opacity="0"/></radialGradient>
+    <linearGradient id="glass"><stop stop-color="#e77d9a" stop-opacity=".13"/><stop offset=".5" stop-color="#f4baba" stop-opacity=".4"/><stop offset="1" stop-color="#4a2b5e" stop-opacity=".12"/></linearGradient>
+    <radialGradient id="lens"><stop stop-color="#ed4358" stop-opacity=".58"/><stop offset="1" stop-color="#431c32" stop-opacity=".1"/></radialGradient>
+    <pattern id="grain" width="89" height="71" patternUnits="userSpaceOnUse"><circle cx="12" cy="15" r="1.2" fill="#ffd4bf" opacity=".16"/><circle cx="68" cy="47" r="1.8" fill="#ffd4bf" opacity=".11"/></pattern>
+  </defs>
+  <path d="M0 570 Q500 460 950 585 T1900 520 T2900 590 T4096 510 V900 H0Z" fill="#25233f" opacity=".48"/>
+  <path d="M0 660 Q470 590 980 690 T1900 630 T3000 680 T4096 610 V900 H0Z" fill="#11111c" opacity=".58"/>
+</svg>

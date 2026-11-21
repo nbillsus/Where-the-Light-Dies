@@ -1,0 +1,13 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 4096 900" width="4096" height="900">
+  <defs>
+    <radialGradient id="haze"><stop stop-color="#7b2236" stop-opacity=".65"/><stop offset="1" stop-color="#7b2236" stop-opacity="0"/></radialGradient>
+    <radialGradient id="core"><stop stop-color="#ffca95" stop-opacity=".7"/><stop offset=".35" stop-color="#a81036" stop-opacity=".5"/><stop offset="1" stop-color="#a81036" stop-opacity="0"/></radialGradient>
+    <linearGradient id="glass"><stop stop-color="#e77d9a" stop-opacity=".13"/><stop offset=".5" stop-color="#f4baba" stop-opacity=".4"/><stop offset="1" stop-color="#4a2b5e" stop-opacity=".12"/></linearGradient>
+    <radialGradient id="lens"><stop stop-color="#ed4358" stop-opacity=".58"/><stop offset="1" stop-color="#431c32" stop-opacity=".1"/></radialGradient>
+    <pattern id="grain" width="89" height="71" patternUnits="userSpaceOnUse"><circle cx="12" cy="15" r="1.2" fill="#ffd4bf" opacity=".16"/><circle cx="68" cy="47" r="1.8" fill="#ffd4bf" opacity=".11"/></pattern>
+  </defs>
+  <rect width="4096" height="900" fill="#130d19"/>
+  <path d="M0 0 H4096 V400 Q3500 270 3000 390 T2000 350 T900 400 T0 300Z" fill="#090a12" opacity=".95"/>
+  <ellipse cx="850" cy="480" rx="950" ry="510" fill="url(#haze)"/>
+  <ellipse cx="2700" cy="370" rx="950" ry="490" fill="url(#haze)"/>
+</svg>

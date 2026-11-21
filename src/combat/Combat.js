@@ -155,8 +155,8 @@ export class Combat {
     const glow = scene.add.image(player.x + dir * r * .7, player.y, 'fx-glow').setTint(0xffc977)
       .setBlendMode(Phaser.BlendModes.ADD).setDisplaySize(r * 1.6, r * 1.3).setAlpha(.5).setDepth(11);
     scene.tweens.add({ targets: [g, glow], alpha: 0, duration: 170, onComplete: () => { g.destroy(); glow.destroy(); } });
-    // Each swing briefly lights the ground around it.
-    scene.atmosphere?.lighting?.pulse(player.x + dir * r * .6, player.y, r * (step === 3 ? 2.6 : 2), 0xffd38a, 220, .7);
+    // Each swing gently warms the ground around it (soft, never a flash).
+    scene.atmosphere?.lighting?.pulse(player.x + dir * r * .6, player.y, r * (step === 3 ? 2.4 : 1.9), 0xffd38a, 320, .3);
   }
 
   flare(time) {
