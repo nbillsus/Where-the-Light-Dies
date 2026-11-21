@@ -16,18 +16,46 @@ export class BossBar {
     this.chip = scene.add.rectangle(x, y, this.width, 8, 0xf6ead2, .85).setOrigin(0);
     this.fill = scene.add.rectangle(x, y, this.width, 8, color, 1).setOrigin(0);
     this.root.add([name_, frame, this.chip, this.fill]);
+    this.nameText = name_;
+    this.frame = frame;
     this.value = 1;
+    this.transitioning = false;
   }
 
   show() { this.scene.tweens.add({ targets: this.root, alpha: 1, duration: 600 }); }
   hide() { this.scene.tweens.add({ targets: this.root, alpha: 0, duration: 900 }); }
 
   set(fraction) {
+    if (this.transitioning) return;
     fraction = Math.max(0, fraction);
     if (fraction === this.value) return;
     this.value = fraction;
     this.fill.width = this.width * fraction;
     this.scene.tweens.killTweensOf(this.chip);
     this.scene.tweens.add({ targets: this.chip, width: this.width * fraction, delay: 250, duration: 450 });
+  }
+
+  refill(name, color) {
+    this.transitioning = true;
+    this.nameText.setText(name);
+    this.frame.setStrokeStyle(1.5, color, .9);
+    this.fill.setFillStyle(color);
+    this.scene.tweens.killTweensOf([this.fill, this.chip]);
+    this.fill.width = 0;
+    this.chip.width = 0;
+    this.value = 1;
+    this.scene.tweens.add({ targets: [this.fill, this.chip], width: this.width, duration: 1500,
+      ease: 'Cubic.easeOut', onComplete: () => { this.transitioning = false; } });
+  }
+
+  reset(name, color) {
+    this.scene.tweens.killTweensOf([this.fill, this.chip]);
+    this.transitioning = false;
+    this.nameText.setText(name);
+    this.frame.setStrokeStyle(1.5, color, .7);
+    this.fill.setFillStyle(color);
+    this.fill.width = this.width;
+    this.chip.width = this.width;
+    this.value = 1;
   }
 }

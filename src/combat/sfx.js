@@ -80,4 +80,15 @@ export const sfx = {
     const a = output(scene); if (!a) return;
     tone(a.ctx, a.out, { from: 70, to: 140, duration: .5, gain: .4, type: 'sawtooth' });
   },
+  radio(scene, frequency) {
+    const a = output(scene); if (!a) return;
+    noiseBurst(a.ctx, a.out, { duration: .18, from: 250, to: 1800, gain: .12, q: .5 });
+    tone(a.ctx, a.out, { from: [180, 320, 510][frequency], to: [210, 390, 660][frequency],
+      duration: .28, gain: .18, type: 'triangle' });
+  },
+  thunder(scene) {
+    const a = output(scene); if (!a) return;
+    noiseBurst(a.ctx, a.out, { duration: .9, from: 190, to: 45, gain: .44, type: 'lowpass', q: .4 });
+    tone(a.ctx, a.out, { from: 90, to: 34, duration: .75, gain: .25, type: 'sawtooth' });
+  },
 };
