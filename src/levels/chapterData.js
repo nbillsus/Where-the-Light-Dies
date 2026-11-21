@@ -97,6 +97,8 @@ export const CHAPTER_STAGES = [
     id, title, phase, subtitle, chapter: 4, width: 4096, height: 900, shadow: true,
     grasp: [1, 3, 4].includes(index), reflection: true,
     platforms: [[0,760,735],[890,1400,690],[1530,2010,650],[2140,2620,700],[2750,3200,650],[3330,3740,625],[3870,4096,675]],
+    ...(index === 4 ? { width: 5900, artWidth: 4096, arena: { start: 4300, boss: 'dead-frequency' },
+      platforms: [[0,760,735],[890,1400,690],[1530,2010,650],[2140,2620,700],[2750,3200,650],[3330,3740,625],[3870,5900,675]] } : {}),
   })),
   ...[
     ['last-shore', 'THE LAST SHORE', 'THE RETURN', 'The sea has learned to speak in your voice.'],

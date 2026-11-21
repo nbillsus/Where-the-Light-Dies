@@ -10,7 +10,7 @@ The radio is Chapter 4's main new mechanic. Press `1`, `2`, or `3` to tune low, 
 | Bone Conduit | Stabilize a low-frequency bridge, hold a Shadow relay, and carry a relic to a plate. |
 | Mirror Well | Anchor the Shadow in a prism while tuning a three-note radio lock; cross a light beam. |
 | Silent Engine | Push a physical weight, tune the engine, and reveal a second bridge while high frequency attracts enemies. |
-| Deep Transmitter | Combine a Shadow relay, two different radio sequences, and a dangerous beam. |
+| Deep Transmitter | Combine a Shadow relay, two different radio sequences, and a dangerous beam, then face the Dead Frequency. |
 
 Chapter 5 deliberately changes its main interaction in each area:
 
@@ -26,6 +26,8 @@ The Threshold gate only opens after its relay, radio, and weight conditions are 
 
 The Chapter 3 Undertow boss now marks two strike zones before each thunderstorm. Lightning damages the Keeper during the strike window and briefly exposes the boss's eye. Storms come faster in its second phase. Its existing floor surge remains active, so the player must dodge both attacks.
 
-Skitterers and Shroud Wardens appear across both chapters. Beyond the Threshold is a continuous three-chamber final encounter: the Drowned Crown, Iron Choir, and Last Eclipse. Each form has distinct art, attack timing, health, and color. The health bar refills during each transformation, and the Keeper regains all five hearts after clearing a chamber. Dying in any chamber resets all three forms and returns the Keeper to the first arena entrance. Defeating the Last Eclipse triggers an explosion, blackout, and scrolling credits for Neel, Lucas, and Axel.
+The Chapter 4 Dead Frequency boss uses the radio during combat. Match the channel shown above it and anchor the Shadow at its lit floor receiver to open the moving core. Its marked lightning and traveling floor pulse remain dangerous for their full strike windows; the second half attacks faster and hits harder. The arena has a continuous floor.
+
+Skitterers and Shroud Wardens appear across both chapters. Beyond the Threshold is a continuous three-chamber final encounter: the Drowned Crown, Iron Choir, and Last Eclipse. Each form has distinct art, attack timing, health, and color. The forms now patrol independently, rise and fall, alternate marked lightning with a floor sweep, and leave shorter attack windows for counterattacks. The later forms' Shadow receivers have a cooldown and must be released and anchored again for another opening. The health bar refills during each transformation, and the Keeper regains all five hearts after clearing a chamber. Dying in any chamber resets all three forms and returns the Keeper to the first arena entrance. Defeating the Last Eclipse triggers an explosion, blackout, and scrolling credits for Neel, Lucas, and Axel.
 
 Run `node scripts/generate_deep_chapters_art.mjs` after changing platform coordinates or painted environment layouts.
