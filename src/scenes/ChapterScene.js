@@ -180,6 +180,7 @@ export class ChapterScene extends Phaser.Scene {
         facingLeft: this.shadow.actor.flipX, anchored: this.shadow.anchored,
       } : null,
       completed: this.finished && this.levelIndex === CHAPTER_STAGES.length - 1,
+      finalBossWon: !!this.finalBossWon,
     };
   }
 
@@ -190,7 +191,10 @@ export class ChapterScene extends Phaser.Scene {
 
   applySave(data) {
     this.mechanics.restore(data.mechanics);
-    if (Number.isFinite(data.x) && Number.isFinite(data.y)) {
+    if (this.stage.arena?.boss === 'last-light' && !data.finalBossWon
+      && Number.isFinite(data.x) && data.x >= this.stage.arena.start) {
+      this.placePlayerOnPlatform(this.platforms.length - 1, (this.stage.arena.start - 160) * this.artScale);
+    } else if (Number.isFinite(data.x) && Number.isFinite(data.y)) {
       const x = Phaser.Math.Clamp(data.x * this.artScale, 30, this.worldWidth - 30);
       const y = Phaser.Math.Clamp(data.y * this.artScale, 20, this.viewportHeight + 50);
       this.player.body.reset(x, y);
@@ -206,10 +210,16 @@ export class ChapterScene extends Phaser.Scene {
     }
     this.followActor(this.shadow?.controlling ? this.shadow.actor : this.player);
     this.cameras.main.centerOn(this.player.x, this.player.y);
-    if (data.completed) { this.finished = true; this.cinematics.finale(this.stage.chapter || 1); }
+    if (data.completed) {
+      this.finished = true;
+      this.finalBossWon = !!data.finalBossWon;
+      if (this.finalBossWon) this.cinematics.credits();
+      else this.cinematics.finale(this.stage.chapter || 1);
+    }
   }
 
   togglePause() {
+    if (this.finalBossWon) { this.scene.start('MainMenu'); return; }
     if (this.paused) { this.closePause(); return; }
     this.paused = true;
     this.physics.world.pause();
@@ -613,6 +623,23 @@ export class ChapterScene extends Phaser.Scene {
         if (this.slotIndex !== null) saveSlot(this.slotIndex, { levelIndex: this.levelIndex + 1, x: 145, y: null, mechanics: null, shadow: null });
         this.scene.start('Chapter', { levelIndex: this.levelIndex + 1, slotIndex: this.slotIndex });
       });
+  }
+
+  completeFinalBoss(x, y) {
+    if (this.finalBossWon) return;
+    this.finalBossWon = true;
+    this.finished = true;
+    this.player.setVelocity(0, 0).setAcceleration(0, 0);
+    if (this.shadow?.detached) this.shadow.toggleDetach();
+    const burst = this.add.particles(x, y, 'fx-mote', {
+      speed: { min: 90, max: 520 }, lifespan: { min: 900, max: 2200 },
+      scale: { start: 2.7, end: 0 }, alpha: { start: 1, end: 0 },
+      tint: [0xf9e3ac, 0xe29675, 0x9bdde2, 0xffffff], emitting: false,
+    }).setDepth(100);
+    burst.explode(180);
+    this.shakeCamera(1100, .025);
+    this.cameras.main.flash(500, 255, 236, 195);
+    this.time.delayedCall(1450, () => { burst.destroy(); this.cinematics.credits(); this.saveProgress(); });
   }
 
   update(time, delta) {

@@ -99,4 +99,45 @@ export class Cinematics {
     scene.tweens.add({ targets: ray, alpha: { from: .2, to: .9 }, duration: 1200, yoyo: true, repeat: -1 });
     sharpenText(scene);
   }
+
+  credits() {
+    const scene = this.scene, w = scene.viewportWidth, h = scene.viewportHeight;
+    const offset = fixedLayerOffset(w, h);
+    const layer = scene.add.container(offset.x, offset.y).setScrollFactor(0).setDepth(220);
+    layer.add(scene.add.rectangle(w / 2, h / 2, w, h, 0x000000, 1));
+    const crawl = scene.add.container(0, h + 100);
+    layer.add(crawl);
+    const sections = [
+      ['WHERE THE LIGHT DIES', ''],
+      ['A game by', 'Neel  ·  Lucas  ·  Axel'],
+      ['GAME DIRECTION', 'Neel'], ['LEVEL DESIGN', 'Neel'],
+      ['PLAYER & SHADOW SYSTEMS', 'Lucas'], ['BOSS ENCOUNTERS', 'Neel'],
+      ['WORLD ART & LIGHTING', 'Lucas'], ['CHARACTER ANIMATION', 'Neel'],
+      ['STORY & DIALOGUE', 'Axel'], ['RADIO TRANSMISSIONS', 'Axel'],
+      ['GAMEPLAY ENGINEERING', 'Lucas'], ['PUZZLE DESIGN', 'Neel  ·  Lucas'],
+      ['SOUND DESIGN', 'Axel'], ['MUSIC DIRECTION', 'Axel'],
+      ['INTERFACE & MENUS', 'Axel'], ['COMBAT DESIGN', 'Lucas'],
+      ['CINEMATIC PRESENTATION', 'Axel  ·  Neel'],
+      ['QUALITY ASSURANCE', 'Neel  ·  Lucas  ·  Axel'],
+      ['SPECIAL THANKS', 'Our teachers, friends, and everyone who followed the light.'],
+      ['THE END', 'Press ESC to return to the menu'],
+    ];
+    let y = 0;
+    for (const [heading, name] of sections) {
+      const title = scene.add.text(w / 2, y, heading, { fontFamily: 'Georgia, serif',
+        fontSize: `${Math.round(Math.min(36, Math.max(22, w * .028)))}px`, color: '#f2dfbd',
+        align: 'center', wordWrap: { width: w - 60 }, letterSpacing: 4 }).setOrigin(.5, 0);
+      crawl.add(title);
+      y += title.height + 18;
+      if (name) {
+        const line = scene.add.text(w / 2, y, name, { fontFamily: 'Arial, sans-serif',
+          fontSize: `${Math.round(Math.min(23, Math.max(16, w * .018)))}px`, color: '#c6d3d2',
+          align: 'center', wordWrap: { width: w - 80 } }).setOrigin(.5, 0);
+        crawl.add(line);
+        y += line.height + 72;
+      } else y += 130;
+    }
+    scene.tweens.add({ targets: crawl, y: -y + h * .6, duration: 76000, ease: 'Linear' });
+    sharpenText(scene);
+  }
 }

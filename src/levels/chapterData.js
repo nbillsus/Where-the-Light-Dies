@@ -108,5 +108,7 @@ export const CHAPTER_STAGES = [
     id, title, phase, subtitle, chapter: 5, width: 4096, height: 900, shadow: true,
     grasp: true, reflection: true, finalTrial: index === 4,
     platforms: [[0,760,735],[890,1400,690],[1530,2010,650],[2140,2620,700],[2750,3200,650],[3330,3740,625],[3870,4096,675]],
+    ...(index === 4 ? { width: 9000, artWidth: 4096, arena: { start: 4300, boss: 'last-light' },
+      platforms: [[0,760,735],[890,1400,690],[1530,2010,650],[2140,2620,700],[2750,3200,650],[3330,3740,625],[3870,9000,675]] } : {}),
   })),
 ];
