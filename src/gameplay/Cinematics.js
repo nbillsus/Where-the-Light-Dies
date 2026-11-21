@@ -58,6 +58,10 @@ export class Cinematics {
   }
 
   finale(chapter = 1) {
+    if (chapter === 5) {
+      this.finalEnding();
+      return;
+    }
     const scene = this.scene;
     const w = scene.viewportWidth, h = scene.viewportHeight;
     const offset = fixedLayerOffset(w, h);
