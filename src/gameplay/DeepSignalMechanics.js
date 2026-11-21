@@ -227,6 +227,8 @@ export class DeepSignalMechanics extends ChapterTwoMechanics {
     if (!this.plan.highDanger || this.radioFrequency !== 2 || time < this.nextRadioSpawnAt) return;
     this.nextRadioSpawnAt = time + 9000;
     const scene = this.scene;
+    if (scene.stage.arena?.boss === 'dead-frequency'
+      && scene.player.x >= scene.stage.arena.start * scene.artScale - scene.spriteHeight * 2) return;
     const alive = scene.enemies.list.filter(e => e.radioSummoned && e.alive).length;
     if (alive >= 2 || scene.arena?.state === 'fighting') return;
     const platform = scene.platforms.find(p => scene.player.x >= p.left && scene.player.x <= p.right);

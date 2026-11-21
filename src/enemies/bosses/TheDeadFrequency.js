@@ -72,6 +72,11 @@ export class TheDeadFrequency extends Boss {
 
   engage() {
     super.engage();
+    // A radio-spawned bug can follow the player onto this continuous floor.
+    // Clear it as the arena closes so this fight stays focused on the boss.
+    for (const enemy of this.scene.enemies.list) {
+      if (enemy.radioSummoned && enemy.platform === this.arena.floor && enemy.alive) enemy.die();
+    }
     this.nextAttackAt = this.scene.time.now + 1700;
     this.nextSignalAt = this.scene.time.now + 7200;
     this.channelText.setVisible(true);
@@ -124,10 +129,6 @@ export class TheDeadFrequency extends Boss {
     }
 
     this.updateAttack(time);
-    if (this.phase2 && time >= this.nextSummonAt) {
-      this.summon(1);
-      this.nextSummonAt = time + 11000;
-    }
   }
 
   startAttack(time) {
