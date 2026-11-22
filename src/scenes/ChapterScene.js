@@ -19,7 +19,6 @@ import { EnemyDirector } from '../enemies/EnemyDirector.js';
 import { BossArena } from '../enemies/bosses/BossArena.js';
 import { fixedLayerOffset, logicalSize, renderScale, sharpenText } from '../rendering.js';
 import { saveSlot } from '../saveSlots.js';
-import { setGameMusicChapter } from '../audio/GameMusic.js';
 
 const RUN_SPEED = 320;
 const JUMP_SPEED = -525;
@@ -41,7 +40,6 @@ export class ChapterScene extends Phaser.Scene {
 
   create() {
     this.stage = CHAPTER_STAGES[this.levelIndex];
-    setGameMusicChapter(this.stage.chapter);
     const { width: w, height: h } = logicalSize(this);
     this.viewportWidth = w;
     this.viewportHeight = h;

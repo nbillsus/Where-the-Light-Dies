@@ -1,17 +1,9 @@
-const MENU_MUSIC_SOURCES = [
+const MUSIC_SOURCES = [
   '/audio/game-theme.wav',
   '/audio/game-theme.mp3',
   '/audio/game-theme.m4a',
   '/audio/game-theme.ogg',
 ];
-
-const CHAPTER_MUSIC_SOURCES = {
-  1: ['/audio/music/chapter-1-heard.mp3'],
-  2: ['/audio/music/chapter-2-dont-turn-around.mp3'],
-  3: ['/audio/music/chapter-3-it-comes-at-night.mp3'],
-  4: ['/audio/music/chapter-4-sacred-earths.mp3'],
-  5: ['/audio/music/chapter-5-fog-choke.mp3'],
-};
 
 const MUSIC_DURATION_SECONDS = 178.8;
 const MUSIC_HIT_TIMES_SECONDS = [
@@ -21,14 +13,11 @@ const MUSIC_HIT_TIMES_SECONDS = [
 
 const state = {
   audio: null,
-  trackKey: 'menu',
-  sources: MENU_MUSIC_SOURCES,
   sourceIndex: 0,
   failed: false,
   startedAt: 0,
   timers: new Set(),
   baseVolume: 0.42,
-  switchToken: 0,
 };
 
 function nowSeconds() {
@@ -43,9 +32,9 @@ function createAudio() {
   audio.volume = state.baseVolume;
   audio.crossOrigin = 'anonymous';
   audio.addEventListener('error', () => {
-    if (state.sourceIndex < state.sources.length - 1) {
+    if (state.sourceIndex < MUSIC_SOURCES.length - 1) {
       state.sourceIndex += 1;
-      audio.src = state.sources[state.sourceIndex];
+      audio.src = MUSIC_SOURCES[state.sourceIndex];
       audio.load();
       void audio.play().catch(() => {});
       return;
@@ -56,56 +45,9 @@ function createAudio() {
     state.failed = false;
     state.startedAt = nowSeconds() - (Number.isFinite(audio.currentTime) ? audio.currentTime : 0);
   });
-  audio.src = state.sources[state.sourceIndex];
+  audio.src = MUSIC_SOURCES[state.sourceIndex];
   state.audio = audio;
   return audio;
-}
-
-function rampVolume(audio, from, to, durationMs, token, onComplete) {
-  const started = performance.now();
-  const step = now => {
-    if (token !== state.switchToken) return;
-    const progress = Math.min(1, (now - started) / durationMs);
-    audio.volume = from + (to - from) * progress;
-    if (progress < 1) window.requestAnimationFrame(step);
-    else onComplete?.();
-  };
-  window.requestAnimationFrame(step);
-}
-
-/** Select the menu score or the score assigned to a numbered chapter. */
-export function setGameMusicChapter(chapter = null) {
-  if (typeof window === 'undefined') return;
-  const number = Number(chapter);
-  const sources = CHAPTER_MUSIC_SOURCES[number] ?? MENU_MUSIC_SOURCES;
-  const trackKey = CHAPTER_MUSIC_SOURCES[number] ? `chapter-${number}` : 'menu';
-  if (trackKey === state.trackKey) return;
-
-  state.trackKey = trackKey;
-  state.sources = sources;
-  state.sourceIndex = 0;
-  state.failed = false;
-  for (const timer of state.timers) window.clearTimeout(timer);
-  state.timers.clear();
-  const token = ++state.switchToken;
-  const audio = state.audio;
-  if (!audio) return;
-
-  const wasPlaying = !audio.paused;
-  const loadSelectedTrack = () => {
-    if (token !== state.switchToken) return;
-    audio.src = state.sources[0];
-    audio.load();
-    audio.currentTime = 0;
-    audio.volume = wasPlaying ? 0 : state.baseVolume;
-    if (!wasPlaying) return;
-    void audio.play().then(() => {
-      rampVolume(audio, 0, state.baseVolume, 650, token);
-    }).catch(() => { audio.volume = state.baseVolume; });
-  };
-
-  if (wasPlaying && audio.volume > 0.01) rampVolume(audio, audio.volume, 0, 450, token, loadSelectedTrack);
-  else loadSelectedTrack();
 }
 
 export function unlockGameMusic(volume = state.baseVolume) {
@@ -113,7 +55,7 @@ export function unlockGameMusic(volume = state.baseVolume) {
   state.baseVolume = volume;
   const audio = createAudio();
   audio.volume = Math.max(audio.volume, volume);
-  if (!audio.src) audio.src = state.sources[state.sourceIndex];
+  if (!audio.src) audio.src = MUSIC_SOURCES[state.sourceIndex];
   void audio.play().catch(() => {});
   return audio;
 }
@@ -134,30 +76,22 @@ export function installGameMusicUnlock(scene, volume = state.baseVolume) {
   };
 }
 
-function musicDurationSeconds() {
-  const audio = state.audio;
-  return Number.isFinite(audio?.duration) && audio.duration > 0 ? audio.duration : MUSIC_DURATION_SECONDS;
-}
-
 function musicPositionSeconds() {
   const audio = state.audio;
-  const duration = musicDurationSeconds();
   if (audio && Number.isFinite(audio.currentTime) && audio.currentTime > 0) {
-    return audio.currentTime % duration;
+    return audio.currentTime % MUSIC_DURATION_SECONDS;
   }
   const startedAt = state.startedAt || nowSeconds();
-  return (nowSeconds() - startedAt) % duration;
+  return (nowSeconds() - startedAt) % MUSIC_DURATION_SECONDS;
 }
 
 export function getDelayToNextMusicHitMs({ minMs = 1300, maxMs = 3300, fallbackMs = 2150 } = {}) {
   const position = musicPositionSeconds();
-  const duration = musicDurationSeconds();
   const minSeconds = minMs / 1000;
   const maxSeconds = maxMs / 1000;
   let bestDelay = Infinity;
   for (const hit of MUSIC_HIT_TIMES_SECONDS) {
-    if (hit >= duration) continue;
-    const delay = hit >= position ? hit - position : duration - position + hit;
+    const delay = hit >= position ? hit - position : MUSIC_DURATION_SECONDS - position + hit;
     if (delay >= minSeconds && delay < bestDelay) bestDelay = delay;
   }
   return bestDelay <= maxSeconds ? Math.round(bestDelay * 1000) : fallbackMs;
