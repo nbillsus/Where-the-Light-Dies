@@ -3,7 +3,7 @@ import lighthouseUrl from '../../assets/environment/menu_lighthouse.png?url';
 import { logicalSize, renderScale, sharpenText } from '../rendering.js';
 import { CHAPTER_STAGES } from '../levels/chapterData.js';
 import { getSlots, saveSlot } from '../saveSlots.js';
-import { installGameMusicUnlock } from '../audio/GameMusic.js';
+import { installGameMusicUnlock, setGameMusicChapter } from '../audio/GameMusic.js';
 import { SETTING_ROWS, readSettings, writeSettings } from '../settings.js';
 
 const entries = ['New Game', 'Continue Game', 'Settings', 'Credits'];
@@ -19,6 +19,7 @@ export class MainMenuScene extends Phaser.Scene {
     this.settings = readSettings();
     this.selected = 0;
     this.panel = null;
+    setGameMusicChapter();
     this.removeMusicUnlock = installGameMusicUnlock(this, 0.42);
     this.renderMenu();
     this.scale.on('resize', this.renderMenu, this);
